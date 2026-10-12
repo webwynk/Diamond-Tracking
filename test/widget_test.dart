@@ -3,13 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Env.validate', () {
-    test('throws MissingConfigException when run without --dart-define-from-file',
-        () {
-      // Tests run without dart-defines, so every key is blank. This asserts the
-      // failure is LOUD. A silently misconfigured app would appear to work and
-      // then fail to record a duty session, losing someone's working day.
-      expect(Env.validate, throwsA(isA<MissingConfigException>()));
-    });
+    test(
+      'throws MissingConfigException when run without --dart-define-from-file',
+      () {
+        // Tests run without dart-defines, so every key is blank. This asserts the
+        // failure is LOUD. A silently misconfigured app would appear to work and
+        // then fail to record a duty session, losing someone's working day.
+        expect(Env.validate, throwsA(isA<MissingConfigException>()));
+      },
+    );
 
     test('names every missing key, and never leaks a value', () {
       try {

@@ -65,8 +65,9 @@ class _StartupCheckPage extends StatelessWidget {
     // Reaching this widget means Env.validate() passed and
     // Supabase.initialize() completed. Confirm the client actually points at
     // the configured project rather than assuming it does.
-    final bool clientReady =
-        Supabase.instance.client.rest.url.toString().startsWith(Env.supabaseUrl);
+    final bool clientReady = Supabase.instance.client.rest.url
+        .toString()
+        .startsWith(Env.supabaseUrl);
 
     return Scaffold(
       body: SafeArea(
@@ -100,10 +101,7 @@ class _StartupCheckPage extends StatelessWidget {
                   passed: Env.supabaseUrl.isNotEmpty,
                 ),
                 const SizedBox(height: 12),
-                _CheckRow(
-                  label: 'Supabase client ready',
-                  passed: clientReady,
-                ),
+                _CheckRow(label: 'Supabase client ready', passed: clientReady),
                 const SizedBox(height: 12),
                 const _CheckRow(label: 'DM Sans bundled', passed: true),
                 const SizedBox(height: 32),

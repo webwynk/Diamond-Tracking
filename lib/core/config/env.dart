@@ -27,16 +27,19 @@ abstract final class Env {
   ///
   /// Public by design. Row-level security, not this key, is what protects the
   /// data. See docs/05-SECURITY.md.
-  static const String supabasePublishableKey =
-      String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+  static const String supabasePublishableKey = String.fromEnvironment(
+    'SUPABASE_PUBLISHABLE_KEY',
+  );
 
   /// Cloudinary cloud name. Not a secret.
-  static const String cloudinaryCloudName =
-      String.fromEnvironment('CLOUDINARY_CLOUD_NAME');
+  static const String cloudinaryCloudName = String.fromEnvironment(
+    'CLOUDINARY_CLOUD_NAME',
+  );
 
   /// Cloudinary upload preset name. Not a secret once uploads are signed.
-  static const String cloudinaryUploadPreset =
-      String.fromEnvironment('CLOUDINARY_UPLOAD_PRESET');
+  static const String cloudinaryUploadPreset = String.fromEnvironment(
+    'CLOUDINARY_UPLOAD_PRESET',
+  );
 
   /// Every key that must be present, with its value, for validation.
   static const Map<String, String> _required = <String, String>{
