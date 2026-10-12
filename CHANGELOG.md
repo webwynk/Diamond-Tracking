@@ -94,6 +94,63 @@ For a bug found but not yet fixed.
 
 # History
 
+## [2026-10-13] Phase 0 Step 2 — design system theme
+
+**Type:** Feature
+**Phase:** Phase 0, Step 2
+**Scope:** `lib/core/theme/` (4 new files), `lib/features/dev/theme_preview_page.dart`, `lib/main.dart`, `test/theme_test.dart`, `docs/03-DESIGN-SYSTEM.md`
+
+**What changed**
+
+The design system turned into code. Every colour, type style, spacing value, radius and component default now lives in a token, so no screen ever writes a literal.
+
+- **`app_colors.dart`** — the full brand ramp, neutrals, semantic colours and the five duty-status colours. Includes **`AppStatusColors`**, which pairs each status colour with its required label and pill background, so the design-system rule *"status is colour **plus** a text label, never colour alone"* is awkward to break by accident rather than merely documented.
+- **`app_typography.dart`** — the 10-step scale. DM Sans is a **variable** font, so weight is applied with `fontVariations` on the `wght` axis; `fontWeight` alone snaps to the nearest instance and is imprecise at the 500 and 600 steps. Both are set. A `.tabular` extension applies fixed-width figures, required for live counters — a duty timer with proportional figures visibly jitters every second.
+- **`app_dimens.dart`** — spacing on a 4 dp base, radii, fixed sizes carrying their rule (48 dp minimum touch target, 72 dp list rows, 120 dp duty toggle), elevation, breakpoints and motion durations.
+- **`app_theme.dart`** — one `ThemeData`, light only. Roles from `ColorScheme.fromSeed` are explicitly overridden rather than accepted, since the seed only gets close. Component themes cover app bar, cards, all button variants, inputs, chips, bottom sheets, dialogs, snackbar, bottom navigation, switches and list tiles.
+- **`theme_preview_page.dart`** — a temporary gallery rendering every token, so this step could be **verified rather than assumed**, and so generated screen designs can be compared against the real output. **Development-only; delete when Phase 1 adds routing.**
+- `main.dart` now applies `AppTheme.light` with `themeMode` pinned to light.
+
+**Why**
+Phase 0 Step 2, approved by the owner. Building the tokens before any screen means no screen is ever built against guessed values.
+
+**Database impact**
+None.
+
+**Verified by**
+- [x] **Analyzer clean**
+- [x] **22 tests pass** (2 existing + 20 new)
+- [x] Formatter clean, verified by re-running until 0 changed
+- [x] **Debug APK builds**
+- [x] **Contrast computed from the actual token values, not trusted.** The test implements the WCAG relative-luminance formula and measures white on `#016893` at **6.17:1**, independently confirming the figure documented in the design system months-equivalent earlier in this project. Brand-on-white, primary text, secondary text and the snackbar action all pass AA.
+- [x] A test asserts `primary500` and lighter **fail** AA on white. If that ever starts passing, the ramp has drifted and the "text must be primary600 or darker" rule needs revisiting.
+- [x] A test asserts every status colour has a non-empty label and a pill background, structurally enforcing the colour-plus-label rule.
+- [x] Tests assert only the four approved font weights are used, and that every style uses the bundled family.
+- [x] **Token discipline swept:** grepped `lib/` for literal hex and literal `fontSize` outside `lib/core/theme/`. Result: none.
+- [x] No `TODO`, `FIXME` or `print(` anywhere
+- [x] No credential value in any staged file
+- [ ] **NOT verified: the theme rendered on a real device.** Still no Android device or emulator connected. The preview page exists precisely so this can be checked in seconds once one is.
+
+**Bugs found and fixed during this step**
+
+1. **I violated my own rule.** The dead-code sweep found a literal `fontSize: 12` in the theme preview page — the exact thing the design system forbids, in the file demonstrating the design system. Replaced with `AppTypography.caption`. **This is why the sweep is a required step and not a formality.**
+2. Fixing that introduced a compile error: `.withColor()` is a method and cannot appear in a `const` expression. Removed `const` from that subtree.
+3. An unnecessary `dart:ui` import in `app_typography.dart`, caught by IDE diagnostics on save.
+4. A `const Set<double>` in the test, which Dart rejects because `double` overrides `==`. Changed to `final`.
+
+**Documentation corrected**
+`docs/03-DESIGN-SYSTEM.md` said DM Sans was "loaded via `google_fonts`" while in the same sentence instructing that it be bundled — a contradiction that would have misled whoever implemented it. Rewritten to state that the font is bundled, that `google_fonts` is deliberately not used, and that it is a variable font requiring `fontVariations`.
+
+**Result**
+The theme is complete, tested and committed. Any screen built from here uses tokens, and accessibility is now guarded by tests rather than by intention.
+
+**Follow-ups**
+- **Run on a real device** to confirm DM Sans renders and the weights are visually distinct. This is the one thing tests cannot prove.
+- Phase 0 Step 3: the shared widget library. **Needs design screens 27–30** (filter sheet, empty states, error states, skeletons).
+- Delete `lib/features/dev/theme_preview_page.dart` when Phase 1 adds routing.
+
+---
+
 ## [2026-10-13] Phase 0 Step 1 — project skeleton
 
 **Type:** Feature
