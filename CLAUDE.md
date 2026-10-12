@@ -94,7 +94,11 @@ Done:
 - `env.json` populated with all five client-side values; `.gitignore` created and verified against a test repo.
 - `designs/` folder created. **No design images supplied yet.**
 
-Next: Phase 0 Step 1 — Flutter scaffold, git init, config wiring, folder structure, strict lints. **Needs explicit approval before starting.**
+**Phase 0 Step 1 complete** (2026-10-13): Flutter scaffold, git initialised, build-time config wiring with loud startup failure, folder structure, strict lints, DM Sans bundled. Analyzer clean, 2 tests pass, debug APK builds, no secrets committed.
+
+⚠ **Not yet verified: the app running on a real device.** No Android device or emulator is connected. A successful APK build is not the same as the app launching.
+
+Next: Phase 0 Step 2 — the theme from [docs/03-DESIGN-SYSTEM.md](docs/03-DESIGN-SYSTEM.md). **Needs explicit approval before starting.**
 
 ---
 

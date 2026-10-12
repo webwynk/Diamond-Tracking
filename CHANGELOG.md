@@ -94,6 +94,81 @@ For a bug found but not yet fixed.
 
 # History
 
+## [2026-10-13] Phase 0 Step 1 — project skeleton
+
+**Type:** Feature
+**Phase:** Phase 0, Step 1
+**Scope:** Flutter project scaffold, `pubspec.yaml`, `analysis_options.yaml`, `android/`, `lib/`, `test/`, `README.md`, `.gitignore`, git repository
+
+**What changed**
+
+First application code. A Flutter app that builds, reads build-time configuration, and initialises the Supabase client. **No feature code and no UI beyond a startup check page.**
+
+- `flutter create`, Android platform only. iOS can be added later with one command; creating it now would be clutter.
+- **`applicationId` corrected to `com.diamondagritech.tracking`.** Flutter defaulted to `com.diamondagritech.diamond_tracking`, which is not what was approved. Namespace, applicationId and the Kotlin source path were all moved to match. **This value is permanent once published to Play**, so it was fixed before the first commit rather than after.
+- **`minSdk` pinned to 26** explicitly rather than inheriting Flutter's default, for the foreground-service APIs background GPS depends on.
+- App label set to "Diamond Agritech" (was `diamond_tracking`).
+- Dependencies: `supabase_flutter ^2.18.3`, `flutter_riverpod ^3.4.3`, `flutter_lints ^6.0.0`. Lockfile committed.
+- **DM Sans bundled** at `assets/fonts/DMSans-Variable.ttf`, not fetched at runtime.
+- `analysis_options.yaml`: strict rules, with several promoted to **errors** — `avoid_print`, `dead_code`, `unawaited_futures`, `discarded_futures`, `use_build_context_synchronously`. Each maps to a failure mode this app actually has: an unawaited future in the upload queue silently loses GPS points; a `BuildContext` across an async gap crashes after navigation.
+- Folder structure per `docs/08`: `core/ data/ domain/ features/ shared/`.
+- `lib/core/config/env.dart` — build-time config with **loud startup failure**. `Env.validate()` throws `MissingConfigException` naming every absent key, **without ever printing a value**.
+- `lib/main.dart` — initialises Supabase, forces the light theme, shows a startup check page.
+- `test/widget_test.dart` — Flutter's template test replaced with two real tests covering the loud-failure path.
+- `README.md` — Flutter's template replaced with project documentation.
+- Git repository initialised. Two commits.
+
+**Why**
+Phase 0 Step 1, approved by the owner.
+
+**Database impact**
+None. `public` schema still empty; first tables arrive in Phase 1.
+
+**Verified by**
+- [x] **Analyzer clean** — "No issues found"
+- [x] **2 tests pass**
+- [x] **Formatter clean** — verified by re-running until it reported 0 changed
+- [x] **Debug APK actually builds** with `--dart-define-from-file=env.json`
+- [x] **No credential value appears in any committed file.** Checked by extracting the real values from `env.json` and grepping every staged file for them, rather than trusting `.gitignore`.
+- [x] `env.json` confirmed present on disk but reported by git as ignored
+- [x] No `TODO`, `FIXME` or `print(` anywhere in `lib/` or `test/`
+- [x] Verified no stale `diamond_tracking` package reference remains anywhere under `android/`
+- [ ] **NOT verified: the app running on a real device.** No Android device or emulator is connected — `flutter devices` lists only Edge. A successful APK build is the strongest available proof, but **it is not the same as the app launching.** This must be confirmed before Phase 1 is considered complete.
+
+**Three bugs found and fixed during this step**
+
+1. **I corrupted `pubspec.yaml`.** A string replacement targeting the top-level `flutter:` section matched the `flutter:` inside `dependencies:` instead, truncating the dependency list. Caught immediately by reading the file back. Fixed by rewriting `pubspec.yaml` in full and confirming `flutter pub get` resolves and every direct dependency is present. **Severity: would have been high if committed** — the project would not have built. Lesson: a short, ambiguous anchor string is unsafe in a structured file.
+
+2. **Two invalid lint rules.** `missing_enum_case_in_switch` is not a recognised diagnostic code, and `package_api_docs` was removed in Dart 3.7.0. Caught by IDE diagnostics on save. Removed; the enum case is unnecessary anyway, because modern Dart already makes a non-exhaustive switch on an enum a compile error.
+
+3. **A tautological check in `main.dart`.** The startup page computed `clientReady` as `session == null || session != null`, which is always true and proves nothing. Caught on re-reading my own diff. Replaced with a real assertion that the Supabase client's REST URL actually matches the configured project.
+
+**Build environment issue resolved**
+
+The Android build failed repeatedly with `Could not close incremental caches` in `compileDebugKotlin`. It persisted after `flutter clean` and after stopping the Gradle daemon, so it was not stale state.
+
+Searched rather than guessed, per Rule 5. The cause is a **drive split**: this project is on `D:\` while the Dart pub cache — and therefore every plugin's Kotlin source — is on `C:\`. Kotlin's incremental compiler cannot handle that on Windows. Confirmed by checking both locations before applying any fix.
+
+Resolved with `kotlin.incremental=false` in `android/gradle.properties`, with the full reasoning written into that file so nobody later removes it as mystery configuration. **Cost: slower incremental builds.** Revisit if the project ever moves onto the same drive as the pub cache.
+
+**Housekeeping caught during the commit review**
+- `android/.kotlin/errors/*.log` — build artifacts from the failed builds had been staged. Added `android/.kotlin/` to `.gitignore` and removed them from the index.
+- `lib/core/config/.gitkeep` removed, now that the directory holds a real file.
+
+**Result**
+Skeleton complete and committed. Analyzer clean, tests pass, APK builds, no secrets committed. **One honest gap: the app has not been run on a device.**
+
+**Sources**
+- https://github.com/FlorianGross/rd_fallbeispiel/pull/7
+- https://github.com/vicajilau/flutter_file_picker/issues/2152
+
+**Follow-ups**
+- **Run the app on a real Android device or emulator** to confirm it launches and the startup checks pass.
+- Phase 0 Step 2: the theme from `docs/03-DESIGN-SYSTEM.md`.
+- Phase 0 Step 3: the shared widget library — **needs design screens 27–30.**
+
+---
+
 ## [2026-10-13] Map provider switched to MapLibre + OpenFreeMap; route replay cut to a static route view
 
 **Type:** Decision + Docs
