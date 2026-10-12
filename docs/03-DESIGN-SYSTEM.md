@@ -107,7 +107,9 @@ Reasons this is the right call here: the app is used outdoors in bright sunlight
 
 ## 3. Typography
 
-**DM Sans** throughout, loaded via `google_fonts`. **Bundle the font with the app** rather than fetching at runtime, so the first screen is not unstyled on a slow connection.
+**DM Sans** throughout, **bundled with the app** at `assets/fonts/DMSans-Variable.ttf` rather than fetched at runtime, so the first screen is never unstyled on a slow connection. The `google_fonts` package is deliberately **not** used.
+
+It is a **variable** font — Google Fonts publishes no static instances for DM Sans — so weight is selected with `fontVariations: [FontVariation('wght', 600)]`. `fontWeight` alone snaps to the nearest axis instance and is imprecise at the 500 and 600 steps this scale uses, so the implementation sets both.
 
 Weights used: 400 Regular, 500 Medium, 600 SemiBold, 700 Bold. Do not use any other weight.
 
