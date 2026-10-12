@@ -1,0 +1,49 @@
+name: diamond_tracking
+description: "Diamond Agritech employee duty and GPS tracking"
+# Private company app. Never published to pub.dev.
+publish_to: 'none'
+
+# version is <build-name>+<build-number>.
+# On Android, build-name becomes versionName and build-number becomes versionCode.
+# versionCode must increase on every Play upload.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Backend: Postgres, Auth, Realtime, Edge Functions.
+  # Supabase Storage is NOT used - visit photos go to Cloudinary.
+  # See docs/06-SUPABASE-BEST-PRACTICES.md.
+  supabase_flutter: ^2.18.3
+
+  # State management for the whole app. Never mix in another approach.
+  # See CLAUDE.md locked decisions.
+  flutter_riverpod: ^3.4.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # DM Sans is BUNDLED, not fetched at runtime, so the first screen is never
+  # unstyled on a slow connection. See docs/03-DESIGN-SYSTEM.md.
+  #
+  # This is a VARIABLE font: one file covers every weight. Google Fonts does not
+  # publish static instances for DM Sans. In the theme, select a weight with
+  # fontVariations: [FontVariation('wght', 600)] rather than relying on
+  # fontWeight alone, because fontWeight snaps to the nearest axis value and is
+  # less precise for the 500 and 600 steps this design system uses.
+  fonts:
+    - family: DMSans
+      fonts:
+        - asset: assets/fonts/DMSans-Variable.ttf

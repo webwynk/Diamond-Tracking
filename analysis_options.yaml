@@ -1,0 +1,64 @@
+# Static analysis for Diamond Agritech Tracking.
+#
+# Rule 4 of docs/04-RULES.md: "Strict analysis options. Treat warnings as errors.
+# A clean analyzer is a release gate."
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    # Treat these as build-breaking, not advisory. Each one has bitten a
+    # location-tracking app before.
+    avoid_print: error
+    unused_import: error
+    unused_local_variable: error
+    unused_element: error
+    unused_field: error
+    dead_code: error
+    # An unawaited future in the upload queue silently loses GPS points.
+    discarded_futures: error
+    unawaited_futures: error
+    # BuildContext across an async gap crashes after a navigation.
+    use_build_context_synchronously: error
+    # NOTE: no rule needed for exhaustive enum switches - modern Dart makes a
+    # non-exhaustive switch on an enum a compile error already.
+
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "build/**"
+
+linter:
+  rules:
+    # --- Correctness ---
+    always_declare_return_types: true
+    avoid_dynamic_calls: true
+    avoid_slow_async_io: true
+    cancel_subscriptions: true          # leaked Realtime channels exhaust the connection limit
+    close_sinks: true
+    only_throw_errors: true
+    test_types_in_equals: true
+    throw_in_finally: true
+    unnecessary_statements: true
+
+    # --- Async safety: the offline queue depends on these ---
+    avoid_void_async: true
+    await_only_futures: true
+
+    # --- Readability ---
+    prefer_const_constructors: true
+    prefer_const_constructors_in_immutables: true
+    prefer_const_declarations: true
+    prefer_final_locals: true
+    prefer_single_quotes: true
+    require_trailing_commas: true
+    sort_child_properties_last: true
+    directives_ordering: true
+    curly_braces_in_flow_control_structures: true
+
+    # --- Keeps secrets and debug output out of builds ---
+    avoid_web_libraries_in_flutter: true
+
+    # --- Documentation ---
+    # public_member_api_docs stays off: this is an app, not a published package.
+    public_member_api_docs: false
