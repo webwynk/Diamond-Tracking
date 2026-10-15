@@ -4,14 +4,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config/env.dart';
 import 'core/theme/app_theme.dart';
-import 'features/dev/theme_preview_page.dart';
+import 'features/auth/presentation/splash_page.dart';
+
 
 /// Entry point.
 ///
-/// Phase 0 Step 2: the app builds, reads its build-time configuration,
-/// initialises Supabase, and applies the design-system theme. There is still no
-/// feature code — the home screen is a temporary theme preview, replaced by
-/// real routing in Phase 1.
+/// Phase 1: the app reads build-time configuration, validates environment,
+/// initializes Supabase, and launches into the official Splash / Auth flow.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -39,7 +38,8 @@ class DiamondTrackingApp extends StatelessWidget {
       // Light mode only, forced. The system dark setting is deliberately
       // ignored. See docs/03-DESIGN-SYSTEM.md.
       themeMode: ThemeMode.light,
-      home: const ThemePreviewPage(),
+      home: const SplashPage(),
     );
   }
 }
+
