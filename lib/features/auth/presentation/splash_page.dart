@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../domain/entities/user_profile.dart';
+import '../../admin/dashboard/presentation/admin_dashboard_page.dart';
+import '../../map/presentation/employee_map_page.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/auth_state.dart';
 import 'employee_login_page.dart';
@@ -49,10 +52,15 @@ class _SplashPageState extends ConsumerState<SplashPage> {
           MaterialPageRoute(builder: (_) => const PinChangePage()),
         );
       } else if (next is AuthAuthenticated) {
-        // In Phase 1 Step 2, navigating to placeholder home screen or role destination
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const EmployeeLoginPage()),
-        );
+        if (next.profile.role == UserRole.admin) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const EmployeeMapPage()),
+          );
+        }
       }
     });
 

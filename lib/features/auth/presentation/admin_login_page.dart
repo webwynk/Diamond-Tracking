@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/widgets.dart';
+import '../../admin/dashboard/presentation/admin_dashboard_page.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/auth_state.dart';
 
@@ -63,7 +64,10 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
           context,
           message: 'Authenticated as Admin: ${next.profile.fullName}',
         );
-        Navigator.of(context).pop();
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
+          (route) => false,
+        );
       }
     });
 
