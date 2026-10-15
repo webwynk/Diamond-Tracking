@@ -70,7 +70,7 @@ abstract final class DutyTimeHelper {
       'Nov',
       'Dec',
     ];
-    final day = ist.day;
+    final day = ist.day.toString().padLeft(2, '0');
     final month = months[ist.month - 1];
     final year = ist.year;
     return '$day $month $year';

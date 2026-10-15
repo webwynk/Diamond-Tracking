@@ -12,6 +12,7 @@ import '../../duty/presentation/controllers/duty_state.dart';
 import '../../duty/presentation/duty_off_summary_dialog.dart';
 import '../../history/presentation/my_duty_history_page.dart';
 import '../../map/presentation/employee_map_page.dart';
+import '../../profile/presentation/employee_profile_page.dart';
 
 /// Employee Home Dashboard uniting Screens 06, 07, and 08:
 /// - Screen 06: Employee Home (Duty Off)
@@ -206,13 +207,22 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
           onPressed: widget.onNavigateToNotifications,
         ),
         IconButton(
+          key: const Key('profile-action-btn'),
           icon: const CircleAvatar(
             radius: 14,
             backgroundColor: AppColors.primary500,
             child: Icon(Icons.person, size: 16, color: AppColors.neutral0),
           ),
           tooltip: 'My Profile',
-          onPressed: widget.onNavigateToProfile,
+          onPressed: () {
+            if (widget.onNavigateToProfile != null) {
+              widget.onNavigateToProfile!();
+            } else {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const EmployeeProfilePage()),
+              );
+            }
+          },
         ),
         const SizedBox(width: AppSpacing.x2),
       ],
