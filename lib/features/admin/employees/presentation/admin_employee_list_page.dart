@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/filter_sheet/controllers/filter_sheet_state.dart';
+import '../../../../shared/widgets/filter_sheet/filter_bottom_sheet.dart';
 import '../../dashboard/presentation/widgets/admin_bottom_navigation.dart';
 import 'admin_employee_detail_page.dart';
 import 'admin_employee_form_page.dart';
@@ -39,72 +41,27 @@ class AdminEmployeeListPage extends ConsumerWidget {
   final VoidCallback? onNavigateToPlaces;
   final VoidCallback? onNavigateToReports;
 
-  void _showFilterTuneModal(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
-      ),
-      builder: (modalCtx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.x4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Filter Roster',
-                      style: AppTypography.title.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.of(modalCtx).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.x2),
-                ListTile(
-                  leading: const Icon(
-                    Icons.check_circle_outline_rounded,
-                    color: AppColors.primary600,
-                  ),
-                  title: const Text('Active Staff Only'),
-                  subtitle: const Text('Exclude blocked and suspended employees'),
-                  onTap: () {
-                    Navigator.of(modalCtx).pop();
-                    ref
-                        .read(adminEmployeeListControllerProvider.notifier)
-                        .setFilter(AdminEmployeeFilter.active);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.warning_amber_rounded,
-                    color: AppColors.error,
-                  ),
-                  title: const Text('Flagged & Suspect Staff'),
-                  subtitle: const Text('Show 3 officers with audit anomalies'),
-                  onTap: () {
-                    Navigator.of(modalCtx).pop();
-                    ref
-                        .read(adminEmployeeListControllerProvider.notifier)
-                        .setFilter(AdminEmployeeFilter.hasFlags);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  Future<void> _showFilterTuneModal(BuildContext context, WidgetRef ref) async {
+    final result = await FilterBottomSheet.show(context);
+    if (result != null) {
+      if (result.selectedStatuses.contains(EmployeeFilterStatus.onDuty)) {
+        ref
+            .read(adminEmployeeListControllerProvider.notifier)
+            .setFilter(AdminEmployeeFilter.onDuty);
+      } else if (result.selectedStatuses.contains(EmployeeFilterStatus.offDuty)) {
+        ref
+            .read(adminEmployeeListControllerProvider.notifier)
+            .setFilter(AdminEmployeeFilter.offDuty);
+      } else if (result.selectedStatuses.contains(EmployeeFilterStatus.blocked)) {
+        ref
+            .read(adminEmployeeListControllerProvider.notifier)
+            .setFilter(AdminEmployeeFilter.blocked);
+      } else if (result.selectedStatuses.contains(EmployeeFilterStatus.checkNeeded)) {
+        ref
+            .read(adminEmployeeListControllerProvider.notifier)
+            .setFilter(AdminEmployeeFilter.hasFlags);
+      }
+    }
   }
 
   @override
