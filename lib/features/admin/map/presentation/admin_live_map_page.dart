@@ -13,6 +13,7 @@ import 'widgets/admin_map_floating_controls.dart';
 import 'widgets/admin_map_search_bar.dart';
 import 'widgets/admin_map_top_bar.dart';
 import 'widgets/admin_map_vector_canvas.dart';
+import 'widgets/live_map_employee_detail_sheet.dart';
 
 /// Screen 15 — Admin Live Map (All Field Officers).
 ///
@@ -379,9 +380,16 @@ class _AdminLiveMapPageState extends ConsumerState<AdminLiveMapPage> {
                   if (widget.onOfficerSelected != null) {
                     widget.onOfficerSelected!(officer);
                   } else {
-                    AppSnackbar.show(
+                    LiveMapEmployeeDetailSheet.show(
                       context,
-                      message: 'Opening inspection for ${officer.name}...',
+                      officer: officer,
+                      onViewProfile: () {
+                        Navigator.of(context).pop();
+                        widget.onNavigateToTeam?.call();
+                      },
+                      onRouteView: () {
+                        Navigator.of(context).pop();
+                      },
                     );
                   }
                 },

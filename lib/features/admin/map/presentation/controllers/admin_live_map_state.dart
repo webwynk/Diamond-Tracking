@@ -34,6 +34,16 @@ class MapOfficerItem {
     this.batteryPercent = 88,
     this.isSos = false,
     this.sosTag,
+    this.phoneNumber = '+91 98201 44556',
+    this.dutyDuration = '7h 24m',
+    this.dutyStartTime = '8:04 AM',
+    this.distanceTodayKm = '38.6 km',
+    this.visitsToday = 3,
+    this.accuracyMeters = 6,
+    this.speedKmh = 42,
+    this.proximityText = 'Near Shivpuri Farm · 180 m away',
+    this.geofenceText = 'GEOFENCE ACTIVE · 4.8 KM²',
+    this.sectorText = 'SECTOR 04',
   });
 
   final String id;
@@ -47,6 +57,34 @@ class MapOfficerItem {
   final int batteryPercent;
   final bool isSos;
   final String? sosTag;
+  final String phoneNumber;
+  final String dutyDuration;
+  final String dutyStartTime;
+  final String distanceTodayKm;
+  final int visitsToday;
+  final int accuracyMeters;
+  final int speedKmh;
+  final String proximityText;
+  final String geofenceText;
+  final String sectorText;
+
+  String get initials {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts[0].isEmpty) return 'EM';
+    if (parts.length == 1) {
+      return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
+  }
+
+  String get calloutTag {
+    if (sosTag != null) return sosTag!;
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0].toUpperCase()} ${parts[1][0].toUpperCase()}.';
+    }
+    return name.toUpperCase();
+  }
 
   MapOfficerItem copyWith({
     String? id,
@@ -60,6 +98,16 @@ class MapOfficerItem {
     int? batteryPercent,
     bool? isSos,
     String? sosTag,
+    String? phoneNumber,
+    String? dutyDuration,
+    String? dutyStartTime,
+    String? distanceTodayKm,
+    int? visitsToday,
+    int? accuracyMeters,
+    int? speedKmh,
+    String? proximityText,
+    String? geofenceText,
+    String? sectorText,
   }) {
     return MapOfficerItem(
       id: id ?? this.id,
@@ -73,6 +121,16 @@ class MapOfficerItem {
       batteryPercent: batteryPercent ?? this.batteryPercent,
       isSos: isSos ?? this.isSos,
       sosTag: sosTag ?? this.sosTag,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      dutyDuration: dutyDuration ?? this.dutyDuration,
+      dutyStartTime: dutyStartTime ?? this.dutyStartTime,
+      distanceTodayKm: distanceTodayKm ?? this.distanceTodayKm,
+      visitsToday: visitsToday ?? this.visitsToday,
+      accuracyMeters: accuracyMeters ?? this.accuracyMeters,
+      speedKmh: speedKmh ?? this.speedKmh,
+      proximityText: proximityText ?? this.proximityText,
+      geofenceText: geofenceText ?? this.geofenceText,
+      sectorText: sectorText ?? this.sectorText,
     );
   }
 }
