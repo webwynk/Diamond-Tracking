@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
+import 'admin_employee_form_page.dart';
 import 'controllers/admin_employee_list_state.dart';
 import 'widgets/admin_employee_block_action_button.dart';
 import 'widgets/admin_employee_contact_card.dart';
@@ -55,7 +56,14 @@ class AdminEmployeeDetailPage extends StatelessWidget {
             AdminEmployeeDetailHeader(
               employee: employee,
               onBack: onBack ?? () => Navigator.of(context).maybePop(),
-              onMoreOptions: onMoreOptions,
+              onMoreOptions: onMoreOptions ??
+                  () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AdminEmployeeFormPage(employee: employee),
+                      ),
+                    );
+                  },
             ),
 
             // 2. Body Content (Overlaps header by 24 dp)

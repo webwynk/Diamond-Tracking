@@ -6,6 +6,7 @@ import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../dashboard/presentation/widgets/admin_bottom_navigation.dart';
 import 'admin_employee_detail_page.dart';
+import 'admin_employee_form_page.dart';
 import 'controllers/admin_employee_list_controller.dart';
 import 'controllers/admin_employee_list_state.dart';
 import 'widgets/admin_employee_card.dart';
@@ -212,10 +213,9 @@ class AdminEmployeeListPage extends ConsumerWidget {
         key: const Key('fab-add-employee'),
         onPressed: onCreateEmployee ??
             () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Opening employee onboarding form...'),
-                  duration: Duration(seconds: 1),
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const AdminEmployeeFormPage(),
                 ),
               );
             },

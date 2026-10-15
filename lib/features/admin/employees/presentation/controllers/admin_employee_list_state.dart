@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../../domain/entities/user_profile.dart';
+
 /// Status classification for an employee on the admin roster.
 enum AdminEmployeeStatus {
   onDuty,
@@ -32,6 +34,8 @@ class AdminEmployeeItem {
     this.dutyStartTime,
     this.distanceTodayKm,
     this.locationName,
+    this.email,
+    this.role = UserRole.employee,
   });
 
   final String id;
@@ -44,6 +48,8 @@ class AdminEmployeeItem {
   final String? dutyStartTime;
   final String? distanceTodayKm;
   final String? locationName;
+  final String? email;
+  final UserRole role;
 
   /// Generates clean two-letter monogram initials (e.g., "Suresh Patel" -> "SP").
   String get initials {
@@ -66,6 +72,8 @@ class AdminEmployeeItem {
     String? dutyStartTime,
     String? distanceTodayKm,
     String? locationName,
+    String? email,
+    UserRole? role,
   }) {
     return AdminEmployeeItem(
       id: id ?? this.id,
@@ -78,6 +86,8 @@ class AdminEmployeeItem {
       dutyStartTime: dutyStartTime ?? this.dutyStartTime,
       distanceTodayKm: distanceTodayKm ?? this.distanceTodayKm,
       locationName: locationName ?? this.locationName,
+      email: email ?? this.email,
+      role: role ?? this.role,
     );
   }
 }

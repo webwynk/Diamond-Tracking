@@ -45,6 +45,18 @@ class AdminEmployeeListNotifier extends Notifier<AdminEmployeeListState> {
     );
   }
 
+  void addEmployee(AdminEmployeeItem employee) {
+    state = state.copyWith(
+      employees: <AdminEmployeeItem>[employee, ...state.employees],
+    );
+  }
+
+  void updateEmployee(AdminEmployeeItem updated) {
+    state = state.copyWith(
+      employees: state.employees.map((e) => e.id == updated.id ? updated : e).toList(),
+    );
+  }
+
   List<AdminEmployeeItem> _buildDefaultEmployees() {
     return const [
       // 1. Suresh Patel (On Duty)
