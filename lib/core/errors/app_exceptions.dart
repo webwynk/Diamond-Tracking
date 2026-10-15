@@ -71,3 +71,11 @@ class ServerException extends AppException {
     super.message = 'An unexpected server error occurred. Please try again later.',
   ]) : super(code: 'server_error');
 }
+
+/// Thrown when an action violates domain validation rules or duty operating window (BR-1).
+class ValidationException extends AppException {
+  const ValidationException([
+    super.message = 'Validation failed.',
+  ]) : super(code: 'validation_error');
+}
+

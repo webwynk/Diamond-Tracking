@@ -110,7 +110,7 @@ void main() {
       addTearDown(container.dispose);
 
       // Keep provider subscribed and await microtask
-      final sub = container.listen(permissionControllerProvider, (_, __) {});
+      final sub = container.listen(permissionControllerProvider, (_, _) {});
       await Future<void>.delayed(Duration.zero);
 
       final state = container.read(permissionControllerProvider);
@@ -118,6 +118,7 @@ void main() {
       expect(state.isBackgroundGranted, isFalse);
       expect(state.isBatteryOptimizationIgnored, isFalse);
       expect(state.isLoading, isFalse);
+      sub.close();
     });
 
     test('requestLocation updates location flag and refreshes state', () async {

@@ -28,6 +28,8 @@ dependencies:
 
   # OS runtime permissions and battery optimization settings
   permission_handler: ^11.4.0
+  geolocator: ^14.1.1
+  battery_plus: ^7.1.2
 
 dev_dependencies:
   flutter_test:
