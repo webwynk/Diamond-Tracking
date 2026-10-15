@@ -102,10 +102,12 @@ abstract final class AppColors {
   /// Stale location, queued offline, low battery.
   static const Color warning = Color(0xFFF59E0B);
   static const Color warningBg = Color(0xFFFEF3C7);
+  static const Color warningText = Color(0xFF92400E);
 
   /// Fake-GPS flag, GPS off, failure.
   static const Color error = Color(0xFFDC2626);
   static const Color errorBg = Color(0xFFFEE2E2);
+  static const Color errorText = Color(0xFFDC2626);
 
   /// Neutral information. Offline is info, not error.
   static const Color info = Color(0xFF0284C7);

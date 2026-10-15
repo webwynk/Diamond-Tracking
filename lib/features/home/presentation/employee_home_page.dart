@@ -10,6 +10,8 @@ import '../../auth/presentation/controllers/auth_state.dart';
 import '../../duty/presentation/controllers/duty_controller.dart';
 import '../../duty/presentation/controllers/duty_state.dart';
 import '../../duty/presentation/duty_off_summary_dialog.dart';
+import '../../history/presentation/my_duty_history_page.dart';
+import '../../map/presentation/employee_map_page.dart';
 
 /// Employee Home Dashboard uniting Screens 06, 07, and 08:
 /// - Screen 06: Employee Home (Duty Off)
@@ -894,10 +896,22 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
       currentIndex: _selectedTabIndex,
       onTap: (index) {
         setState(() => _selectedTabIndex = index);
-        if (index == 1 && widget.onNavigateToMap != null) {
-          widget.onNavigateToMap!();
-        } else if (index == 2 && widget.onNavigateToHistory != null) {
-          widget.onNavigateToHistory!();
+        if (index == 1) {
+          if (widget.onNavigateToMap != null) {
+            widget.onNavigateToMap!();
+          } else {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const EmployeeMapPage()),
+            );
+          }
+        } else if (index == 2) {
+          if (widget.onNavigateToHistory != null) {
+            widget.onNavigateToHistory!();
+          } else {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const MyDutyHistoryPage()),
+            );
+          }
         }
       },
       selectedItemColor: AppColors.primary600,

@@ -64,6 +64,19 @@ class MockDutyRepository implements DutyRepository {
     return mockYesterdaySession;
   }
 
+  List<DutySession> mockHistory = [];
+
+  @override
+  Future<List<DutySession>> getDutyHistory({
+    required String employeeId,
+    DateTime? startDate,
+    DateTime? endDate,
+    int limit = 30,
+    int offset = 0,
+  }) async {
+    return mockHistory;
+  }
+
   @override
   Future<void> uploadLocationPointsBatch({required List<LocationPoint> points}) async {}
 }

@@ -20,8 +20,18 @@ abstract class DutyRepository {
   /// Fetches the duty session record from yesterday (if any) for the home screen summary.
   Future<DutySession?> getYesterdayDutySession({required String employeeId});
 
+  /// Fetches historical duty sessions for [employeeId] within an optional date range.
+  Future<List<DutySession>> getDutyHistory({
+    required String employeeId,
+    DateTime? startDate,
+    DateTime? endDate,
+    int limit = 30,
+    int offset = 0,
+  });
+
   /// Uploads a batch of telemetry GPS points to the server.
   Future<void> uploadLocationPointsBatch({
     required List<LocationPoint> points,
   });
 }
+

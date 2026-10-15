@@ -92,4 +92,59 @@ abstract final class DutyTimeHelper {
     final endTime = end != null ? formatTime(end) : formatTime(DateTime.now());
     return '$startDate · $startTime to $endTime';
   }
+
+  /// Formats a date into "Weekday, DD Mon" (e.g. "Sat, 11 Oct", "Thu, 09 Oct").
+  static String formatDayAndDate(DateTime dateTime) {
+    final ist = toIst(dateTime);
+    const weekdays = <String>['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final weekday = weekdays[ist.weekday - 1];
+    final day = ist.day.toString().padLeft(2, '0');
+    final month = months[ist.month - 1];
+    return '$weekday, $day $month';
+  }
+
+  /// Formats a date into uppercase "MONTH YYYY" (e.g. "OCTOBER 2026").
+  static String formatMonthAndYear(DateTime dateTime) {
+    final ist = toIst(dateTime);
+    const fullMonths = <String>[
+      'JANUARY',
+      'FEBRUARY',
+      'MARCH',
+      'APRIL',
+      'MAY',
+      'JUNE',
+      'JULY',
+      'AUGUST',
+      'SEPTEMBER',
+      'OCTOBER',
+      'NOVEMBER',
+      'DECEMBER',
+    ];
+    final month = fullMonths[ist.month - 1];
+    final year = ist.year;
+    return '$month $year';
+  }
+
+  /// Formats a concise time range (e.g. "8:02 AM–6:30 PM").
+  static String formatTimeRange(DateTime start, DateTime? end) {
+    final startStr = formatTime(start);
+    if (end == null) return '$startStr–Active';
+    final endStr = formatTime(end);
+    return '$startStr–$endStr';
+  }
 }
+

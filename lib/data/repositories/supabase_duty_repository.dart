@@ -143,6 +143,39 @@ class SupabaseDutyRepository implements DutyRepository {
   }
 
   @override
+  Future<List<DutySession>> getDutyHistory({
+    required String employeeId,
+    DateTime? startDate,
+    DateTime? endDate,
+    int limit = 30,
+    int offset = 0,
+  }) async {
+    try {
+      var query = _supabase
+          .from('duty_sessions')
+          .select()
+          .eq('employee_id', employeeId);
+
+      if (startDate != null) {
+        query = query.gte('started_at', startDate.toUtc().toIso8601String());
+      }
+      if (endDate != null) {
+        query = query.lte('started_at', endDate.toUtc().toIso8601String());
+      }
+
+      final response = await query
+          .order('started_at', ascending: false)
+          .range(offset, offset + limit - 1);
+
+      return (response as List<dynamic>)
+          .map((json) => DutySession.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return <DutySession>[];
+    }
+  }
+
+  @override
   Future<void> uploadLocationPointsBatch({
     required List<LocationPoint> points,
   }) async {
