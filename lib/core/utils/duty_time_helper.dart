@@ -11,8 +11,11 @@ abstract final class DutyTimeHelper {
     return dateTime.toUtc().add(istOffset);
   }
 
+  /// Optional debug time override for deterministic testing across timezone boundaries.
+  static DateTime? debugNow;
+
   /// Returns current time in `Asia/Kolkata` (IST).
-  static DateTime get nowIst => toIst(DateTime.now());
+  static DateTime get nowIst => toIst(debugNow ?? DateTime.now());
 
   /// Checks whether the provided [time] (or [nowIst]) is within the permitted
   /// 08:00 to 23:00 IST operating window (PRD BR-1).

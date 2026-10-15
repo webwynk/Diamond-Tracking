@@ -220,6 +220,14 @@ void main() {
   });
 
   group('DutyController & Presentation Tests', () {
+    setUp(() {
+      DutyTimeHelper.debugNow = DateTime.utc(2026, 10, 15, 4, 30);
+    });
+
+    tearDown(() {
+      DutyTimeHelper.debugNow = null;
+    });
+
     Widget buildTestWidget({
       required MockDutyRepository mockRepo,
       required MockTrackingService mockTracking,
