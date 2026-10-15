@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=390, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Screen 12 — My duty history</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"DM Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: '#016893',
+            'brand-dark': '#015676',
+            'brand-tint': '#E8F3F8',
+            'brand-tint-2': '#C5E1EC',
+            'page-bg': '#F8FAFC',
+            'card-surface': '#FFFFFF',
+            border: '#E2E8F0',
+            'input-border': '#CBD5E1',
+            'text-primary': '#0F172A',
+            'text-secondary': '#64748B',
+            'text-disabled': '#94A3B8',
+            'success-text': '#16A34A',
+            'success-bg': '#DCFCE7',
+            'warning-text': '#92400E',
+            'warning-bg': '#FEF3C7',
+            'error-text': '#DC2626',
+            'error-bg': '#FEE2E2',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background-color: #F8FAFC;
+      color: #0F172A;
+      -webkit-font-smoothing: antialiased;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    @keyframes spin-slow {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .animate-spin-custom {
+      animation: spin-slow 1s linear infinite;
+    }
+  </style>
+</head>
+<body class="w-[390px] min-h-[844px] bg-[#F8FAFC] text-[#0F172A] mx-auto flex flex-col relative select-none antialiased pb-8">
+
+  <!-- Top App Bar (56px) -->
+  <header class="h-[56px] bg-white border-b border-[#E2E8F0] px-4 flex items-center justify-between sticky top-0 z-20">
+    <div class="flex items-center gap-3">
+      <!-- Back Chevron -->
+      <button type="button" aria-label="Go back" class="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-[#016893] active:bg-[#E8F3F8] transition-colors">
+        <svg class="w-6 h-6 stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <!-- Title -->
+      <h1 class="text-[20px] leading-[28px] font-semibold text-[#0F172A] tracking-tight">My history</h1>
+    </div>
+
+    <!-- Filter Action with Badge -->
+    <button type="button" aria-label="Filter records" class="relative w-10 h-10 -mr-2 rounded-full flex items-center justify-center text-[#475569] active:bg-[#F1F5F9] transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+      </svg>
+      <!-- Filter Badge '1' -->
+      <span class="absolute top-1.5 right-1.5 min-w-[16px] h-4 bg-[#016893] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 border-2 border-white">
+        1
+      </span>
+    </button>
+  </header>
+
+  <!-- Filter Chips Row (Horizontally scrollable, 32px tall, fully rounded) -->
+  <div class="py-3 px-4 overflow-x-auto hide-scrollbar flex items-center gap-2 bg-[#F8FAFC]">
+    <!-- Selected Chip: This month -->
+    <button type="button" class="h-8 px-4 rounded-full bg-[#016893] text-white text-[13px] leading-[18px] font-medium whitespace-nowrap shadow-sm active:bg-[#015676] transition-colors flex items-center justify-center">
+      This month
+    </button>
+
+    <!-- Unselected: Last month -->
+    <button type="button" class="h-8 px-4 rounded-full bg-white border border-[#CBD5E1] text-[#475569] text-[13px] leading-[18px] font-medium whitespace-nowrap active:bg-[#F1F5F9] transition-colors flex items-center justify-center">
+      Last month
+    </button>
+
+    <!-- Unselected: Auto-ended -->
+    <button type="button" class="h-8 px-4 rounded-full bg-white border border-[#CBD5E1] text-[#475569] text-[13px] leading-[18px] font-medium whitespace-nowrap active:bg-[#F1F5F9] transition-colors flex items-center justify-center">
+      Auto-ended
+    </button>
+
+    <!-- Unselected: Custom -->
+    <button type="button" class="h-8 px-4 rounded-full bg-white border border-[#CBD5E1] text-[#475569] text-[13px] leading-[18px] font-medium whitespace-nowrap active:bg-[#F1F5F9] transition-colors flex items-center justify-center">
+      Custom
+    </button>
+  </div>
+
+  <!-- Main Scrollable Content -->
+  <main class="px-4 flex flex-col gap-3">
+
+    <!-- Monthly Summary Card (#E8F3F8, radius 12, 16px padding) -->
+    <section class="bg-[#E8F3F8] rounded-[12px] p-4 border border-[#C5E1EC]/60">
+      <div class="text-[11px] leading-[16px] font-semibold text-[#64748B] uppercase tracking-[0.05em] mb-3">
+        OCTOBER 2026
+      </div>
+
+      <div class="grid grid-cols-4 gap-1">
+        <!-- Stat 1: Days -->
+        <div class="flex flex-col">
+          <span class="text-[24px] leading-[30px] font-bold text-[#016893] tabular-nums">11</span>
+          <span class="text-[12px] leading-[16px] text-[#64748B] mt-0.5">Days</span>
+        </div>
+
+        <!-- Stat 2: Hours -->
+        <div class="flex flex-col">
+          <span class="text-[24px] leading-[30px] font-bold text-[#016893] tabular-nums tracking-tight">89h 12m</span>
+          <span class="text-[12px] leading-[16px] text-[#64748B] mt-0.5">Hours</span>
+        </div>
+
+        <!-- Stat 3: km -->
+        <div class="flex flex-col">
+          <span class="text-[24px] leading-[30px] font-bold text-[#016893] tabular-nums">534.8</span>
+          <span class="text-[12px] leading-[16px] text-[#64748B] mt-0.5">km</span>
+        </div>
+
+        <!-- Stat 4: Visits -->
+        <div class="flex flex-col">
+          <span class="text-[24px] leading-[30px] font-bold text-[#016893] tabular-nums">48</span>
+          <span class="text-[12px] leading-[16px] text-[#64748B] mt-0.5">Visits</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- History List Section -->
+    <div class="flex flex-col gap-3 mt-1">
+
+      <!-- Row 1: Sat, 11 Oct (Normal day, no chip) -->
+      <article class="min-h-[88px] bg-white rounded-[12px] border border-[#E2E8F0] p-4 flex flex-col justify-between shadow-[0_1px_2px_rgba(0,0,0,0.02)] active:bg-[#F8FAFC] transition-colors">
+        <!-- Top Row -->
+        <div class="flex items-center justify-between">
+          <h2 class="text-[18px] leading-[26px] font-semibold text-[#0F172A]">Sat, 11 Oct</h2>
+          <!-- No chip (Normal day) -->
+        </div>
+
+        <!-- Second Row: 4 Inline Stats -->
+        <div class="grid grid-cols-4 gap-2 pt-2 border-t border-[#F1F5F9] mt-2">
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#64748B]">Duty time</span>
+            <span class="text-[14px] leading-[20px] font-semibold text-[#0F172A] tabular-nums truncate">8:02 AM–6:30 PM</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#64748B]">Duration</span>
+            <span class="text-[14px] leading-[20px] font-semibold text-[#0F172A] tabular-nums">8h 28m</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#64748B]">Distance</span>
+            <span class="text-[14px] leading-[20px] font-semibold text-[#0F172A] tabular-nums">47.3 km</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#64748B]">Recorded</span>
+            <span class="text-[14px] leading-[20px] font-semibold text-[#0F172A] tabular-nums">5 visits</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- Row 2: Fri, 10 Oct (Auto-ended chip) -->
+      <article class="min-h-[88px] bg-white rounded-[12px] border border-[#E2E8F0] p-4 flex flex-col justify-between shadow-[0_1px_2px_rgba(0,0,0,0.02)] active:bg-[#F8FAFC] transition-colors">
+        <!-- Top Row -->
+        <div class="flex items-center justify-between">
+          <h2 class="text-[18px] leading-[26px] font-semibold text-[#0F172A]">Fri, 10 Oct</h2>
+          <!-- Chip: #FEF3C7 fill, #92400E text -->
+          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E] text-[13px] leading-[18px] font-medium">
+            <svg class="w-3.5 h-3.5 text-[#92400E]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Auto-ended
+          </span>
+        </div>
+
+        <!-- Second Row: 4 Inline Stats -->
+        <div class="grid grid-cols-4 gap-2 pt-2 border-t border-[#F1F5F9] mt-2">
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#64748B]">Duty time</span>
+            <span class="text-[14px] leading-[20px] font-semibold text-[#0F172A] tabular-nums truncate">8:00 AM–11:00 PM</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#64748B]">Duration</span>
+            <span class="text-[14px] leading-[20px] font-semibold text-[#0F172A] tabular-nums">15h 00m</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#64748B]">Distance</span>
+            <span class="text-[14px] leading-[20px] font-semibold text-[#0F172A] tabular-nums">54.2 km</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#64748B]">Recorded</span>
+            <span class="text-[14px] leading-[20px] font-semibold text-[#0F172A] tabular-nums">6 visits</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- Row 3: Thu, 09 Oct (2 flags chip) -->
+      <article class="min-h-[88px] bg-white rounded-[12px] border border-[#E2E8F0] p-4 flex flex-col justify-between shadow-[0_1px_2px_rgba(0,0,0,0.02)] active:bg-[#F8FAFC] transition-colors">
+        <!-- Top Row -->
+        <div class="flex items-center justify-between">
+          <h2 class="text-[18px] leading-[26px] font-semibold text-[#0F172A]">Thu, 09 Oct</h2>
+          <!-- Chip: #FEE2E2 fill, #DC2626 text -->
+          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FEE2E2] text-[#DC2626] text-[13px] leading-[18px] font-medium">
+            <svg class="w-3.5 h-3.5 text-[#DC2626]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            2 flags
+          </span>
+        </div>
+
+        <!-- Second Row: 4 Inline Stats -->
+        <div class="grid grid-cols-4 gap-2 pt-2 border-t border-[#F1F5F9] mt-2">
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#64748B]">Duty time</span>
+            <span class="text-[14px] leading-[20px] font-semibold text-[#0F172A] tabular-nums truncate">8:15 AM–5:45 PM</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#64748B]">Duration</span>
+            <span class="text-[14px] leading-[20px] font-semibold text-[#0F172A] tabular-nums">9h 30m</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#64748B]">Distance</span>
+            <span class="text-[14px] leading-[20px] font-semibold text-[#0F172A] tabular-nums">39.8 km</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#64748B]">Recorded</span>
+            <span class="text-[14px] leading-[20px] font-semibold text-[#0F172A] tabular-nums">4 visits</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- Row 4: Wed, 08 Oct (Greyed row, #F8FAFC fill, No duty chip, dashes) -->
+      <article class="min-h-[88px] bg-[#F8FAFC] rounded-[12px] border border-[#E2E8F0] p-4 flex flex-col justify-between">
+        <!-- Top Row -->
+        <div class="flex items-center justify-between">
+          <h2 class="text-[18px] leading-[26px] font-semibold text-[#64748B]">Wed, 08 Oct</h2>
+          <!-- Chip: #94A3B8 text or grey pill -->
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#E2E8F0] text-[#64748B] text-[13px] leading-[18px] font-medium">
+            No duty
+          </span>
+        </div>
+
+        <!-- Second Row: 4 Inline Stats with dashes -->
+        <div class="grid grid-cols-4 gap-2 pt-2 border-t border-[#E2E8F0] mt-2">
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#94A3B8]">Duty time</span>
+            <span class="text-[14px] leading-[20px] font-medium text-[#94A3B8] tabular-nums">—</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#94A3B8]">Duration</span>
+            <span class="text-[14px] leading-[20px] font-medium text-[#94A3B8] tabular-nums">—</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#94A3B8]">Distance</span>
+            <span class="text-[14px] leading-[20px] font-medium text-[#94A3B8] tabular-nums">—</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[11px] leading-[14px] text-[#94A3B8]">Recorded</span>
+            <span class="text-[14px] leading-[20px] font-medium text-[#94A3B8] tabular-nums">—</span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+
+    <!-- Centred 24px #016893 circular spinner at the bottom of the list -->
+    <div class="py-6 flex flex-col items-center justify-center gap-2">
+      <div class="w-6 h-6 border-2 border-[#CBD5E1] border-t-[#016893] rounded-full animate-spin-custom"></div>
+      <span class="text-[11px] leading-[16px] text-[#94A3B8] font-medium">Loading earlier records…</span>
+    </div>
+
+  </main>
+
+  <!-- Persistent Bottom Navigation Bar (Tab 3: History Active) -->
+  <nav class="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto h-[64px] bg-white border-t border-[#E2E8F0] px-6 flex items-center justify-around z-30 shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
+    <!-- Tab 1: Duty -->
+    <a href="#" class="flex flex-col items-center gap-1 text-[#94A3B8] hover:text-[#016893] transition-colors py-1">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      </svg>
+      <span class="text-[11px] leading-[14px] font-medium">Duty</span>
+    </a>
+
+    <!-- Tab 2: Map -->
+    <a href="#" class="flex flex-col items-center gap-1 text-[#94A3B8] hover:text-[#016893] transition-colors py-1">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+      </svg>
+      <span class="text-[11px] leading-[14px] font-medium">Map</span>
+    </a>
+
+    <!-- Tab 3: History (Active in #016893) -->
+    <a href="#" class="flex flex-col items-center gap-1 text-[#016893] py-1">
+      <svg class="w-6 h-6 stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span class="text-[11px] leading-[14px] font-semibold text-[#016893]">History</span>
+    </a>
+  </nav>
+
+</body>
+</html>

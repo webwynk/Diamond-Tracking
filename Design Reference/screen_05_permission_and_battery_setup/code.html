@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><style>@layer base{html,body{width:100%;margin:0;padding:0;min-height:100vh;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary-container": "#00587e", "background": "#faf8ff", "error": "#ba1a1a", "brand-chip-bg": "#C5E1EC", "primary-fixed": "#cce5ff", "text-primary": "#0F172A", "secondary": "#00658f", "status-on-duty": "#16A34A", "inverse-primary": "#93ccff", "surface-container-high": "#e2e7ff", "secondary-fixed": "#c7e7ff", "outline": "#707881", "surface-container-highest": "#dae2fd", "on-tertiary-fixed": "#002109", "surface-variant": "#dae2fd", "border-input": "#CBD5E1", "surface-container-low": "#f2f3ff", "on-tertiary-container": "#f7fff2", "text-disabled": "#94A3B8", "status-off-duty": "#94A3B8", "secondary-fixed-dim": "#86cfff", "outline-variant": "#bfc7d2", "status-info-bg": "#E0F2FE", "on-secondary": "#ffffff", "surface": "#faf8ff", "status-on-duty-bg": "#DCFCE7", "on-primary-container": "#fdfcff", "status-suspect": "#DC2626", "on-error-container": "#93000a", "surface-dim": "#d2d9f4", "border-divider": "#E2E8F0", "status-suspect-bg": "#FEE2E2", "status-stale-bg": "#FEF3C7", "secondary-container": "#86cfff", "brand-primary": "#016893", "tertiary-fixed": "#7ffc97", "on-secondary-fixed": "#001e2e", "page-bg": "#F8FAFC", "status-info": "#0284C7", "on-primary": "#ffffff", "on-tertiary-fixed-variant": "#005320", "tertiary-fixed-dim": "#62df7d", "surface-tint": "#006398", "on-error": "#ffffff", "on-primary-fixed": "#001d31", "primary-container": "#007bb9", "inverse-surface": "#283044", "on-surface-variant": "#3f4850", "error-container": "#ffdad6", "brand-tint": "#E8F3F8", "brand-pressed": "#015676", "status-stale": "#F59E0B", "inverse-on-surface": "#eef0ff", "on-background": "#131b2e", "surface-container-lowest": "#ffffff", "primary-fixed-dim": "#93ccff", "text-secondary": "#64748B", "on-surface": "#131b2e", "on-secondary-fixed-variant": "#004c6d", "surface-container": "#eaedff", "surface-card": "#FFFFFF", "tertiary": "#006b2c", "tertiary-container": "#00873a", "status-blocked": "#1E293B", "on-tertiary": "#ffffff", "on-primary-fixed-variant": "#004b73", "primary": "#006194", "surface-bright": "#faf8ff" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-3xs": "8px", "space-touch": "20px", "space-block": "40px", "margin": "16px", "space-xl": "32px", "space-lg": "24px", "space-xs": "4px", "gutter": "16px", "space-md": "16px", "space-2xs": "4px", "space-sm": "8px", "space-base": "12px", "space-section": "48px" }, "fontFamily": { "overline-micro": ["DM Sans"], "display-stat": ["DM Sans"], "label-medium": ["DM Sans"], "caption-timestamp": ["DM Sans"], "headline-h3": ["DM Sans"], "body-default": ["DM Sans"], "body-large": ["DM Sans"], "title-item": ["DM Sans"], "headline-h2": ["DM Sans"] }, "fontSize": { "overline-micro": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }], "display-stat": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-medium": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "caption-timestamp": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "headline-h3": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "body-default": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-large": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "title-item": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "headline-h2": ["24px", { "lineHeight": "32px", "fontWeight": "600" }] } } } };</script></head><body class="bg-page-bg font-body-default text-body-default text-text-primary antialiased min-h-screen flex flex-col"><header class="fixed top-0 w-full z-50 bg-surface-card pt-safe"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><button aria-label="Go back" class="w-11 h-11 flex items-center justify-center text-text-primary hover:text-brand-primary active:bg-brand-tint transition-colors" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-headline-h3 text-headline-h3 text-text-primary select-none truncate">Before You Start</h1></div><div class="flex items-center"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 w-full bg-page-bg pt-14 pb-safe flex flex-col"><div class="flex flex-col w-full px-margin py-margin">
+<!-- Top Explanatory Header -->
+<div class="mb-space-lg">
+<p class="font-body-default text-body-default text-text-secondary">
+      Duty tracking needs these three settings. We only record your location while you are on duty.
+    </p>
+</div>
+<!-- Cards Container -->
+<div class="flex flex-col gap-space-base">
+<!-- Card 1: Location Access (Granted / DONE state) -->
+<div class="bg-surface-card rounded-xl p-margin flex items-center justify-between border border-border-divider transition-all" id="card-step-1">
+<div class="flex items-center gap-space-base min-w-0 pr-space-2xs">
+<div class="w-10 h-10 rounded-full bg-status-on-duty-bg flex items-center justify-center shrink-0">
+<svg class="w-5 h-5 text-status-on-duty" fill="currentColor" viewbox="0 0 24 24">
+<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"></path>
+</svg>
+</div>
+<div class="flex flex-col min-w-0">
+<h2 class="font-title-item text-title-item text-text-primary leading-tight truncate">Location access</h2>
+<span class="font-body-default text-body-default text-text-secondary">Granted</span>
+</div>
+</div>
+<div class="shrink-0">
+<svg class="w-6 h-6 text-status-on-duty" fill="currentColor" viewbox="0 0 24 24">
+<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+</svg>
+</div>
+</div>
+<!-- Card 2: Background Tracking (Current Step / Action Needed) -->
+<div class="bg-surface-card rounded-xl p-margin flex items-center justify-between border-2 border-brand-primary transition-all" id="card-step-2">
+<div class="flex items-center gap-space-base min-w-0 pr-space-2xs">
+<div class="w-10 h-10 rounded-full bg-status-info-bg flex items-center justify-center shrink-0" id="badge-step-2">
+<svg class="w-5 h-5 text-status-info" fill="currentColor" viewbox="0 0 24 24">
+<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"></path>
+</svg>
+</div>
+<div class="flex flex-col min-w-0">
+<h2 class="font-title-item text-title-item text-text-primary leading-tight">Allow all the time</h2>
+<p class="font-body-default text-body-default text-text-secondary leading-snug" id="sub-step-2">Needed so tracking continues when your screen is off.</p>
+</div>
+</div>
+<div class="shrink-0 pl-space-xs" id="action-step-2">
+<button class="h-9 px-space-md rounded-full bg-brand-primary active:bg-brand-pressed text-on-primary font-label-medium text-label-medium flex items-center justify-center transition-colors" onclick="resolveStep(2)" type="button">
+          Allow
+        </button>
+</div>
+</div>
+<!-- Card 3: Battery Optimization (Action Needed) -->
+<div class="bg-surface-card rounded-xl p-margin flex items-center justify-between border border-border-divider transition-all" id="card-step-3">
+<div class="flex items-center gap-space-base min-w-0 pr-space-2xs">
+<div class="w-10 h-10 rounded-full bg-status-stale-bg flex items-center justify-center shrink-0" id="badge-step-3">
+<svg class="w-5 h-5 text-status-stale" fill="currentColor" viewbox="0 0 24 24">
+<path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"></path>
+</svg>
+</div>
+<div class="flex flex-col min-w-0">
+<h2 class="font-title-item text-title-item text-text-primary leading-tight">Disable battery saver</h2>
+<p class="font-body-default text-body-default text-text-secondary leading-snug" id="sub-step-3">Your phone may stop tracking without this.</p>
+</div>
+</div>
+<div class="shrink-0 pl-space-xs" id="action-step-3">
+<button class="h-9 px-space-md rounded-xl border-[1.5px] border-brand-primary bg-surface-card text-brand-primary active:bg-brand-tint font-label-medium text-label-medium flex items-center justify-center transition-colors" onclick="resolveStep(3)" type="button">
+          Open
+        </button>
+</div>
+</div>
+</div>
+<!-- OEM / Aggressive OS Battery Management Warning Banner -->
+<div class="mt-space-md bg-status-stale-bg rounded-xl p-margin border border-[#FDE68A] flex items-start gap-space-base">
+<div class="shrink-0 pt-0.5">
+<svg class="w-5 h-5 text-status-stale" fill="currentColor" viewbox="0 0 24 24">
+<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"></path>
+</svg>
+</div>
+<p class="font-body-default text-body-default text-text-primary leading-snug">
+      On Xiaomi, Oppo, Vivo and Realme phones this step is essential, or your duty record may have gaps.
+    </p>
+</div>
+<!-- Bottom Action Block -->
+<div class="mt-space-xl pt-space-md flex flex-col items-center">
+<button class="w-full h-12 rounded-xl bg-[#76B9D2] text-on-primary font-label-medium text-label-medium flex items-center justify-center transition-all cursor-not-allowed" disabled="" id="btn-continue" type="button">
+      Continue
+    </button>
+<p class="mt-space-sm font-caption-timestamp text-caption-timestamp text-text-disabled text-center select-none" id="caption-continue">
+      Complete all three steps to continue.
+    </p>
+</div>
+</div>
+<script>
+  let step2Done = false;
+  let step3Done = false;
+
+  function resolveStep(stepNum) {
+    const checkIconSvg = `<svg class="w-6 h-6 text-status-on-duty" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
+
+    if (stepNum === 2) {
+      step2Done = true;
+      const card2 = document.getElementById('card-step-2');
+      const badge2 = document.getElementById('badge-step-2');
+      const sub2 = document.getElementById('sub-step-2');
+      const action2 = document.getElementById('action-step-2');
+
+      card2.className = 'bg-surface-card rounded-xl p-margin flex items-center justify-between border border-border-divider transition-all';
+      badge2.className = 'w-10 h-10 rounded-full bg-status-on-duty-bg flex items-center justify-center shrink-0';
+      badge2.innerHTML = `<svg class="w-5 h-5 text-status-on-duty" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`;
+      sub2.textContent = 'Granted';
+      action2.innerHTML = checkIconSvg;
+
+      // Advance focus to step 3 if incomplete
+      if (!step3Done) {
+        const card3 = document.getElementById('card-step-3');
+        card3.className = 'bg-surface-card rounded-xl p-margin flex items-center justify-between border-2 border-brand-primary transition-all';
+      }
+    } else if (stepNum === 3) {
+      step3Done = true;
+      const card3 = document.getElementById('card-step-3');
+      const badge3 = document.getElementById('badge-step-3');
+      const sub3 = document.getElementById('sub-step-3');
+      const action3 = document.getElementById('action-step-3');
+
+      card3.className = 'bg-surface-card rounded-xl p-margin flex items-center justify-between border border-border-divider transition-all';
+      badge3.className = 'w-10 h-10 rounded-full bg-status-on-duty-bg flex items-center justify-center shrink-0';
+      badge3.innerHTML = `<svg class="w-5 h-5 text-status-on-duty" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>`;
+      sub3.textContent = 'Optimized for field duty';
+      action3.innerHTML = checkIconSvg;
+    }
+
+    // Check if all steps complete
+    if (step2Done && step3Done) {
+      const continueBtn = document.getElementById('btn-continue');
+      const caption = document.getElementById('caption-continue');
+
+      continueBtn.disabled = false;
+      continueBtn.className = 'w-full h-12 rounded-xl bg-brand-primary active:bg-brand-pressed text-on-primary font-label-medium text-label-medium flex items-center justify-center transition-all cursor-pointer shadow-sm';
+      caption.textContent = 'All requirements satisfied. You are ready to start.';
+      caption.className = 'mt-space-sm font-caption-timestamp text-caption-timestamp text-status-on-duty text-center select-none font-medium';
+    }
+  }
+</script></main></body></html>

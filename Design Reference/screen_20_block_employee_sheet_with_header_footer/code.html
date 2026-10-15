@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_blank" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "primary-fixed-dim": "#93ccff", "on-tertiary-fixed": "#002109", "secondary": "#00658f", "primary-fixed": "#cce5ff", "status-info-bg": "#E0F2FE", "error": "#ba1a1a", "on-primary": "#ffffff", "inverse-surface": "#283044", "surface-container-highest": "#dae2fd", "on-tertiary-container": "#f7fff2", "on-secondary": "#ffffff", "surface-tint": "#006398", "page-bg": "#F8FAFC", "status-info": "#0284C7", "outline-variant": "#bfc7d2", "on-surface-variant": "#3f4850", "on-background": "#131b2e", "brand-primary": "#016893", "outline": "#707881", "on-error": "#ffffff", "inverse-primary": "#93ccff", "on-primary-fixed": "#001d31", "secondary-fixed": "#c7e7ff", "status-blocked": "#1E293B", "surface-dim": "#d2d9f4", "status-on-duty-bg": "#DCFCE7", "text-secondary": "#64748B", "tertiary-fixed": "#7ffc97", "status-suspect-bg": "#FEE2E2", "surface-variant": "#dae2fd", "surface": "#faf8ff", "brand-tint": "#E8F3F8", "tertiary-fixed-dim": "#62df7d", "brand-chip-bg": "#C5E1EC", "border-input": "#CBD5E1", "secondary-container": "#86cfff", "on-secondary-fixed-variant": "#004c6d", "background": "#faf8ff", "inverse-on-surface": "#eef0ff", "on-primary-fixed-variant": "#004b73", "tertiary": "#006b2c", "brand-pressed": "#015676", "primary": "#006194", "surface-card": "#FFFFFF", "text-disabled": "#94A3B8", "border-divider": "#E2E8F0", "surface-container-high": "#e2e7ff", "surface-container": "#eaedff", "tertiary-container": "#00873a", "surface-container-lowest": "#ffffff", "surface-bright": "#faf8ff", "error-container": "#ffdad6", "status-on-duty": "#16A34A", "on-error-container": "#93000a", "status-suspect": "#DC2626", "on-secondary-container": "#00587e", "on-tertiary-fixed-variant": "#005320", "status-stale-bg": "#FEF3C7", "status-off-duty": "#94A3B8", "on-primary-container": "#fdfcff", "on-surface": "#131b2e", "on-tertiary": "#ffffff", "status-stale": "#F59E0B", "surface-container-low": "#f2f3ff", "text-primary": "#0F172A", "on-secondary-fixed": "#001e2e", "secondary-fixed-dim": "#86cfff", "primary-container": "#007bb9" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-section": "48px", "space-block": "40px", "space-lg": "24px", "space-base": "12px", "space-xl": "32px", "space-md": "16px", "space-xs": "4px", "space-3xs": "8px", "space-2xs": "4px", "space-sm": "8px", "space-touch": "20px", "gutter": "16px", "margin": "16px" }, "fontFamily": { "caption-timestamp": ["DM Sans"], "body-large": ["DM Sans"], "overline-micro": ["DM Sans"], "body-default": ["DM Sans"], "headline-h2": ["DM Sans"], "label-medium": ["DM Sans"], "display-stat": ["DM Sans"], "headline-h3": ["DM Sans"], "title-item": ["DM Sans"] }, "fontSize": { "caption-timestamp": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "body-large": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "overline-micro": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }], "body-default": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "headline-h2": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "label-medium": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "display-stat": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-h3": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "title-item": ["18px", { "lineHeight": "26px", "fontWeight": "600" }] } } } };</script><style>@layer base { html, body { width: 100%; margin: 0; padding: 0; min-height: 100%; } .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); } .pt-safe { padding-top: env(safe-area-inset-top, 0px); } } ::-webkit-scrollbar { display: none; }</style></head><body class="bg-slate-900 text-on-surface font-body-default min-h-screen flex items-center justify-center p-0 md:p-4 antialiased"><main class="relative w-full max-w-[390px] h-[844px] overflow-hidden bg-page-bg shadow-2xl flex flex-col justify-between">
+<!-- BACKGROUND LAYER: Full Employee Detail Screen -->
+<div aria-hidden="true" class="w-full h-full flex flex-col justify-between select-none absolute inset-0 z-0">
+<!-- Top App Header / Bar (~132px height) -->
+<header class="w-full bg-[#016893] text-on-primary pt-3 pb-4 px-4 flex flex-col shrink-0">
+<!-- iOS Status Bar -->
+<div class="w-full flex items-center justify-between text-xs text-white/90 font-medium px-1 mb-2">
+<span class="font-semibold text-sm">9:41</span>
+<div class="flex items-center space-x-1.5">
+<span class="material-symbols-outlined text-[16px]">signal_cellular_alt</span>
+<span class="material-symbols-outlined text-[16px]">wifi</span>
+<span class="material-symbols-outlined text-[18px]">battery_full</span>
+</div>
+</div>
+<!-- Top Bar Navigation -->
+<div class="flex items-center justify-between mb-3">
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-white hover:bg-white/10 -ml-1">
+<span class="material-symbols-outlined text-2xl">chevron_left</span>
+</button>
+<h1 class="font-headline-h3 text-base font-semibold text-white tracking-tight">Employee details</h1>
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-white hover:bg-white/10 -mr-1">
+<span class="material-symbols-outlined text-xl">more_vert</span>
+</button>
+</div>
+<!-- Profile Mini Summary Row -->
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<div class="w-11 h-11 rounded-full bg-[#C5E1EC] text-[#016893] font-bold flex items-center justify-center text-base shadow-sm ring-2 ring-white/20">
+          SP
+        </div>
+<div>
+<div class="flex items-center space-x-2">
+<span class="text-white font-semibold text-base leading-tight">Suresh Patel</span>
+</div>
+<span class="text-sky-200 text-xs">DA-022 • Field Agronomist</span>
+</div>
+</div>
+<!-- On duty green pill -->
+<div class="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1.5 animate-pulse"></span>
+        On duty
+      </div>
+</div>
+</header>
+<!-- Background Content Body -->
+<div class="w-full px-4 py-4 flex-1 overflow-hidden space-y-3 bg-[#F8FAFC]">
+<!-- Quick Actions -->
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-xs flex items-center space-x-2.5">
+<div class="w-9 h-9 rounded-lg bg-sky-50 text-[#016893] flex items-center justify-center">
+<span class="material-symbols-outlined text-xl">near_me</span>
+</div>
+<div>
+<div class="text-xs font-bold text-slate-800">Track live</div>
+<div class="text-[11px] text-slate-500">Updated 2m ago</div>
+</div>
+</div>
+<div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-xs flex items-center space-x-2.5">
+<div class="w-9 h-9 rounded-lg bg-sky-50 text-[#016893] flex items-center justify-center">
+<span class="material-symbols-outlined text-xl">history</span>
+</div>
+<div>
+<div class="text-xs font-bold text-slate-800">Route replay</div>
+<div class="text-[11px] text-slate-500">14.2 km today</div>
+</div>
+</div>
+</div>
+<!-- Contact Info Card -->
+<div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs space-y-3">
+<div class="text-xs font-bold text-slate-400 tracking-wider">CONTACT &amp; ASSIGNMENT</div>
+<div class="flex items-center justify-between text-xs py-1 border-b border-slate-100">
+<span class="text-slate-500">Phone</span>
+<span class="text-slate-800 font-medium">+91 98230 45812</span>
+</div>
+<div class="flex items-center justify-between text-xs py-1 border-b border-slate-100">
+<span class="text-slate-500">Territory Zone</span>
+<span class="text-slate-800 font-medium">Nashik North • Sector 4</span>
+</div>
+<div class="flex items-center justify-between text-xs py-1">
+<span class="text-slate-500">Shift Started</span>
+<span class="text-slate-800 font-medium">08:30 AM (5h 42m)</span>
+</div>
+</div>
+<!-- Live Telemetry Card -->
+<div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-bold text-slate-400 tracking-wider">BATTERY &amp; SYNC</span>
+<span class="text-xs text-emerald-600 font-medium">Synced</span>
+</div>
+<div class="h-16 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 text-xs">
+        GPS Signal: Strong • Battery 78%
+      </div>
+</div>
+</div>
+<!-- Background App Bottom Navigation Bar -->
+<nav class="w-full bg-white border-t border-slate-200 px-3 py-2 flex items-center justify-around shrink-0">
+<div class="flex flex-col items-center justify-center text-slate-400 py-0.5">
+<span class="material-symbols-outlined text-xl">home</span>
+<span class="text-[10px] mt-0.5">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-400 py-0.5">
+<span class="material-symbols-outlined text-xl">map</span>
+<span class="text-[10px] mt-0.5">Map</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#016893] py-0.5">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="text-[10px] font-semibold mt-0.5">Team</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-400 py-0.5">
+<span class="material-symbols-outlined text-xl">assessment</span>
+<span class="text-[10px] mt-0.5">Reports</span>
+</div>
+</nav>
+</div>
+<!-- SCRIM LAYER: 50% Dark Scrim (#0F172A at 50% opacity / rgba(15,23,42,0.5)) -->
+<div class="absolute inset-0 z-40 bg-[#0F172A]/50 transition-opacity"></div>
+<!-- BOTTOM SHEET MODAL LAYER: Anchored to the bottom -->
+<div class="relative z-50 w-full flex flex-col justify-end mt-auto">
+<div aria-labelledby="sheet-title" aria-modal="true" class="w-full bg-[#FFFFFF] rounded-t-[24px] px-6 pt-4 pb-6 shadow-2xl flex flex-col" id="block-bottom-sheet" role="dialog">
+<!-- Centered 32x4px #CBD5E1 drag handle at top -->
+<div class="w-full flex justify-center mb-4">
+<div class="w-8 h-1 bg-[#CBD5E1] rounded-full"></div>
+</div>
+<!-- Centered 56px circular #FEE2E2 badge with #DC2626 block icon -->
+<div class="flex justify-center">
+<div class="w-14 h-14 rounded-full bg-[#FEE2E2] flex items-center justify-center">
+<span class="material-symbols-outlined text-[#DC2626] text-3xl select-none" style="font-variation-settings: 'FILL' 1;">
+          block
+        </span>
+</div>
+</div>
+<!-- Title & Identity: Centered H3 20px SemiBold #0F172A & Centered Body 14px #64748B -->
+<div class="mt-3 text-center">
+<h2 class="text-[20px] leading-[28px] font-semibold text-[#0F172A]" id="sheet-title">
+        Block Suresh Patel?
+      </h2>
+<p class="mt-0.5 text-[14px] leading-[20px] text-[#64748B]">
+        DA-022
+      </p>
+</div>
+<!-- 20px gap -> Consequence Alert Panel: #FEE2E2 panel, radius 12px, 16px padding -->
+<div class="mt-5 p-4 rounded-[12px] bg-[#FEE2E2]">
+<span class="text-[13px] leading-[18px] font-semibold text-[#DC2626] block">
+        This will immediately:
+      </span>
+<div class="mt-2.5 space-y-2">
+<div class="flex items-center space-x-2.5">
+<div class="w-1.5 h-1.5 rounded-full bg-[#DC2626] shrink-0"></div>
+<span class="text-[14px] leading-[20px] text-[#0F172A]">
+            End their current duty session
+          </span>
+</div>
+<div class="flex items-center space-x-2.5">
+<div class="w-1.5 h-1.5 rounded-full bg-[#DC2626] shrink-0"></div>
+<span class="text-[14px] leading-[20px] text-[#0F172A]">
+            Stop location tracking
+          </span>
+</div>
+<div class="flex items-center space-x-2.5">
+<div class="w-1.5 h-1.5 rounded-full bg-[#DC2626] shrink-0"></div>
+<span class="text-[14px] leading-[20px] text-[#0F172A]">
+            Prevent them from logging in
+          </span>
+</div>
+</div>
+</div>
+<!-- 16px gap -> Reason Form Field -->
+<div class="mt-4 flex flex-col text-left">
+<label class="text-[13px] leading-[18px] font-medium text-[#64748B] mb-1.5" for="block-reason">
+        Reason (required)
+      </label>
+<div class="relative">
+<textarea class="w-full h-[96px] p-3 rounded-[12px] border border-[#CBD5E1] bg-white text-[#0F172A] text-[16px] leading-[24px] placeholder:text-[#94A3B8] outline-none resize-none focus:border-[#016893] focus:ring-1 focus:ring-[#016893]" id="block-reason" placeholder="Why is this employee being blocked?" rows="3"></textarea>
+</div>
+<p class="mt-1 text-[12px] leading-[16px] text-[#94A3B8]">
+        This reason is recorded in the audit log.
+      </p>
+</div>
+<!-- 20px gap -> Action Buttons -->
+<div class="mt-5 flex flex-col space-y-1.5">
+<!-- Full-width 48px #DC2626 button with white Label 13px "Block employee", disabled style (40% opacity) -->
+<button class="w-full h-12 rounded-[12px] bg-[#DC2626] text-white text-[13px] font-medium leading-[18px] flex items-center justify-center opacity-40 cursor-not-allowed transition-all" disabled="" id="btn-block-submit" type="button">
+        Block employee
+      </button>
+<!-- Full-width 48px text button beneath: #64748B Label 13px "Cancel" -->
+<button class="w-full h-12 rounded-[12px] bg-transparent text-[#64748B] text-[13px] font-medium leading-[18px] flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors" id="btn-block-cancel" type="button">
+        Cancel
+      </button>
+</div>
+<!-- iOS Home Indicator bar inside bottom sheet -->
+<div class="w-full flex justify-center pt-2">
+<div class="w-32 h-1 bg-slate-300 rounded-full"></div>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    const textarea = document.getElementById('block-reason');
+    const submitBtn = document.getElementById('btn-block-submit');
+    const cancelBtn = document.getElementById('btn-block-cancel');
+
+    if (textarea && submitBtn) {
+      textarea.addEventListener('input', function() {
+        const val = textarea.value.trim();
+        if (val.length > 0) {
+          submitBtn.removeAttribute('disabled');
+          submitBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+          submitBtn.classList.add('cursor-pointer');
+        } else {
+          submitBtn.setAttribute('disabled', 'true');
+          submitBtn.classList.add('opacity-40', 'cursor-not-allowed');
+          submitBtn.classList.remove('cursor-pointer');
+        }
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function() {
+        const sheet = document.getElementById('block-bottom-sheet');
+        if (sheet) {
+          sheet.style.transform = 'translateY(100%)';
+          sheet.style.transition = 'transform 0.2s ease-in-out';
+        }
+      });
+    }
+  })();
+</script></main></body></html>

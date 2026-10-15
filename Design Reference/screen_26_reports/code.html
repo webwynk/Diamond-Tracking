@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screen 26 — Reports</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background-color: #0b1320;
+      color: #0F172A;
+      margin: 0;
+      padding: 32px 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .num-tabular {
+      font-variant-numeric: tabular-nums;
+    }
+    .screen-frame {
+      width: 390px;
+      height: 844px;
+      position: relative;
+      background-color: #F8FAFC;
+      border-radius: 36px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+    /* Hide scrollbars but keep scrollable */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen">
+
+  <!-- Outer canvas wrapper displaying both side-by-side -->
+  <div class="flex flex-col items-center">
+    
+    <!-- Comparison Container -->
+    <div class="flex flex-row flex-wrap items-center justify-center gap-10">
+
+      <!-- ========================================== -->
+      <!-- PANEL A — BUILD                            -->
+      <!-- ========================================== -->
+      <div class="flex flex-col items-center">
+        <!-- Panel Label -->
+        <div class="mb-3 flex items-center gap-2">
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#E8F3F8] text-[#016893] tracking-wide uppercase">
+            Panel A — Build
+          </span>
+          <span class="text-xs text-slate-400">Parameter Setup</span>
+        </div>
+
+        <!-- Phone Frame -->
+        <div class="screen-frame">
+          
+          <!-- Status Bar -->
+          <div class="h-10 bg-white px-6 pt-2 flex items-center justify-between text-xs font-semibold text-[#0F172A] z-20">
+            <span class="num-tabular">9:41</span>
+            <div class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L12 22l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9zm0 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/></svg>
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98C20.93 5.9 16.69 4 12 4z"/></svg>
+              <div class="w-5 h-2.5 border border-[#0F172A] rounded-sm p-0.5 flex items-center">
+                <div class="h-full w-3 bg-[#0F172A] rounded-2xs"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- App Bar -->
+          <header class="h-14 bg-white border-b border-[#E2E8F0] px-4 flex items-center justify-between shrink-0 z-10">
+            <div class="flex items-center gap-3">
+              <h1 class="text-[20px] leading-[28px] font-semibold text-[#0F172A]">Reports</h1>
+            </div>
+            <button class="w-9 h-9 rounded-full flex items-center justify-center text-[#64748B] hover:bg-slate-50 transition-colors" aria-label="Report history">
+              <svg class="w-5 h-5 text-[#475569]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </button>
+          </header>
+
+          <!-- Scrollable Body Content -->
+          <main class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-5 bg-[#F8FAFC]">
+
+            <!-- SECTION 1: REPORT TYPE -->
+            <div>
+              <div class="text-[11px] leading-[16px] font-semibold tracking-[0.5px] uppercase text-[#64748B] mb-2">
+                REPORT TYPE
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <!-- Tile 1 (SELECTED) -->
+                <div class="h-20 bg-[#E8F3F8] border-2 border-[#016893] rounded-[12px] p-3 flex flex-col justify-between cursor-pointer">
+                  <div class="w-6 h-6 text-[#016893]">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                  </div>
+                  <div class="text-[13px] leading-[18px] font-semibold text-[#016893]">
+                    Daily detail
+                  </div>
+                </div>
+
+                <!-- Tile 2 -->
+                <div class="h-20 bg-white border border-[#CBD5E1] rounded-[12px] p-3 flex flex-col justify-between cursor-pointer hover:border-slate-400 transition-colors">
+                  <div class="w-6 h-6 text-[#94A3B8]">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                  </div>
+                  <div class="text-[13px] leading-[18px] font-medium text-[#64748B]">
+                    Employee summary
+                  </div>
+                </div>
+
+                <!-- Tile 3 -->
+                <div class="h-20 bg-white border border-[#CBD5E1] rounded-[12px] p-3 flex flex-col justify-between cursor-pointer hover:border-slate-400 transition-colors">
+                  <div class="w-6 h-6 text-[#94A3B8]">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                  </div>
+                  <div class="text-[13px] leading-[18px] font-medium text-[#64748B]">
+                    Team summary
+                  </div>
+                </div>
+
+                <!-- Tile 4 -->
+                <div class="h-20 bg-white border border-[#CBD5E1] rounded-[12px] p-3 flex flex-col justify-between cursor-pointer hover:border-slate-400 transition-colors">
+                  <div class="w-6 h-6 text-[#94A3B8]">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                  </div>
+                  <div class="text-[13px] leading-[18px] font-medium text-[#64748B]">
+                    Visit log
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 2: DATE RANGE -->
+            <div>
+              <div class="text-[11px] leading-[16px] font-semibold tracking-[0.5px] uppercase text-[#64748B] mb-2">
+                DATE RANGE
+              </div>
+              <!-- Chip row -->
+              <div class="flex items-center gap-2 mb-2.5 overflow-x-auto no-scrollbar">
+                <span class="h-8 px-3 rounded-full bg-[#016893] text-white text-[13px] leading-[18px] font-medium flex items-center shrink-0">
+                  This month
+                </span>
+                <span class="h-8 px-3 rounded-full bg-white border border-[#CBD5E1] text-[#64748B] text-[13px] leading-[18px] font-medium flex items-center shrink-0">
+                  Today
+                </span>
+                <span class="h-8 px-3 rounded-full bg-white border border-[#CBD5E1] text-[#64748B] text-[13px] leading-[18px] font-medium flex items-center shrink-0">
+                  Last 7 days
+                </span>
+                <span class="h-8 px-3 rounded-full bg-white border border-[#CBD5E1] text-[#64748B] text-[13px] leading-[18px] font-medium flex items-center shrink-0">
+                  Custom
+                </span>
+              </div>
+              <!-- Read-only date preview field -->
+              <div class="h-12 bg-[#F8FAFC] border border-[#CBD5E1] rounded-[12px] px-3.5 flex items-center gap-3">
+                <svg class="w-5 h-5 text-[#64748B] shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                <span class="text-[14px] leading-[20px] text-[#0F172A] font-normal num-tabular">
+                  01 Oct 2026 – 12 Oct 2026
+                </span>
+              </div>
+            </div>
+
+            <!-- SECTION 3: EMPLOYEES -->
+            <div>
+              <div class="text-[11px] leading-[16px] font-semibold tracking-[0.5px] uppercase text-[#64748B] mb-2">
+                EMPLOYEES
+              </div>
+              <!-- Dropdown trigger field -->
+              <div class="h-12 bg-white border border-[#CBD5E1] rounded-[12px] px-3.5 flex items-center justify-between cursor-pointer">
+                <span class="text-[16px] leading-[24px] text-[#0F172A] font-normal">
+                  All employees (143)
+                </span>
+                <svg class="w-5 h-5 text-[#94A3B8]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+              <!-- Selected Removable Pills -->
+              <div class="flex items-center gap-2 mt-2">
+                <div class="h-7 px-2.5 rounded-full bg-[#E8F3F8] flex items-center gap-1.5 border border-[#C5E1EC]">
+                  <span class="text-[13px] leading-[18px] font-medium text-[#016893]">Suresh Patel</span>
+                  <button class="w-4 h-4 rounded-full flex items-center justify-center text-[#016893] hover:bg-[#C5E1EC]" aria-label="Remove Suresh Patel">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="h-7 px-2.5 rounded-full bg-[#E8F3F8] flex items-center gap-1.5 border border-[#C5E1EC]">
+                  <span class="text-[13px] leading-[18px] font-medium text-[#016893]">Anil Sharma</span>
+                  <button class="w-4 h-4 rounded-full flex items-center justify-center text-[#016893] hover:bg-[#C5E1EC]" aria-label="Remove Anil Sharma">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 4: FORMAT -->
+            <div>
+              <div class="text-[11px] leading-[16px] font-semibold tracking-[0.5px] uppercase text-[#64748B] mb-2">
+                FORMAT
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <!-- PDF Tile (SELECTED) -->
+                <div class="h-16 bg-[#E8F3F8] border-2 border-[#016893] rounded-[12px] px-3.5 flex items-center gap-3 cursor-pointer">
+                  <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-[#016893] shadow-xs">
+                    <svg class="w-5 h-5 text-[#016893]" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9.5 8.5h-2v3H6V7.5h3.5c1.1 0 2 .9 2 2s-.9 2-2 2zm8 4h-3v-1.5h2v-1.5h-2V11h3V9.5h-4.5v6H17.5V15.5zm-5 0h-2v-6h2c1.1 0 2 .9 2 2v2c0 1.1-.9 2-2 2z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <span class="text-[13px] leading-[18px] font-semibold text-[#016893]">PDF</span>
+                    <span class="block text-[11px] leading-[14px] text-[#016893]/80">Printable audit</span>
+                  </div>
+                </div>
+
+                <!-- Excel Tile -->
+                <div class="h-16 bg-white border border-[#CBD5E1] rounded-[12px] px-3.5 flex items-center gap-3 cursor-pointer hover:border-slate-400 transition-colors">
+                  <div class="w-8 h-8 rounded-lg bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8]">
+                    <svg class="w-5 h-5 text-[#94A3B8]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 4h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <span class="text-[13px] leading-[18px] font-medium text-[#64748B]">Excel</span>
+                    <span class="block text-[11px] leading-[14px] text-[#94A3B8]">Raw tabular (.xlsx)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- INFO BANNER -->
+            <div class="bg-[#E0F2FE] rounded-[12px] p-3 flex items-start gap-2.5">
+              <svg class="w-5 h-5 text-[#0284C7] shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <p class="text-[14px] leading-[20px] text-[#0F172A]">
+                Reports are generated in English.
+              </p>
+            </div>
+
+            <!-- Bottom safe padding so content scrolls above fixed bar -->
+            <div class="h-4"></div>
+          </main>
+
+          <!-- PINNED BOTTOM BAR -->
+          <footer class="bg-white border-t border-[#E2E8F0] p-4 shrink-0 z-10">
+            <button class="w-full h-12 bg-[#016893] hover:bg-[#015676] active:bg-[#015676] rounded-[12px] flex items-center justify-center text-white text-[13px] leading-[18px] font-medium transition-colors shadow-xs">
+              Generate report
+            </button>
+          </footer>
+
+          <!-- Bottom Home Indicator -->
+          <div class="h-5 bg-white flex items-center justify-center pb-1">
+            <div class="w-32 h-1 bg-slate-300 rounded-full"></div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ========================================== -->
+      <!-- PANEL B — READY                            -->
+      <!-- ========================================== -->
+      <div class="flex flex-col items-center">
+        <!-- Panel Label -->
+        <div class="mb-3 flex items-center gap-2">
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#DCFCE7] text-[#16A34A] tracking-wide uppercase">
+            Panel B — Ready
+          </span>
+          <span class="text-xs text-slate-400">Download & Share</span>
+        </div>
+
+        <!-- Phone Frame -->
+        <div class="screen-frame">
+
+          <!-- Status Bar -->
+          <div class="h-10 bg-white px-6 pt-2 flex items-center justify-between text-xs font-semibold text-[#0F172A] z-20">
+            <span class="num-tabular">9:42</span>
+            <div class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L12 22l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9zm0 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/></svg>
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98C20.93 5.9 16.69 4 12 4z"/></svg>
+              <div class="w-5 h-2.5 border border-[#0F172A] rounded-sm p-0.5 flex items-center">
+                <div class="h-full w-full bg-[#0F172A] rounded-2xs"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- App Bar (Same header structure) -->
+          <header class="h-14 bg-white border-b border-[#E2E8F0] px-4 flex items-center justify-between shrink-0 z-10">
+            <div class="flex items-center gap-3">
+              <h1 class="text-[20px] leading-[28px] font-semibold text-[#0F172A]">Reports</h1>
+            </div>
+            <button class="w-9 h-9 rounded-full flex items-center justify-center text-[#64748B] hover:bg-slate-50 transition-colors" aria-label="Close">
+              <svg class="w-5 h-5 text-[#475569]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </header>
+
+          <!-- Top Progress Strip Banner -->
+          <div class="bg-white border-b border-[#E2E8F0] px-4 pt-2.5 pb-2 shrink-0">
+            <!-- 4px #E2E8F0 track filled to 100% in #16A34A -->
+            <div class="w-full h-1 bg-[#E2E8F0] rounded-full overflow-hidden">
+              <div class="h-full w-full bg-[#16A34A]"></div>
+            </div>
+            <div class="mt-1.5 flex items-center justify-between">
+              <span class="text-[12px] leading-[16px] text-[#64748B]">Completed in 14s</span>
+              <span class="text-[11px] leading-[14px] font-medium text-[#16A34A] uppercase tracking-wider">Ready to export</span>
+            </div>
+          </div>
+
+          <!-- Body Centred Content -->
+          <main class="flex-1 overflow-y-auto no-scrollbar p-4 flex flex-col justify-between bg-[#F8FAFC]">
+
+            <div class="flex-1 flex flex-col items-center justify-center text-center px-2 py-4">
+
+              <!-- 72px Circular #DCFCE7 Badge with Green Check -->
+              <div class="w-[72px] h-[72px] rounded-full bg-[#DCFCE7] flex items-center justify-center mb-4 ring-8 ring-[#DCFCE7]/40 shadow-xs">
+                <svg class="w-9 h-9 text-[#16A34A]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+
+              <!-- H3 20px Report ready -->
+              <h2 class="text-[20px] leading-[28px] font-semibold text-[#0F172A] mb-1">
+                Report ready
+              </h2>
+
+              <!-- Body 14px Subtitle -->
+              <p class="text-[14px] leading-[20px] text-[#64748B] mb-6">
+                Daily detail · 01–12 Oct 2026 · 143 employees
+              </p>
+
+              <!-- File Card -->
+              <div class="w-full bg-white border border-[#E2E8F0] rounded-[12px] p-4 flex items-center gap-3.5 text-left mb-6 shadow-xs">
+                <!-- 40px rounded-8 #FEE2E2 badge holding red PDF icon -->
+                <div class="w-10 h-10 rounded-[8px] bg-[#FEE2E2] flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5 text-[#DC2626]" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9.5 8.5h-2v3H6V7.5h3.5c1.1 0 2 .9 2 2s-.9 2-2 2zm8 4h-3v-1.5h2v-1.5h-2V11h3V9.5h-4.5v6H17.5V15.5zm-5 0h-2v-6h2c1.1 0 2 .9 2 2v2c0 1.1-.9 2-2 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[14px] leading-[20px] font-semibold text-[#0F172A] truncate">
+                    attendance-oct-2026.pdf
+                  </div>
+                  <div class="text-[12px] leading-[16px] text-[#64748B] num-tabular">
+                    2.4 MB · 1,716 rows
+                  </div>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-[#F8FAFC] flex items-center justify-center text-[#16A34A] shrink-0">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Action Buttons Stack -->
+              <div class="w-full space-y-3">
+                <!-- Primary Full-Width 48px Button: Share -->
+                <button class="w-full h-12 bg-[#016893] hover:bg-[#015676] active:bg-[#015676] rounded-[12px] flex items-center justify-center gap-2 text-white text-[13px] leading-[18px] font-medium transition-colors shadow-xs">
+                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                  </svg>
+                  <span>Share</span>
+                </button>
+
+                <!-- Secondary Full-Width 48px Button: Save to device -->
+                <button class="w-full h-12 bg-white hover:bg-slate-50 border border-[#016893] rounded-[12px] flex items-center justify-center gap-2 text-[#016893] text-[13px] leading-[18px] font-medium transition-colors">
+                  <svg class="w-4 h-4 text-[#016893]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                  </svg>
+                  <span>Save to device</span>
+                </button>
+              </div>
+
+            </div>
+
+            <!-- Audit Log Notice at Bottom -->
+            <div class="pb-2 pt-1 text-center">
+              <p class="text-[12px] leading-[16px] text-[#94A3B8]">
+                This export has been recorded in the audit log.
+              </p>
+            </div>
+
+          </main>
+
+          <!-- Bottom Home Indicator -->
+          <div class="h-5 bg-[#F8FAFC] flex items-center justify-center pb-1">
+            <div class="w-32 h-1 bg-slate-300 rounded-full"></div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Screen Meta Legend -->
+    <div class="mt-8 text-center text-slate-400 text-xs">
+      <p class="font-medium">Diamond Agritech Tracking · Screen 26 — Reports (Build & Export States)</p>
+      <p class="text-slate-500 mt-1">Light Mode · Android Portrait 390×844 · Primary Brand #016893</p>
+    </div>
+
+  </div>
+
+</body>
+</html>

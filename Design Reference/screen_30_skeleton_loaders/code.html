@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#F8FAFC;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-lowest": "#ffffff", "status-suspect-bg": "#FEE2E2", "status-info-bg": "#E0F2FE", "tertiary-container": "#00873a", "on-error": "#ffffff", "inverse-surface": "#283044", "border-divider": "#E2E8F0", "inverse-primary": "#93ccff", "on-secondary": "#ffffff", "inverse-on-surface": "#eef0ff", "status-stale-bg": "#FEF3C7", "tertiary": "#006b2c", "on-tertiary": "#ffffff", "on-tertiary-container": "#f7fff2", "on-error-container": "#93000a", "outline": "#707881", "error": "#ba1a1a", "secondary": "#00658f", "on-secondary-fixed-variant": "#004c6d", "primary": "#006194", "surface": "#faf8ff", "on-tertiary-fixed-variant": "#005320", "surface-variant": "#dae2fd", "on-surface-variant": "#3f4850", "brand-chip-bg": "#C5E1EC", "tertiary-fixed-dim": "#62df7d", "text-disabled": "#94A3B8", "status-off-duty": "#94A3B8", "page-bg": "#F8FAFC", "surface-container": "#eaedff", "text-secondary": "#64748B", "on-primary-fixed-variant": "#004b73", "surface-tint": "#006398", "on-primary-fixed": "#001d31", "secondary-container": "#86cfff", "brand-primary": "#016893", "secondary-fixed": "#c7e7ff", "border-input": "#CBD5E1", "surface-container-highest": "#dae2fd", "surface-bright": "#faf8ff", "background": "#faf8ff", "error-container": "#ffdad6", "status-suspect": "#DC2626", "secondary-fixed-dim": "#86cfff", "outline-variant": "#bfc7d2", "status-stale": "#F59E0B", "surface-container-low": "#f2f3ff", "status-on-duty-bg": "#DCFCE7", "on-secondary-container": "#00587e", "surface-card": "#FFFFFF", "status-info": "#0284C7", "brand-tint": "#E8F3F8", "on-primary-container": "#fdfcff", "tertiary-fixed": "#7ffc97", "primary-fixed": "#cce5ff", "status-blocked": "#1E293B", "surface-container-high": "#e2e7ff", "primary-container": "#007bb9", "on-secondary-fixed": "#001e2e", "text-primary": "#0F172A", "surface-dim": "#d2d9f4", "brand-pressed": "#015676", "status-on-duty": "#16A34A", "on-tertiary-fixed": "#002109", "on-surface": "#131b2e", "primary-fixed-dim": "#93ccff", "on-primary": "#ffffff", "on-background": "#131b2e" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xl": "32px", "space-3xs": "8px", "space-md": "16px", "space-lg": "24px", "gutter": "16px", "margin": "16px", "space-section": "48px", "space-touch": "20px", "space-base": "12px", "space-xs": "4px", "space-sm": "8px", "space-block": "40px", "space-2xs": "4px" }, "fontFamily": { "body-large": ["DM Sans"], "label-medium": ["DM Sans"], "display-stat": ["DM Sans"], "overline-micro": ["DM Sans"], "headline-h2": ["DM Sans"], "body-default": ["DM Sans"], "caption-timestamp": ["DM Sans"], "title-item": ["DM Sans"], "headline-h3": ["DM Sans"] }, "fontSize": { "body-large": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "label-medium": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "display-stat": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "overline-micro": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }], "headline-h2": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "body-default": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "caption-timestamp": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "title-item": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "headline-h3": ["20px", { "lineHeight": "28px", "fontWeight": "600" }] } } } }</script></head><body class="bg-page-bg text-text-primary font-body-default min-h-screen flex flex-col antialiased selection:bg-brand-chip-bg selection:text-text-primary"><header class="fixed top-0 w-full z-50 pt-safe bg-surface-card/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm min-w-0"><div class="w-2 h-6 bg-brand-primary shrink-0"></div><h1 class="font-headline-h3 text-headline-h3 text-text-primary truncate uppercase tracking-tight">System Reference</h1></div><div class="flex items-center gap-space-sm shrink-0"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col w-full max-w-[390px] mx-auto pt-14 pb-20 px-margin bg-page-bg"><div class="flex flex-col w-full pb-10">
+<div class="flex flex-col mb-6">
+<div class="flex items-center justify-between mb-1">
+<span class="font-overline-micro text-overline-micro text-brand-primary tracking-wider uppercase">SPECIFICATION SHEET 30 • DIAMOND AGRITECH</span>
+<span class="flex items-center gap-1 px-1.5 py-0.5 bg-brand-tint text-brand-primary font-overline-micro text-[10px] tracking-wide uppercase">
+<span class="w-1.5 h-1.5 bg-brand-primary animate-pulse"></span>
+        Interactive Shimmer
+      </span>
+</div>
+<h2 class="font-headline-h2 text-headline-h2 text-text-primary tracking-tight">Skeleton Loaders</h2>
+<p class="font-body-default text-body-default text-text-secondary mt-1">
+      Progressive shimmer patterns and geometry-matched loading placeholders across field workflows.
+    </p>
+<div class="w-full h-px bg-border-divider mt-4"></div>
+</div>
+<section class="flex flex-col mb-6">
+<div class="flex items-center justify-between mb-2.5">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.05em]">EMPLOYEE LIST</span>
+<span class="font-caption-timestamp text-caption-timestamp text-text-secondary">5 Instances • 80px Row</span>
+</div>
+<div class="flex flex-col gap-[10px]">
+<div class="h-20 bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4 flex items-center justify-between relative overflow-hidden">
+<div class="w-11 h-11 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="flex flex-col gap-2 ml-3.5 flex-1 min-w-0">
+<div class="w-[140px] max-w-[65%] h-[18px] rounded-[6px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-[90px] max-w-[45%] h-3 rounded-[4px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="w-[72px] h-6 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="h-20 bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4 flex items-center justify-between relative overflow-hidden">
+<div class="w-11 h-11 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="flex flex-col gap-2 ml-3.5 flex-1 min-w-0">
+<div class="w-[128px] max-w-[60%] h-[18px] rounded-[6px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-[84px] max-w-[40%] h-3 rounded-[4px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="w-[72px] h-6 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="h-20 bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4 flex items-center justify-between relative overflow-hidden">
+<div class="w-11 h-11 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="flex flex-col gap-2 ml-3.5 flex-1 min-w-0">
+<div class="w-[152px] max-w-[70%] h-[18px] rounded-[6px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-[96px] max-w-[45%] h-3 rounded-[4px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="w-[72px] h-6 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="h-20 bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4 flex items-center justify-between relative overflow-hidden">
+<div class="w-11 h-11 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="flex flex-col gap-2 ml-3.5 flex-1 min-w-0">
+<div class="w-[136px] max-w-[62%] h-[18px] rounded-[6px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-[78px] max-w-[38%] h-3 rounded-[4px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="w-[72px] h-6 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="h-20 bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4 flex items-center justify-between relative overflow-hidden">
+<div class="w-11 h-11 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="flex flex-col gap-2 ml-3.5 flex-1 min-w-0">
+<div class="w-[144px] max-w-[66%] h-[18px] rounded-[6px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-[104px] max-w-[48%] h-3 rounded-[4px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="w-[72px] h-6 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+</div>
+</section>
+<section class="flex flex-col mb-6">
+<div class="flex items-center justify-between mb-2.5">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.05em]">STAT CARD ROW</span>
+<span class="font-caption-timestamp text-caption-timestamp text-text-secondary">3 Metric Columns</span>
+</div>
+<div class="grid grid-cols-3 gap-3">
+<div class="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4 flex flex-col gap-2.5 relative overflow-hidden">
+<div class="w-12 h-[11px] rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-full max-w-[72px] h-8 rounded-[4px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-7 h-3 rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4 flex flex-col gap-2.5 relative overflow-hidden">
+<div class="w-12 h-[11px] rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-full max-w-[64px] h-8 rounded-[4px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-9 h-3 rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4 flex flex-col gap-2.5 relative overflow-hidden">
+<div class="w-12 h-[11px] rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-full max-w-[70px] h-8 rounded-[4px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-7 h-3 rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+</div>
+</section>
+<section class="flex flex-col mb-6">
+<div class="flex items-center justify-between mb-2.5">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.05em]">NOTIFICATION LIST</span>
+<span class="font-caption-timestamp text-caption-timestamp text-text-secondary">Grouped Container</span>
+</div>
+<div class="bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col">
+<div class="h-[76px] px-4 flex items-center justify-between relative bg-surface-card">
+<div class="w-10 h-10 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="flex flex-col gap-2 ml-3 flex-1 min-w-0 pr-3">
+<div class="w-full max-w-[180px] h-3.5 rounded-[4px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-[60%] max-w-[120px] h-3 rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="w-9 h-3 rounded-[3px] shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="absolute bottom-0 left-4 right-4 h-px bg-slate-100"></div>
+</div>
+<div class="h-[76px] px-4 flex items-center justify-between relative bg-surface-card">
+<div class="w-10 h-10 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="flex flex-col gap-2 ml-3 flex-1 min-w-0 pr-3">
+<div class="w-full max-w-[160px] h-3.5 rounded-[4px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-[50%] max-w-[100px] h-3 rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="w-9 h-3 rounded-[3px] shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="absolute bottom-0 left-4 right-4 h-px bg-slate-100"></div>
+</div>
+<div class="h-[76px] px-4 flex items-center justify-between relative bg-surface-card">
+<div class="w-10 h-10 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="flex flex-col gap-2 ml-3 flex-1 min-w-0 pr-3">
+<div class="w-full max-w-[190px] h-3.5 rounded-[4px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-[65%] max-w-[130px] h-3 rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="w-9 h-3 rounded-[3px] shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="absolute bottom-0 left-4 right-4 h-px bg-slate-100"></div>
+</div>
+<div class="h-[76px] px-4 flex items-center justify-between relative bg-surface-card">
+<div class="w-10 h-10 rounded-full shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="flex flex-col gap-2 ml-3 flex-1 min-w-0 pr-3">
+<div class="w-full max-w-[170px] h-3.5 rounded-[4px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-[55%] max-w-[110px] h-3 rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+<div class="w-9 h-3 rounded-[3px] shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+</div>
+</section>
+<section class="flex flex-col mb-6">
+<div class="flex items-center justify-between mb-2.5">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.05em]">DUTY HISTORY</span>
+<span class="font-caption-timestamp text-caption-timestamp text-text-secondary">3 Event Log Cards</span>
+</div>
+<div class="flex flex-col gap-[10px]">
+<div class="h-[88px] bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4 flex items-center relative overflow-hidden">
+<div class="w-11 h-11 rounded-xl shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="flex flex-col gap-2 ml-3 flex-1 min-w-0">
+<div class="w-full max-w-[150px] h-[18px] rounded-[5px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-full max-w-[200px] h-3 rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+</div>
+<div class="h-[88px] bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4 flex items-center relative overflow-hidden">
+<div class="w-11 h-11 rounded-xl shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="flex flex-col gap-2 ml-3 flex-1 min-w-0">
+<div class="w-full max-w-[135px] h-[18px] rounded-[5px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-full max-w-[180px] h-3 rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+</div>
+<div class="h-[88px] bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4 flex items-center relative overflow-hidden">
+<div class="w-11 h-11 rounded-xl shrink-0 relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="flex flex-col gap-2 ml-3 flex-1 min-w-0">
+<div class="w-full max-w-[160px] h-[18px] rounded-[5px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+<div class="w-full max-w-[210px] h-3 rounded-[3px] relative overflow-hidden bg-slate-100">
+<div class="absolute inset-0 skeleton-shimmer"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="flex flex-col mb-6">
+<div class="flex items-center justify-between mb-2.5">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.05em]">MAP PLACEHOLDER</span>
+<span class="font-caption-timestamp text-caption-timestamp text-brand-primary font-medium">Telemetry Exception</span>
+</div>
+<div class="h-[180px] rounded-2xl bg-brand-tint relative overflow-hidden flex flex-col items-center justify-center">
+<svg class="absolute inset-0 w-full h-full opacity-40 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<pattern height="24" id="cad-grid" patternunits="userSpaceOnUse" width="24">
+<path d="M 24 0 L 0 0 0 24" fill="none" stroke="#C5E1EC" stroke-width="0.75"></path>
+</pattern>
+</defs>
+<rect fill="url(#cad-grid)" height="100%" width="100%"></rect>
+<line opacity="0.3" stroke="#016893" stroke-dasharray="4,4" stroke-width="0.5" x1="0" x2="390" y1="90" y2="90"></line>
+<line opacity="0.3" stroke="#016893" stroke-dasharray="4,4" stroke-width="0.5" x1="195" x2="195" y1="0" y2="180"></line>
+<circle cx="195" cy="90" fill="none" opacity="0.4" r="48" stroke="#016893" stroke-dasharray="2,4" stroke-width="0.5"></circle>
+</svg>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-12 h-12 rounded-full bg-surface-card/80 backdrop-blur-sm shadow-sm flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-text-disabled text-[32px] animate-bounce">location_on</span>
+</div>
+<span class="font-caption-timestamp text-caption-timestamp font-medium text-text-disabled uppercase tracking-wide">Loading map…</span>
+<span class="font-overline-micro text-[10px] text-brand-primary font-semibold mt-0.5 tracking-tight">TRIANGULATING SATELLITE FIX</span>
+</div>
+</div>
+<div class="mt-2.5 p-2.5 bg-brand-tint/60 rounded flex items-start gap-2">
+<span class="material-symbols-outlined text-brand-primary text-[16px] shrink-0 mt-0.5">info</span>
+<p class="font-overline-micro text-overline-micro text-text-secondary leading-normal">
+<strong class="text-text-primary uppercase tracking-wider font-semibold">NOTE:</strong> A map never gets a shimmer skeleton — it displays this branded vector placeholder instead to prevent high GPU redraw spikes in harsh sunlight.
+      </p>
+</div>
+</section>
+<section class="flex flex-col mb-4">
+<div class="flex items-center justify-between mb-2.5">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.05em]">NEXT-PAGE LOADER</span>
+<span class="font-caption-timestamp text-caption-timestamp text-text-secondary">Scroll Anchor</span>
+</div>
+<div class="h-14 bg-surface-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex items-center justify-center">
+<div class="relative w-6 h-6">
+<svg class="animate-spin w-6 h-6 text-brand-primary" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+<path class="opacity-90" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"></path>
+</svg>
+</div>
+</div>
+<div class="mt-2.5 p-2.5 bg-surface-card rounded flex items-start gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+<span class="material-symbols-outlined text-text-secondary text-[16px] shrink-0 mt-0.5">anchor</span>
+<p class="font-overline-micro text-overline-micro text-text-secondary leading-normal">
+<strong class="text-text-primary uppercase tracking-wider font-semibold">NOTE:</strong> Pagination uses a 24px spinner, never a skeleton, preserving scroll anchor without layout jump during field data sync.
+      </p>
+</div>
+</section>
+</div>
+<script>
+  (function initShimmerStyles() {
+    const styleId = 'skeleton-shimmer-styles';
+    if (!document.getElementById(styleId)) {
+      const styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      styleEl.textContent = `
+        .skeleton-shimmer {
+          background: linear-gradient(110deg, #F1F5F9 25%, #CBD5E1 50%, #F1F5F9 75%);
+          background-size: 200% 100%;
+          animation: skeleton-sweep 1.6s infinite ease-in-out;
+        }
+        @keyframes skeleton-sweep {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-card/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-brand-primary font-medium"><div class="max-w-[390px] mx-auto flex items-center justify-around h-16 px-space-xs"><a class="flex flex-col items-center justify-center min-w-[48px] min-h-[48px] px-space-2xs text-text-secondary transition-colors" data-path="overview-dashboard" href="#"><span class="material-symbols-outlined text-[22px]">dashboard</span><span class="font-overline-micro text-overline-micro tracking-wider uppercase mt-0.5">Overview</span></a><a class="flex flex-col items-center justify-center min-w-[48px] min-h-[48px] px-space-2xs text-text-secondary transition-colors" data-path="telemetry-status" href="#"><span class="material-symbols-outlined text-[22px]">sensors</span><span class="font-overline-micro text-overline-micro tracking-wider uppercase mt-0.5">Telemetry</span></a><a class="flex flex-col items-center justify-center min-w-[48px] min-h-[48px] px-space-2xs text-text-secondary transition-colors" data-path="field-routes" href="#"><span class="material-symbols-outlined text-[22px]">alt_route</span><span class="font-overline-micro text-overline-micro tracking-wider uppercase mt-0.5">Routes</span></a><a aria-current="page" class="flex flex-col items-center justify-center min-w-[48px] min-h-[48px] px-space-2xs transition-colors text-brand-primary font-medium" data-path="system-reference" href="#"><span class="material-symbols-outlined text-[22px]">widgets</span><span class="font-overline-micro text-overline-micro tracking-wider uppercase mt-0.5">Specs</span></a></div></nav></body></html>

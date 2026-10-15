@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_dimens.dart';
 import '../../core/theme/app_typography.dart';
+import '../../shared/widgets/widgets.dart';
 
-/// A gallery of every design token, rendered.
+/// A gallery of every design token and shared widget, rendered.
 ///
-/// **Temporary and development-only.** It exists so Phase 0 Step 2 can actually
-/// be verified against docs/03-DESIGN-SYSTEM.md rather than assumed correct,
-/// and so generated screen designs can be compared against the real rendered
-/// tokens. Replaced by real routing in Phase 1; delete this file then.
+/// **Temporary and development-only.** It exists so Phase 0 Step 2 and Step 3
+/// can actually be verified against docs/03-DESIGN-SYSTEM.md and reference
+/// screens rather than assumed correct. Replaced by real routing in Phase 1;
+/// delete this file then.
 class ThemePreviewPage extends StatelessWidget {
   const ThemePreviewPage({super.key});
 
@@ -17,13 +18,13 @@ class ThemePreviewPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Theme preview'),
+        title: const Text('Theme & Widgets preview'),
         actions: <Widget>[
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.x4),
             child: Center(
               child: Text(
-                'Phase 0 · Step 2',
+                'Phase 0 · Step 3',
                 style: AppTypography.caption.withColor(AppColors.neutral0),
               ),
             ),
@@ -107,6 +108,10 @@ class ThemePreviewPage extends StatelessWidget {
           SizedBox(height: AppSpacing.x8),
           _Section('RADIUS'),
           _RadiusRow(),
+
+          SizedBox(height: AppSpacing.x8),
+          _Section('SHARED WIDGET LIBRARY (PHASE 0 STEP 3)'),
+          _SharedWidgetsShowcase(),
 
           SizedBox(height: AppSpacing.x12),
         ],
@@ -337,6 +342,206 @@ class _RadiusRow extends StatelessWidget {
               Text(e.key, style: AppTypography.caption),
             ],
           ),
+      ],
+    );
+  }
+}
+
+class _SharedWidgetsShowcase extends StatelessWidget {
+  const _SharedWidgetsShowcase();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        // Logo verification
+        Center(
+          child: Column(
+            children: <Widget>[
+              Image.asset('assets/image/logo.png', width: 72, height: 72),
+              const SizedBox(height: AppSpacing.x2),
+              Text(
+                'Diamond Agritech Logo Mark',
+                style: AppTypography.caption.withColor(AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.x6),
+
+        // Stat Card Row
+        Text(
+          'STAT CARDS',
+          style: AppTypography.overline.withColor(AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.x2),
+        const Row(
+          children: <Widget>[
+            Expanded(
+              child: AppStatCard(
+                title: 'Distance',
+                value: '42.8',
+                unit: 'km',
+                trend: '+5.2 km vs avg',
+              ),
+            ),
+            SizedBox(width: AppSpacing.x3),
+            Expanded(
+              child: AppStatCard(
+                title: 'On Duty',
+                value: '6h 15m',
+                unit: 'today',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.x6),
+
+        // AppButtons
+        Text(
+          'BUTTONS WITH STATES',
+          style: AppTypography.overline.withColor(AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.x2),
+        Wrap(
+          spacing: AppSpacing.x3,
+          runSpacing: AppSpacing.x3,
+          children: <Widget>[
+            AppButton(label: 'Primary', onPressed: () {}),
+            AppButton(
+              label: 'Secondary',
+              variant: AppButtonVariant.secondary,
+              onPressed: () {},
+            ),
+            AppButton(
+              label: 'Tertiary',
+              variant: AppButtonVariant.tertiary,
+              onPressed: () {},
+            ),
+            AppButton(
+              label: 'Destructive',
+              variant: AppButtonVariant.destructive,
+              onPressed: () {},
+            ),
+            const AppButton(
+              label: 'Disabled',
+              onPressed: null,
+              disabledReason:
+                  'Outside allowed duty window (8:00 AM – 11:00 PM)',
+            ),
+            AppButton(label: 'Loading…', isLoading: true, onPressed: () {}),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.x6),
+
+        // Form Text Field with Error
+        Text(
+          'FORM INPUT',
+          style: AppTypography.overline.withColor(AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.x2),
+        const AppTextField(
+          label: 'Employee Code',
+          hintText: 'e.g. DA-014',
+          prefixIcon: Icon(Icons.badge_outlined),
+        ),
+        const SizedBox(height: AppSpacing.x3),
+        const AppTextField(
+          label: 'PIN Code',
+          obscureText: true,
+          errorText: 'Incorrect PIN. 3 attempts remaining.',
+          prefixIcon: Icon(Icons.lock_outline_rounded),
+        ),
+        const SizedBox(height: AppSpacing.x6),
+
+        // Badges and Status Pills
+        Text(
+          'STATUS PILLS & BADGES',
+          style: AppTypography.overline.withColor(AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.x2),
+        Wrap(
+          spacing: AppSpacing.x2,
+          runSpacing: AppSpacing.x2,
+          children: <Widget>[
+            const AppStatusPill(statusKey: 'active'),
+            const AppStatusPill(statusKey: 'stale'),
+            const AppStatusPill(statusKey: 'suspect'),
+            const AppStatusPill(statusKey: 'off'),
+            const AppStatusPill(statusKey: 'blocked'),
+            AppBadge.count(3),
+            AppBadge.count(115),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.x6),
+
+        // Contextual Banners
+        Text(
+          'BANNERS (SCREEN 29)',
+          style: AppTypography.overline.withColor(AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.x2),
+        AppBanner.offline(),
+        const SizedBox(height: AppSpacing.x3),
+        AppBanner.syncPending(pointCount: 18, onDetails: () {}),
+        const SizedBox(height: AppSpacing.x3),
+        AppBanner.gpsOff(onOpenSettings: () {}),
+        const SizedBox(height: AppSpacing.x6),
+
+        // Map Placeholder (Screen 30)
+        Text(
+          'MAP PLACEHOLDER (SCREEN 30)',
+          style: AppTypography.overline.withColor(AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.x2),
+        const AppMapPlaceholder(),
+        const SizedBox(height: AppSpacing.x6),
+
+        // Pagination Loader (Screen 30)
+        Text(
+          'PAGINATION LOADER (SCREEN 30)',
+          style: AppTypography.overline.withColor(AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.x2),
+        const AppPaginationLoader(),
+        const SizedBox(height: AppSpacing.x6),
+
+        // Skeletons (Screen 30)
+        Text(
+          'SKELETON LOADERS (SCREEN 30)',
+          style: AppTypography.overline.withColor(AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.x2),
+        const AppListSkeleton(itemCount: 2),
+        const SizedBox(height: AppSpacing.x4),
+        const AppStatRowSkeleton(),
+        const SizedBox(height: AppSpacing.x6),
+
+        // Empty State Preview (Screen 28)
+        Text(
+          'EMPTY STATE PREVIEW (SCREEN 28)',
+          style: AppTypography.overline.withColor(AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.x2),
+        AppCard(child: AppEmptyState.nobodyOnDuty(onViewTeam: () {})),
+        const SizedBox(height: AppSpacing.x6),
+
+        // Snackbar Trigger
+        Center(
+          child: AppButton(
+            label: 'Trigger Floating Snackbar',
+            variant: AppButtonVariant.secondary,
+            onPressed: () {
+              AppSnackbar.show(
+                context,
+                message: 'Employee DA-014 blocked successfully',
+                actionLabel: 'UNDO',
+                onAction: () {},
+              );
+            },
+          ),
+        ),
       ],
     );
   }

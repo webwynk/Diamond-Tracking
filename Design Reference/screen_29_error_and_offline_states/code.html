@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#F8FAFC;}body{overscroll-behavior:none;font-family:'DM Sans',sans-serif;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "brand-tint": "#E8F3F8", "surface-container": "#eaedff", "surface-bright": "#faf8ff", "on-primary": "#ffffff", "on-secondary": "#ffffff", "status-stale": "#F59E0B", "inverse-surface": "#283044", "primary": "#006194", "surface-container-low": "#f2f3ff", "primary-fixed": "#cce5ff", "status-on-duty-bg": "#DCFCE7", "border-input": "#CBD5E1", "on-tertiary-fixed-variant": "#005320", "status-info": "#0284C7", "on-secondary-container": "#00587e", "tertiary": "#006b2c", "surface": "#faf8ff", "background": "#faf8ff", "on-tertiary": "#ffffff", "error-container": "#ffdad6", "border-divider": "#E2E8F0", "surface-variant": "#dae2fd", "on-tertiary-fixed": "#002109", "surface-card": "#FFFFFF", "text-secondary": "#64748B", "secondary-fixed-dim": "#86cfff", "primary-fixed-dim": "#93ccff", "secondary": "#00658f", "surface-container-highest": "#dae2fd", "on-tertiary-container": "#f7fff2", "status-blocked": "#1E293B", "text-primary": "#0F172A", "on-surface": "#131b2e", "primary-container": "#007bb9", "outline-variant": "#bfc7d2", "on-primary-fixed": "#001d31", "status-suspect-bg": "#FEE2E2", "surface-container-lowest": "#ffffff", "surface-container-high": "#e2e7ff", "brand-chip-bg": "#C5E1EC", "on-surface-variant": "#3f4850", "status-info-bg": "#E0F2FE", "page-bg": "#F8FAFC", "surface-tint": "#006398", "secondary-fixed": "#c7e7ff", "on-primary-fixed-variant": "#004b73", "tertiary-fixed": "#7ffc97", "status-on-duty": "#16A34A", "on-background": "#131b2e", "inverse-primary": "#93ccff", "tertiary-container": "#00873a", "brand-primary": "#016893", "on-error-container": "#93000a", "on-primary-container": "#fdfcff", "on-error": "#ffffff", "status-stale-bg": "#FEF3C7", "on-secondary-fixed-variant": "#004c6d", "on-secondary-fixed": "#001e2e", "secondary-container": "#86cfff", "inverse-on-surface": "#eef0ff", "outline": "#707881", "surface-dim": "#d2d9f4", "status-off-duty": "#94A3B8", "tertiary-fixed-dim": "#62df7d", "status-suspect": "#DC2626", "brand-pressed": "#015676", "text-disabled": "#94A3B8", "error": "#ba1a1a" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-md": "16px", "space-2xs": "4px", "gutter": "16px", "space-touch": "20px", "space-sm": "8px", "space-block": "40px", "margin": "16px", "space-3xs": "8px", "space-xs": "4px", "space-section": "48px", "space-base": "12px", "space-lg": "24px", "space-xl": "32px" }, "fontFamily": { "headline-h2": ["DM Sans"], "body-default": ["DM Sans"], "overline-micro": ["DM Sans"], "body-large": ["DM Sans"], "caption-timestamp": ["DM Sans"], "title-item": ["DM Sans"], "headline-h3": ["DM Sans"], "label-medium": ["DM Sans"], "display-stat": ["DM Sans"] }, "fontSize": { "headline-h2": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "body-default": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "overline-micro": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }], "body-large": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "caption-timestamp": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "title-item": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "headline-h3": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "label-medium": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "display-stat": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }] } } } };</script></head><body class="bg-page-bg text-text-primary flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 bg-brand-primary text-on-primary pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm min-w-0"><span class="material-symbols-outlined text-brand-chip-bg text-[22px]">token</span><h1 class="font-headline-h3 text-headline-h3 tracking-tight truncate text-on-primary">Error &amp; Offline States</h1></div><div class="flex items-center gap-space-base"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full px-margin pt-14 pb-24 bg-page-bg"><div class="flex flex-col w-full pb-12">
+<!-- Reference Sheet Header -->
+<section class="flex flex-col gap-space-2xs pb-space-lg mb-space-lg border-b border-border-divider">
+<div class="flex items-center gap-space-xs">
+<span class="font-overline-micro text-overline-micro uppercase text-text-secondary tracking-widest">SPECIFICATION SHEET 29</span>
+<span class="w-1.5 h-1.5 bg-brand-primary rounded-full"></span>
+<span class="font-overline-micro text-overline-micro uppercase text-status-info">DIAMOND AGRITECH</span>
+</div>
+<h2 class="font-headline-h2 text-headline-h2 text-text-primary tracking-tight">Error &amp; Offline States</h2>
+<p class="font-body-default text-body-default text-text-secondary">Telemetry and connectivity exception patterns for frontline field hardware.</p>
+</section>
+<!-- Items Vertical Stack -->
+<div class="flex flex-col gap-space-lg">
+<!-- 1. OFFLINE BANNER (INFO) -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.5px]">OFFLINE BANNER (INFO, NOT AN ERROR)</span>
+<div class="w-full bg-status-info-bg rounded-xl p-space-base flex items-start gap-space-base transition-all duration-200">
+<span class="material-symbols-outlined text-status-info text-[24px] shrink-0 mt-0.5 select-none">cloud_off</span>
+<div class="flex flex-col min-w-0">
+<span class="font-body-default text-body-default font-semibold text-text-primary">No internet connection</span>
+<span class="font-caption-timestamp text-caption-timestamp text-text-secondary mt-0.5">Your work is saved and will sync automatically.</span>
+</div>
+</div>
+</div>
+<!-- 2. SYNC PENDING -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.5px]">SYNC PENDING</span>
+<div class="w-full bg-status-stale-bg rounded-xl p-space-base flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="material-symbols-outlined text-status-stale text-[20px] shrink-0 select-none">upload</span>
+<span class="font-body-default text-body-default text-text-primary truncate">18 points waiting to sync</span>
+</div>
+<button class="shrink-0 font-label-medium text-label-medium text-brand-primary active:text-brand-pressed font-medium underline-offset-2 hover:underline" type="button">
+          Details
+        </button>
+</div>
+</div>
+<!-- 3. GPS OFF (BLOCKING) -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.5px]">GPS OFF (BLOCKING)</span>
+<div class="w-full bg-status-suspect-bg rounded-xl p-space-md flex flex-col gap-space-md">
+<div class="flex items-start gap-space-base">
+<span class="material-symbols-outlined text-status-suspect text-[24px] shrink-0 mt-0.5 select-none">location_off</span>
+<div class="flex flex-col min-w-0">
+<span class="font-body-default text-body-default font-semibold text-text-primary">Location is turned off</span>
+<span class="font-caption-timestamp text-caption-timestamp text-text-secondary mt-0.5">Turn on location to start duty.</span>
+</div>
+</div>
+<div class="flex justify-end">
+<button class="h-9 px-space-md bg-status-suspect active:bg-status-suspect/90 text-on-error rounded-full font-label-medium text-label-medium flex items-center justify-center gap-space-xs transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">settings</span>
+            Open settings
+          </button>
+</div>
+</div>
+</div>
+<!-- 4. INLINE FIELD ERROR -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.5px]">INLINE FIELD ERROR</span>
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-medium text-label-medium text-text-primary" for="emp-id-input">Employee Identifier</label>
+<div class="h-12 w-full bg-surface-card rounded-xl border-[1.5px] border-status-suspect px-space-md flex items-center justify-between">
+<input class="w-full bg-transparent font-body-large text-body-large text-text-primary focus:outline-none" id="emp-id-input" readonly="" type="text" value="DA-022"/>
+<span class="material-symbols-outlined text-status-suspect text-[20px] shrink-0 ml-2 select-none">error</span>
+</div>
+<div class="flex items-center gap-1 text-status-suspect mt-0.5">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+<span class="font-caption-timestamp text-caption-timestamp text-status-suspect">This employee ID is already in use.</span>
+</div>
+</div>
+</div>
+<!-- 5. FULL-SCREEN LOAD FAILURE -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.5px]">FULL-SCREEN LOAD FAILURE</span>
+<div class="w-full h-[300px] bg-surface-card rounded-2xl border border-border-divider p-space-lg flex flex-col items-center justify-center text-center">
+<div class="w-16 h-16 rounded-full bg-status-suspect-bg flex items-center justify-center mb-space-base shrink-0">
+<span class="material-symbols-outlined text-status-suspect text-[32px] select-none">cloud_off</span>
+</div>
+<h3 class="font-title-item text-title-item text-text-primary">Couldn't load this</h3>
+<p class="font-caption-timestamp text-caption-timestamp text-text-secondary mt-1 mb-space-md max-w-[220px]">Check your connection and try again.</p>
+<button class="h-11 px-6 bg-brand-primary active:bg-brand-pressed text-on-primary rounded-full font-label-medium text-label-medium flex items-center justify-center gap-space-xs transition-colors" id="retry-btn" type="button">
+<span class="material-symbols-outlined text-[18px]" id="retry-icon">refresh</span>
+<span>Retry</span>
+</button>
+<button class="mt-space-sm text-text-secondary active:text-text-primary font-label-medium text-label-medium py-1" type="button">
+          Go back
+        </button>
+</div>
+</div>
+<!-- 6. REALTIME DISCONNECTED -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.5px]">REALTIME DISCONNECTED</span>
+<div class="w-full h-8 bg-status-stale-bg rounded-lg px-space-md flex items-center justify-center gap-space-xs">
+<span class="material-symbols-outlined text-status-stale text-[16px] animate-spin select-none">sync</span>
+<span class="font-caption-timestamp text-caption-timestamp text-[#92400E] font-medium tracking-tight">Reconnecting…</span>
+</div>
+</div>
+<!-- 7. SNACKBAR -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-[0.5px]">SNACKBAR</span>
+<div class="w-full h-14 bg-status-blocked rounded-xl px-space-md flex items-center justify-between shadow-lg">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="w-2 h-2 rounded-full bg-status-suspect shrink-0"></span>
+<span class="font-body-default text-body-default text-on-primary truncate">Employee blocked</span>
+</div>
+<button class="font-label-medium text-label-medium text-[#4AA5C6] active:text-brand-chip-bg font-semibold uppercase tracking-wider pl-4 shrink-0 transition-opacity" id="undo-btn" type="button">
+          UNDO
+        </button>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Micro-interaction for load failure retry button feedback
+  const retryBtn = document.getElementById('retry-btn');
+  const retryIcon = document.getElementById('retry-icon');
+  
+  if (retryBtn && retryIcon) {
+    retryBtn.addEventListener('click', () => {
+      retryIcon.classList.add('animate-spin');
+      setTimeout(() => {
+        retryIcon.classList.remove('animate-spin');
+      }, 1000);
+    });
+  }
+
+  // Micro-interaction for undo snackbar action
+  const undoBtn = document.getElementById('undo-btn');
+  if (undoBtn) {
+    undoBtn.addEventListener('click', () => {
+      undoBtn.textContent = 'RESTORED';
+      undoBtn.style.color = '#16A34A';
+      setTimeout(() => {
+        undoBtn.textContent = 'UNDO';
+        undoBtn.style.color = '#4AA5C6';
+      }, 1800);
+    });
+  }
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-card/95 backdrop-blur-xl shadow-[0_-1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-brand-primary bg-brand-tint"><div class="flex justify-around items-center h-16"><a class="flex flex-col items-center justify-center gap-space-2xs h-full flex-1 text-text-secondary hover:text-brand-primary transition-colors" data-path="overview" href="#"><span class="material-symbols-outlined text-[22px]">description</span><span class="font-overline-micro text-overline-micro uppercase">Specs</span></a><a class="flex flex-col items-center justify-center gap-space-2xs h-full flex-1 text-text-secondary hover:text-brand-primary transition-colors" data-path="error-offline-states" href="#"><span class="material-symbols-outlined text-[22px]">cloud_off</span><span class="font-overline-micro text-overline-micro uppercase">States</span></a><a class="flex flex-col items-center justify-center gap-space-2xs h-full flex-1 text-text-secondary hover:text-brand-primary transition-colors" data-path="field-telemetry" href="#"><span class="material-symbols-outlined text-[22px]">sensors</span><span class="font-overline-micro text-overline-micro uppercase">Telemetry</span></a><a class="flex flex-col items-center justify-center gap-space-2xs h-full flex-1 text-text-secondary hover:text-brand-primary transition-colors" data-path="terminal-logs" href="#"><span class="material-symbols-outlined text-[22px]">terminal</span><span class="font-overline-micro text-overline-micro uppercase">Logs</span></a></div></nav></body></html>

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_blank" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "brand-primary": "#016893", "on-background": "#131b2e", "error-container": "#ffdad6", "on-secondary-container": "#00587e", "surface-container-highest": "#dae2fd", "status-stale-bg": "#FEF3C7", "on-secondary-fixed": "#001e2e", "surface": "#faf8ff", "secondary-container": "#86cfff", "on-tertiary-fixed": "#002109", "status-off-duty": "#94A3B8", "border-divider": "#E2E8F0", "primary-fixed-dim": "#93ccff", "surface-bright": "#faf8ff", "on-error-container": "#93000a", "surface-card": "#FFFFFF", "surface-container-lowest": "#ffffff", "on-surface": "#131b2e", "error": "#ba1a1a", "primary-fixed": "#cce5ff", "brand-chip-bg": "#C5E1EC", "text-primary": "#0F172A", "outline": "#707881", "secondary": "#00658f", "status-stale": "#F59E0B", "brand-pressed": "#015676", "tertiary-container": "#00873a", "page-bg": "#F8FAFC", "status-suspect": "#DC2626", "status-on-duty": "#16A34A", "on-primary-fixed": "#001d31", "surface-container-low": "#f2f3ff", "surface-container-high": "#e2e7ff", "status-on-duty-bg": "#DCFCE7", "on-secondary-fixed-variant": "#004c6d", "status-suspect-bg": "#FEE2E2", "on-tertiary": "#ffffff", "surface-container": "#eaedff", "secondary-fixed": "#c7e7ff", "on-error": "#ffffff", "tertiary-fixed-dim": "#62df7d", "on-tertiary-container": "#f7fff2", "secondary-fixed-dim": "#86cfff", "inverse-on-surface": "#eef0ff", "status-info-bg": "#E0F2FE", "surface-variant": "#dae2fd", "surface-tint": "#006398", "on-secondary": "#ffffff", "background": "#faf8ff", "text-disabled": "#94A3B8", "brand-tint": "#E8F3F8", "status-info": "#0284C7", "on-primary": "#ffffff", "on-surface-variant": "#3f4850", "status-blocked": "#1E293B", "tertiary": "#006b2c", "border-input": "#CBD5E1", "primary-container": "#007bb9", "surface-dim": "#d2d9f4", "on-tertiary-fixed-variant": "#005320", "tertiary-fixed": "#7ffc97", "inverse-surface": "#283044", "text-secondary": "#64748B", "outline-variant": "#bfc7d2", "on-primary-fixed-variant": "#004b73", "inverse-primary": "#93ccff", "on-primary-container": "#fdfcff", "primary": "#006194" }, borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" }, spacing: { "space-block": "40px", "space-2xs": "4px", "space-section": "48px", "space-sm": "8px", "space-base": "12px", margin: "16px", "space-lg": "24px", "space-touch": "20px", "space-xl": "32px", "space-3xs": "8px", gutter: "16px", "space-md": "16px", "space-xs": "4px" }, fontFamily: { "caption-timestamp": ["DM Sans"], "body-large": ["DM Sans"], "overline-micro": ["DM Sans"], "label-medium": ["DM Sans"], "headline-h2": ["DM Sans"], "display-stat": ["DM Sans"], "body-default": ["DM Sans"], "headline-h3": ["DM Sans"], "title-item": ["DM Sans"] }, fontSize: { "caption-timestamp": ["12px", { lineHeight: "16px", fontWeight: "400" }], "body-large": ["16px", { lineHeight: "24px", fontWeight: "400" }], "overline-micro": ["11px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }], "label-medium": ["13px", { lineHeight: "18px", fontWeight: "500" }], "headline-h2": ["24px", { lineHeight: "32px", fontWeight: "600" }], "display-stat": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }], "body-default": ["14px", { lineHeight: "20px", fontWeight: "400" }], "headline-h3": ["20px", { lineHeight: "28px", fontWeight: "600" }], "title-item": ["18px", { lineHeight: "26px", fontWeight: "600" }] } } } };</script><style>@layer base { html, body { width: 100vw; min-height: 100vh; margin: 0; padding: 0; } body { overscroll-behavior: none; } .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); } .pt-safe { padding-top: env(safe-area-inset-top, 0px); } } ::-webkit-scrollbar { display: none; }</style></head><body class="bg-surface font-body-default text-on-surface antialiased flex flex-col min-h-screen"><main class="flex-1 flex flex-col relative w-full bg-surface"><div class="flex flex-col w-full relative select-none">
+<!-- MAP CANVAS CONTAINER (~506px height) -->
+<div class="relative w-full h-[506px] overflow-hidden bg-[#F1F5F9]">
+<!-- High-Fidelity Vector Agricultural Terrain Background -->
+<svg class="absolute inset-0 w-full h-full" preserveaspectratio="xMidYMid slice" viewbox="0 0 390 506" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<!-- Farmland Parcel Hatching -->
+<pattern height="16" id="cropGrid" patternunits="userSpaceOnUse" width="16">
+<line stroke="#E2E8F0" stroke-dasharray="2 2" stroke-width="0.5" x1="0" x2="16" y1="8" y2="8"></line>
+<line stroke="#E2E8F0" stroke-dasharray="2 2" stroke-width="0.5" x1="8" x2="8" y1="0" y2="16"></line>
+</pattern>
+<!-- Soil Pattern -->
+<pattern height="10" id="vineyardPatt" patterntransform="rotate(25)" patternunits="userSpaceOnUse" width="10">
+<line stroke="#CBD5E1" stroke-width="0.75" x1="0" x2="0" y1="0" y2="10"></line>
+</pattern>
+</defs>
+<!-- Base Canvas Background -->
+<rect fill="#F8FAFC" height="100%" width="100%"></rect>
+<!-- Agricultural Farmland Plots / Green Zones -->
+<polygon fill="#EDF4ED" points="12,68 118,52 142,142 34,168"></polygon>
+<polygon fill="#F1F8F1" points="152,44 284,36 298,124 168,138"></polygon>
+<polygon fill="#EDF4ED" points="308,82 388,74 388,188 290,174"></polygon>
+<polygon fill="#F4F9F4" points="40,240 130,224 144,334 24,352"></polygon>
+<polygon fill="#EDF4ED" points="154,236 268,228 280,314 162,328"></polygon>
+<polygon fill="#F1F8F1" points="288,230 388,218 388,348 294,360"></polygon>
+<polygon fill="#EDF4ED" points="56,380 188,370 178,480 32,476"></polygon>
+<polygon fill="#F4F9F4" points="204,374 374,368 368,490 216,494"></polygon>
+<!-- Crop & Vineyard Pattern Overlays -->
+<polygon fill="url(#cropGrid)" opacity="0.65" points="14,70 116,54 140,140 36,166"></polygon>
+<polygon fill="url(#vineyardPatt)" opacity="0.4" points="290,232 386,220 386,346 296,358"></polygon>
+<polygon fill="url(#cropGrid)" opacity="0.5" points="58,382 186,372 176,478 34,474"></polygon>
+<!-- Godavari Tributary / Irrigation Canal -->
+<path d="M-20,192 C60,186 112,214 186,204 C256,194 318,162 410,172" fill="none" opacity="0.85" stroke="#BAE6FD" stroke-linecap="round" stroke-width="9"></path>
+<path d="M-20,192 C60,186 112,214 186,204 C256,194 318,162 410,172" fill="none" stroke="#E0F2FE" stroke-linecap="round" stroke-width="4"></path>
+<!-- Minor Rural Road Network -->
+<path d="M0,84 L390,116" fill="none" stroke="#E2E8F0" stroke-width="3"></path>
+<path d="M148,0 L168,506" fill="none" stroke="#E2E8F0" stroke-width="3.5"></path>
+<path d="M284,0 L274,506" fill="none" stroke="#E2E8F0" stroke-width="3"></path>
+<path d="M0,364 L390,344" fill="none" stroke="#E2E8F0" stroke-width="3"></path>
+<path d="M22,260 L380,278" fill="none" stroke="#E2E8F0" stroke-width="2.5"></path>
+<path d="M72,12 L72,506" fill="none" stroke="#CBD5E1" stroke-dasharray="4 3" stroke-width="1.5"></path>
+<!-- Primary Arterial Highway (Dindori - Gangapur Link) -->
+<path d="M38,506 C42,420 54,340 76,268 C96,204 154,168 208,126 C268,78 322,46 364,0" fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-width="8"></path>
+<path d="M38,506 C42,420 54,340 76,268 C96,204 154,168 208,126 C268,78 322,46 364,0" fill="none" stroke="#CBD5E1" stroke-linecap="round" stroke-width="5"></path>
+<!-- Peri-Urban Village Labels & POIs -->
+<text fill="#94A3B8" font-family="'DM Sans', sans-serif" font-size="10" font-weight="600" letter-spacing="0.08em" x="32" y="106">MAKHMALABAD</text>
+<text fill="#94A3B8" font-family="'DM Sans', sans-serif" font-size="10" font-weight="600" letter-spacing="0.08em" x="296" y="68">GANGAPUR</text>
+<text fill="#64748B" font-family="'DM Sans', sans-serif" font-size="9" font-weight="500" letter-spacing="0.05em" x="210" y="274">SHIVPURI BEAT</text>
+<text fill="#94A3B8" font-family="'DM Sans', sans-serif" font-size="9" font-weight="500" x="26" y="440">Nashik Central Unit</text>
+<text fill="#64748B" font-family="'DM Sans', sans-serif" font-size="8.5" font-weight="600" transform="rotate(-30 220,98)" x="220" y="98">DINDORI RD</text>
+<!-- Geofence 500m Translucent Radius (around Visit 3 - Shivpuri Farm) -->
+<circle cx="236" cy="242" fill="#E8F3F8" fill-opacity="0.6" r="45" stroke="#016893" stroke-dasharray="3 3" stroke-width="1.5"></circle>
+<!-- Full Day Route Polyline (4px #016893) -->
+<!-- Inception at (58, 442) -> Segments -> Terminus at (336, 92) -->
+<path d="M 58 442
+               C 66 408, 74 382, 78 356
+               C 84 318, 96 294, 116 280
+               C 134 268, 172 264, 196 252
+               C 214 244, 228 244, 236 242
+               C 246 238, 258 222, 254 204
+               C 250 188, 232 176, 218 168
+               C 192 154, 168 140, 164 116
+               C 160 92, 186 78, 214 74
+               C 244 70, 276 80, 298 94
+               C 314 104, 326 102, 336 92" fill="none" id="routeTrajectory" stroke="#016893" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"></path>
+<!-- Anomaly Point Deviation: Dashed Red Segment (#DC2626) -->
+<path d="M 164 116 C 146 110, 134 94, 138 80 C 142 66, 164 74, 178 78" fill="none" stroke="#DC2626" stroke-dasharray="4 3" stroke-linecap="round" stroke-width="3"></path>
+</svg>
+<!-- FLOATING TOP APP BAR (Z-INDEX 20) -->
+<div class="absolute top-[48px] left-[16px] right-[16px] h-[48px] bg-surface-card rounded-[12px] border border-border-divider px-3 flex items-center justify-between shadow-sm z-20">
+<!-- Back Chevron -->
+<button aria-label="Go back" class="w-[40px] h-[40px] flex items-center justify-center text-brand-primary active:bg-brand-tint transition-colors rounded-[8px]" type="button">
+<span class="material-symbols-outlined text-[24px]">chevron_left</span>
+</button>
+<!-- Center Route Replay Metadata -->
+<div class="flex flex-col items-center justify-center text-center">
+<h1 class="font-title-item text-[18px] leading-[22px] font-semibold text-text-primary">Route replay</h1>
+<p class="font-caption-timestamp text-[12px] leading-[16px] text-text-secondary">Suresh Patel · Sat, 11 Oct</p>
+</div>
+<!-- Share Action Button -->
+<button aria-label="Share telemetry" class="w-[40px] h-[40px] flex items-center justify-center text-[#475569] active:bg-slate-100 transition-colors rounded-[8px]" type="button">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+</div>
+<!-- MARKERS OVERLAY (Plotted along trajectory) -->
+<!-- 1. Start Marker (58, 442) -->
+<div class="absolute left-[58px] top-[442px] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[32px] h-[32px] rounded-full bg-status-on-duty border-2 border-white shadow-sm z-10" title="Shift Start 8:04 AM">
+<span class="material-symbols-outlined text-white text-[16px]">flag</span>
+</div>
+<!-- Long Stop 1 (Dwell Point) at (78, 356) -->
+<div class="absolute left-[78px] top-[356px] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[24px] h-[24px] rounded-full bg-status-stale-bg border-2 border-dashed border-status-stale z-10" title="Dwell stop: 32 mins">
+<div class="w-[8px] h-[8px] rounded-full bg-status-stale"></div>
+</div>
+<!-- Customer Visit Pin 1 at (104, 298) -->
+<div class="absolute left-[104px] top-[298px] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[28px] h-[28px] rounded-full bg-brand-primary border-2 border-white shadow-sm z-10" title="Visit 1: Shinde Orchards">
+<span class="font-label-medium text-[12px] font-bold text-white">1</span>
+</div>
+<!-- Customer Visit Pin 2 at (142, 274) -->
+<div class="absolute left-[142px] top-[274px] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[28px] h-[28px] rounded-full bg-brand-primary border-2 border-white shadow-sm z-10" title="Visit 2: Kisan Agro Hub">
+<span class="font-label-medium text-[12px] font-bold text-white">2</span>
+</div>
+<!-- Customer Visit Pin 3 (Shivpuri Farm with geofence center) at (236, 242) -->
+<div class="absolute left-[236px] top-[242px] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[28px] h-[28px] rounded-full bg-brand-primary border-2 border-white shadow-sm z-10" title="Visit 3: Shivpuri Farm">
+<span class="font-label-medium text-[12px] font-bold text-white">3</span>
+</div>
+<!-- Customer Visit Pin 4 at (248, 194) -->
+<div class="absolute left-[248px] top-[194px] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[28px] h-[28px] rounded-full bg-brand-primary border-2 border-white shadow-sm z-10" title="Visit 4: Someshwar Krishi Seva">
+<span class="font-label-medium text-[12px] font-bold text-white">4</span>
+</div>
+<!-- Long Stop 2 (Dwell Point) at (204, 160) -->
+<div class="absolute left-[204px] top-[160px] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[24px] h-[24px] rounded-full bg-status-stale-bg border-2 border-dashed border-status-stale z-10" title="Dwell stop: 44 mins (Lunch)">
+<div class="w-[8px] h-[8px] rounded-full bg-status-stale"></div>
+</div>
+<!-- Flagged Telemetry Anomaly Marker at (142, 70) -->
+<div class="absolute left-[142px] top-[70px] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[28px] h-[28px] rounded-full bg-status-suspect border-2 border-white shadow-sm z-10" title="GPS Jump / Mock Provider Suspect">
+<span class="material-symbols-outlined text-white text-[16px]">priority_high</span>
+</div>
+<!-- Current Scrub Position Marker (~60% along route polyline at 198, 134) -->
+<div class="absolute left-[198px] top-[134px] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[36px] h-[36px] rounded-full bg-white border-[3px] border-brand-primary shadow-md z-15">
+<span class="material-symbols-outlined text-brand-primary text-[20px] transform -rotate-45 font-bold">navigation</span>
+</div>
+<!-- Customer Visit Pin 5 at (284, 84) -->
+<div class="absolute left-[284px] top-[84px] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[28px] h-[28px] rounded-full bg-brand-primary border-2 border-white shadow-sm z-10" title="Visit 5: Gangapur Cooperative">
+<span class="font-label-medium text-[12px] font-bold text-white">5</span>
+</div>
+<!-- End Marker at (336, 92) -->
+<div class="absolute left-[336px] top-[92px] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[32px] h-[32px] rounded-full bg-status-blocked border-2 border-white shadow-sm z-10" title="Shift Terminus 6:12 PM">
+<div class="w-[12px] h-[12px] bg-white rounded-[1px]"></div>
+</div>
+<!-- Mapbox Legal Attribution -->
+<div class="absolute left-[16px] bottom-[14px] text-[10px] leading-[12px] font-caption-timestamp text-[#64748B] bg-white/70 px-1.5 py-0.5 rounded-[2px] pointer-events-none select-none z-10">
+      © Mapbox © OpenStreetMap
+    </div>
+<!-- Floating Map Controls (Right Side Vertical Stack) -->
+<div class="absolute right-[16px] bottom-[20px] flex flex-col gap-1 z-20">
+<button aria-label="Zoom in" class="w-[36px] h-[36px] bg-surface-card border border-border-divider rounded-[8px] flex items-center justify-center text-text-primary active:bg-slate-50 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[20px]">add</span>
+</button>
+<button aria-label="Zoom out" class="w-[36px] h-[36px] bg-surface-card border border-border-divider rounded-[8px] flex items-center justify-center text-text-primary active:bg-slate-50 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[20px]">remove</span>
+</button>
+<button aria-label="Re-center map" class="w-[36px] h-[36px] bg-surface-card border border-border-divider rounded-[8px] flex items-center justify-center text-brand-primary active:bg-slate-50 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[19px]">explore</span>
+</button>
+</div>
+</div>
+<!-- LOWER 40% REPLAY TELEMETRY SHEET (~338px height) -->
+<div class="w-full bg-surface-card rounded-t-[24px] border-t border-border-divider px-[16px] pt-3 pb-6 flex flex-col gap-4 shadow-sm z-30 -mt-2">
+<!-- Centered Drag Handle -->
+<div class="w-full flex items-center justify-center">
+<div class="w-[32px] h-[4px] rounded-full bg-border-input"></div>
+</div>
+<!-- Row of 4 Stat Blocks with 1px Vertical Dividers -->
+<div class="w-full grid grid-cols-4 items-center border border-border-divider rounded-[8px] bg-page-bg py-2.5">
+<!-- Stat 1: Distance -->
+<div class="flex flex-col items-center justify-center text-center px-1 border-r border-border-divider">
+<span class="font-title-item text-[18px] leading-[22px] font-semibold text-text-primary font-mono tracking-tight">47.3 km</span>
+<span class="font-caption-timestamp text-[12px] leading-[16px] text-text-secondary mt-0.5">Distance</span>
+</div>
+<!-- Stat 2: Duration -->
+<div class="flex flex-col items-center justify-center text-center px-1 border-r border-border-divider">
+<span class="font-title-item text-[18px] leading-[22px] font-semibold text-text-primary font-mono tracking-tight">8h 08m</span>
+<span class="font-caption-timestamp text-[12px] leading-[16px] text-text-secondary mt-0.5">Duration</span>
+</div>
+<!-- Stat 3: Visits -->
+<div class="flex flex-col items-center justify-center text-center px-1 border-r border-border-divider">
+<span class="font-title-item text-[18px] leading-[22px] font-semibold text-text-primary font-mono tracking-tight">5</span>
+<span class="font-caption-timestamp text-[12px] leading-[16px] text-text-secondary mt-0.5">Visits</span>
+</div>
+<!-- Stat 4: Flags (Warning State) -->
+<div class="flex flex-col items-center justify-center text-center px-1">
+<span class="font-title-item text-[18px] leading-[22px] font-bold text-status-suspect font-mono tracking-tight">1</span>
+<span class="font-caption-timestamp text-[12px] leading-[16px] text-text-secondary mt-0.5">Flag</span>
+</div>
+</div>
+<!-- Playback Control Row -->
+<div class="w-full flex items-center gap-3">
+<!-- Play/Pause 56px Circular Button -->
+<button aria-label="Pause replay" class="w-[56px] h-[56px] flex-shrink-0 rounded-full bg-brand-primary active:bg-brand-pressed text-white flex items-center justify-center shadow-sm transition-transform active:scale-95" id="playbackToggleBtn" type="button">
+<span class="material-symbols-outlined text-[28px]" id="playbackIcon">pause</span>
+</button>
+<!-- Scrub Track & Timestamps -->
+<div class="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+<!-- Interactive Scrub Track -->
+<div class="relative w-full h-[24px] flex items-center cursor-pointer">
+<!-- Background Track -->
+<div class="w-full h-[6px] bg-border-divider rounded-full relative overflow-visible">
+<!-- Progress Fill (60%) -->
+<div class="h-full bg-brand-primary rounded-full" style="width: 60%;"></div>
+<!-- Visit Tick Markers on Track (15%, 32%, 48%, 70%, 88%) -->
+<div class="absolute top-0 bottom-0 left-[15%] w-[2px] bg-white -translate-x-1/2 opacity-90" title="Visit 1: 15%"></div>
+<div class="absolute top-0 bottom-0 left-[32%] w-[2px] bg-white -translate-x-1/2 opacity-90" title="Visit 2: 32%"></div>
+<div class="absolute top-0 bottom-0 left-[48%] w-[2px] bg-white -translate-x-1/2 opacity-90" title="Visit 3: 48%"></div>
+<div class="absolute top-0 bottom-0 left-[70%] w-[2px] bg-slate-400 -translate-x-1/2 opacity-80" title="Visit 4: 70%"></div>
+<div class="absolute top-0 bottom-0 left-[88%] w-[2px] bg-slate-400 -translate-x-1/2 opacity-80" title="Visit 5: 88%"></div>
+<!-- Scrub Thumb (Positioned at 60%) -->
+<div class="absolute top-1/2 left-[60%] -translate-x-1/2 -translate-y-1/2 w-[20px] h-[20px] rounded-full bg-brand-primary shadow flex items-center justify-center border border-white">
+<div class="w-[6px] h-[6px] rounded-full bg-white"></div>
+</div>
+</div>
+</div>
+<!-- Timestamps: Start, Current Scrub Pill, Terminus -->
+<div class="w-full flex items-center justify-between font-caption-timestamp text-[12px] leading-[16px]">
+<span class="text-text-disabled font-mono">8:04 AM</span>
+<div class="bg-brand-tint px-2.5 py-0.5 rounded-full flex items-center justify-center">
+<span class="font-label-medium text-[12px] font-semibold text-brand-primary font-mono">2:46 PM</span>
+</div>
+<span class="text-text-disabled font-mono">6:12 PM</span>
+</div>
+</div>
+</div>
+<!-- Speed Multiplier Chips Row -->
+<div class="w-full flex items-center justify-center gap-2">
+<!-- 1x Speed -->
+<button class="h-[28px] px-3.5 rounded-full bg-surface-card border border-border-input text-text-secondary font-label-medium text-[13px] font-medium active:bg-slate-100 flex items-center justify-center transition-colors" type="button">
+        1x
+      </button>
+<!-- 2x Speed (Active Selected State) -->
+<button class="h-[28px] px-3.5 rounded-full bg-brand-primary text-white font-label-medium text-[13px] font-semibold shadow-xs flex items-center justify-center" type="button">
+        2x
+      </button>
+<!-- 4x Speed -->
+<button class="h-[28px] px-3.5 rounded-full bg-surface-card border border-border-input text-text-secondary font-label-medium text-[13px] font-medium active:bg-slate-100 flex items-center justify-center transition-colors" type="button">
+        4x
+      </button>
+</div>
+<!-- Telemetry Anomaly / Flag Notification Banner -->
+<div class="w-full bg-status-suspect-bg rounded-[12px] p-3 flex items-center justify-between border border-[#FECACA]">
+<div class="flex items-center gap-2 min-w-0 pr-2">
+<span class="material-symbols-outlined text-status-suspect text-[18px] flex-shrink-0" style="font-variation-settings: 'FILL' 1;">warning</span>
+<span class="font-body-default text-[13px] leading-[18px] text-text-primary font-normal truncate">1 flagged point excluded from distance</span>
+</div>
+<button class="flex-shrink-0 font-label-medium text-[13px] font-semibold text-brand-primary hover:underline active:text-brand-pressed" type="button">
+        View
+      </button>
+</div>
+</div>
+</div>
+<script>
+  // Simple micro-interaction for playback pause/play state toggle
+  document.getElementById('playbackToggleBtn')?.addEventListener('click', function() {
+    const icon = document.getElementById('playbackIcon');
+    if (icon) {
+      if (icon.textContent === 'pause') {
+        icon.textContent = 'play_arrow';
+      } else {
+        icon.textContent = 'pause';
+      }
+    }
+  });
+</script></main></body></html>

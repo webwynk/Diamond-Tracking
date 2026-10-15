@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_blank" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "status-off-duty": "#94A3B8", "primary-fixed": "#cce5ff", "brand-primary": "#016893", "on-surface": "#131b2e", "brand-pressed": "#015676", "background": "#faf8ff", "border-input": "#CBD5E1", "status-on-duty": "#16A34A", "error": "#ba1a1a", "secondary": "#00658f", "surface-container-low": "#f2f3ff", "status-info": "#0284C7", "on-secondary-fixed": "#001e2e", "on-tertiary-fixed": "#002109", "inverse-surface": "#283044", "primary-fixed-dim": "#93ccff", "surface-card": "#FFFFFF", "on-background": "#131b2e", "tertiary": "#006b2c", "secondary-container": "#86cfff", "surface": "#faf8ff", "tertiary-fixed": "#7ffc97", "on-tertiary": "#ffffff", "on-tertiary-fixed-variant": "#005320", "primary-container": "#007bb9", "on-primary-fixed-variant": "#004b73", "outline-variant": "#bfc7d2", "page-bg": "#F8FAFC", "status-on-duty-bg": "#DCFCE7", "on-primary-fixed": "#001d31", "surface-container-high": "#e2e7ff", "on-surface-variant": "#3f4850", "text-secondary": "#64748B", "surface-container-highest": "#dae2fd", "surface-dim": "#d2d9f4", "brand-tint": "#E8F3F8", "status-blocked": "#1E293B", "secondary-fixed": "#c7e7ff", "inverse-primary": "#93ccff", "brand-chip-bg": "#C5E1EC", "outline": "#707881", "secondary-fixed-dim": "#86cfff", "status-stale-bg": "#FEF3C7", "surface-container-lowest": "#ffffff", "text-primary": "#0F172A", "status-suspect": "#DC2626", "border-divider": "#E2E8F0", "on-primary-container": "#fdfcff", "tertiary-container": "#00873a", "surface-tint": "#006398", "inverse-on-surface": "#eef0ff", "text-disabled": "#94A3B8", "on-secondary": "#ffffff", "on-error": "#ffffff", "surface-bright": "#faf8ff", "error-container": "#ffdad6", "on-secondary-fixed-variant": "#004c6d", "tertiary-fixed-dim": "#62df7d", "on-error-container": "#93000a", "surface-variant": "#dae2fd", "status-info-bg": "#E0F2FE", "status-suspect-bg": "#FEE2E2", "status-stale": "#F59E0B", "on-tertiary-container": "#f7fff2", "primary": "#006194", "surface-container": "#eaedff", "on-primary": "#ffffff", "on-secondary-container": "#00587e" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-md": "16px", "space-xl": "32px", "space-block": "40px", "gutter": "16px", "space-section": "48px", "space-lg": "24px", "space-base": "12px", "space-3xs": "8px", "space-2xs": "4px", "space-sm": "8px", "space-touch": "20px", "space-xs": "4px", "margin": "16px" }, fontFamily: { "label-medium": ["DM Sans"], "display-stat": ["DM Sans"], "headline-h3": ["DM Sans"], "headline-h2": ["DM Sans"], "body-large": ["DM Sans"], "title-item": ["DM Sans"], "body-default": ["DM Sans"], "overline-micro": ["DM Sans"], "caption-timestamp": ["DM Sans"] }, fontSize: { "label-medium": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "display-stat": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-h3": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "headline-h2": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "body-large": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "title-item": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "body-default": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "overline-micro": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }], "caption-timestamp": ["12px", { "lineHeight": "16px", "fontWeight": "400" }] } } } }</script></head><body class="bg-surface font-body-default text-body-default text-on-surface flex flex-col min-h-screen"><main class="flex flex-col relative w-full bg-surface pb-safe"><div class="flex flex-col w-full bg-page-bg">
+<!-- Top App Bar -->
+<header class="w-full h-[56px] bg-surface-card border-b border-border-divider px-margin flex items-center justify-between sticky top-0 z-20">
+<button aria-label="Close" class="w-10 h-10 -ml-2 flex items-center justify-center text-text-secondary active:text-text-primary transition-colors" type="button">
+<span class="material-symbols-outlined text-[22px]">close</span>
+</button>
+<h1 class="font-headline-h3 text-headline-h3 text-text-primary text-center flex-1 pr-2">Add employee</h1>
+<button class="font-label-medium text-label-medium text-text-disabled cursor-not-allowed px-2 py-1" disabled="" id="header-save-btn" type="button">
+      Save
+    </button>
+</header>
+<!-- Scrollable Form Canvas -->
+<div class="flex flex-col px-margin py-margin gap-4 pb-28">
+<!-- Card 1: EMPLOYEE DETAILS -->
+<section class="bg-surface-card rounded-xl border border-border-divider p-margin flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<span class="font-overline-micro text-overline-micro text-text-secondary uppercase tracking-[0.05em]">EMPLOYEE DETAILS</span>
+<span class="material-symbols-outlined text-[16px] text-text-disabled">badge</span>
+</div>
+<!-- Field 1: Full name -->
+<div class="flex flex-col gap-1">
+<label class="font-label-medium text-label-medium text-text-secondary" for="emp-name">Full name</label>
+<div class="h-12 w-full rounded-lg border border-border-input bg-surface-card px-3 flex items-center focus-within:border-brand-primary transition-colors">
+<input class="w-full bg-transparent font-body-large text-body-large text-text-primary outline-none" id="emp-name" placeholder="Enter full name" type="text" value="Kiran Deshmukh"/>
+</div>
+</div>
+<!-- Field 2: Phone number -->
+<div class="flex flex-col gap-1">
+<label class="font-label-medium text-label-medium text-text-secondary" for="emp-phone">Phone number</label>
+<div class="h-12 w-full rounded-lg border border-border-input bg-surface-card px-3 flex items-center gap-2 focus-within:border-brand-primary transition-colors">
+<span class="material-symbols-outlined text-[18px] text-text-disabled flex-shrink-0">call</span>
+<input class="w-full bg-transparent font-body-large text-body-large text-text-primary outline-none" id="emp-phone" placeholder="+91 00000 00000" type="tel" value="+91 98220 11334"/>
+</div>
+<p class="font-caption-timestamp text-caption-timestamp text-text-disabled">Used for SMS dispatch and field verification</p>
+</div>
+<!-- Field 3: Email -->
+<div class="flex flex-col gap-1">
+<label class="font-label-medium text-label-medium text-text-secondary" for="emp-email">Email</label>
+<div class="h-12 w-full rounded-lg border border-border-input bg-surface-card px-3 flex items-center gap-2 focus-within:border-brand-primary transition-colors">
+<span class="material-symbols-outlined text-[18px] text-text-disabled flex-shrink-0">mail</span>
+<input class="w-full bg-transparent font-body-large text-body-large text-text-primary outline-none" id="emp-email" placeholder="name@diamondagritech.in" type="email" value="kiran.d@diamondagritech.in"/>
+</div>
+<p class="font-caption-timestamp text-caption-timestamp text-text-disabled">Official company domain required</p>
+</div>
+</section>
+<!-- Card 2: LOGIN -->
+<section class="bg-surface-card rounded-xl border border-border-divider p-margin flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<span class="font-overline-micro text-overline-micro text-text-secondary uppercase tracking-[0.05em]">LOGIN</span>
+<span class="material-symbols-outlined text-[16px] text-text-disabled">key</span>
+</div>
+<!-- Field 1: Employee ID -->
+<div class="flex flex-col gap-1">
+<label class="font-label-medium text-label-medium text-text-secondary" for="emp-id">Employee ID</label>
+<div class="h-12 w-full rounded-lg border border-border-input bg-surface-card px-3 flex items-center justify-between gap-2 focus-within:border-brand-primary transition-colors">
+<input class="w-full bg-transparent font-body-large text-body-large text-text-primary outline-none uppercase font-semibold" id="emp-id" placeholder="DA-XXX" type="text" value="DA-144"/>
+<div class="flex-shrink-0 flex items-center gap-1 bg-status-on-duty-bg px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[14px] text-status-on-duty">check_circle</span>
+<span class="font-caption-timestamp text-caption-timestamp text-status-on-duty font-semibold">Available</span>
+</div>
+</div>
+<p class="font-caption-timestamp text-caption-timestamp text-text-disabled">Cannot be changed later.</p>
+</div>
+<!-- Field 2: Initial PIN -->
+<div class="flex flex-col gap-1">
+<label class="font-label-medium text-label-medium text-text-secondary" for="emp-pin">Initial PIN</label>
+<div class="h-12 w-full rounded-lg border border-border-input bg-surface-card px-3 flex items-center justify-between gap-2 focus-within:border-brand-primary transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-text-disabled">lock</span>
+<input class="w-32 bg-transparent font-body-large text-body-large text-text-primary outline-none tracking-widest" id="emp-pin" maxlength="6" type="password" value="849201"/>
+</div>
+<button class="flex-shrink-0 h-8 px-2 flex items-center gap-1 text-brand-primary active:bg-brand-tint rounded transition-colors" id="btn-generate-pin" title="Regenerate random PIN" type="button">
+<span class="material-symbols-outlined text-[18px]" id="pin-refresh-icon">casino</span>
+<span class="font-caption-timestamp text-caption-timestamp font-medium">Regen</span>
+</button>
+</div>
+<p class="font-caption-timestamp text-caption-timestamp text-text-disabled">The employee must change this at first login.</p>
+</div>
+</section>
+<!-- Card 3: ROLE -->
+<section class="bg-surface-card rounded-xl border border-border-divider p-margin flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="font-overline-micro text-overline-micro text-text-secondary uppercase tracking-[0.05em]">ROLE</span>
+<span class="font-caption-timestamp text-caption-timestamp text-text-secondary">Permissions tier</span>
+</div>
+<div aria-label="Employee Role" class="grid grid-cols-2 gap-3" role="radiogroup">
+<!-- Tile 1 (SELECTED: Employee) -->
+<button aria-checked="true" class="h-[72px] rounded-lg border-2 border-brand-primary bg-brand-tint px-3 flex items-center justify-between text-left transition-all" id="role-employee" role="radio" type="button">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded bg-brand-chip-bg flex items-center justify-center text-brand-primary">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-medium text-label-medium font-semibold text-brand-primary">Employee</span>
+<span class="font-caption-timestamp text-caption-timestamp text-text-secondary">Field Officer</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[18px] text-brand-primary">check_circle</span>
+</button>
+<!-- Tile 2 (UNSELECTED: Admin) -->
+<button aria-checked="false" class="h-[72px] rounded-lg border border-border-input bg-surface-card px-3 flex items-center justify-between text-left transition-all hover:bg-page-bg" id="role-admin" role="radio" type="button">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center text-text-secondary">
+<span class="material-symbols-outlined text-[20px]">admin_panel_settings</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-medium text-label-medium font-medium text-text-secondary">Admin</span>
+<span class="font-caption-timestamp text-caption-timestamp text-text-disabled">Supervisor</span>
+</div>
+</div>
+<span class="w-4 h-4 rounded-full border border-border-input"></span>
+</button>
+</div>
+</section>
+<!-- Informational Notice Strip -->
+<div class="rounded-lg bg-status-info-bg border border-status-info-bg p-3 flex items-start gap-3">
+<span class="material-symbols-outlined text-[20px] text-status-info flex-shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">info</span>
+<p class="font-body-default text-body-default text-text-primary leading-snug">
+        The employee will be asked to allow location access and background tracking at first login.
+      </p>
+</div>
+<!-- Telemetry Diagnostic Preview -->
+<div class="bg-surface-card rounded-lg border border-border-divider p-3 flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[20px] text-brand-primary">my_location</span>
+<div class="flex flex-col">
+<span class="font-caption-timestamp text-caption-timestamp font-medium text-text-primary">Auto-Provision GPS Sync</span>
+<span class="font-overline-micro text-overline-micro text-text-secondary">15-SECOND HEARTBEAT ACTIVE</span>
+</div>
+</div>
+<span class="font-overline-micro text-overline-micro bg-status-on-duty-bg text-status-on-duty px-2 py-0.5 rounded font-semibold uppercase">READY</span>
+</div>
+</div>
+<!-- Pinned Bottom Bar -->
+<div class="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto bg-surface-card border-t border-border-divider p-margin pb-safe z-30">
+<button class="w-full h-12 rounded-lg bg-brand-primary active:bg-brand-pressed text-surface-card font-label-medium text-label-medium font-semibold flex items-center justify-center gap-2 transition-colors" id="btn-submit" type="button">
+<span class="material-symbols-outlined text-[20px]">person_add</span>
+<span>Create employee</span>
+</button>
+</div>
+</div>
+<script>
+  (function() {
+    const roleEmployee = document.getElementById('role-employee');
+    const roleAdmin = document.getElementById('role-admin');
+    const regenBtn = document.getElementById('btn-generate-pin');
+    const pinInput = document.getElementById('emp-pin');
+    const refreshIcon = document.getElementById('pin-refresh-icon');
+    const submitBtn = document.getElementById('btn-submit');
+    const headerSaveBtn = document.getElementById('header-save-btn');
+
+    let currentRole = 'employee';
+
+    function setRole(role) {
+      currentRole = role;
+      if (role === 'employee') {
+        roleEmployee.className = "h-[72px] rounded-lg border-2 border-brand-primary bg-brand-tint px-3 flex items-center justify-between text-left transition-all";
+        roleEmployee.setAttribute('aria-checked', 'true');
+        roleEmployee.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 1";
+        
+        roleAdmin.className = "h-[72px] rounded-lg border border-border-input bg-surface-card px-3 flex items-center justify-between text-left transition-all hover:bg-page-bg";
+        roleAdmin.setAttribute('aria-checked', 'false');
+      } else {
+        roleAdmin.className = "h-[72px] rounded-lg border-2 border-brand-primary bg-brand-tint px-3 flex items-center justify-between text-left transition-all";
+        roleAdmin.setAttribute('aria-checked', 'true');
+        
+        roleEmployee.className = "h-[72px] rounded-lg border border-border-input bg-surface-card px-3 flex items-center justify-between text-left transition-all hover:bg-page-bg";
+        roleEmployee.setAttribute('aria-checked', 'false');
+        roleEmployee.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 0";
+      }
+    }
+
+    if (roleEmployee && roleAdmin) {
+      roleEmployee.addEventListener('click', () => setRole('employee'));
+      roleAdmin.addEventListener('click', () => setRole('admin'));
+    }
+
+    if (regenBtn && pinInput) {
+      regenBtn.addEventListener('click', () => {
+        const randomPin = Math.floor(100000 + Math.random() * 900000).toString();
+        pinInput.value = randomPin;
+        if (refreshIcon) {
+          refreshIcon.classList.add('rotate-180');
+          setTimeout(() => refreshIcon.classList.remove('rotate-180'), 300);
+        }
+      });
+    }
+
+    // Interactive confirmation response on primary button
+    if (submitBtn) {
+      submitBtn.addEventListener('click', () => {
+        const originalContent = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span><span>Provisioning DA-144...</span>';
+        submitBtn.classList.add('bg-brand-pressed');
+        setTimeout(() => {
+          submitBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">check</span><span>Employee Created!</span>';
+          submitBtn.classList.remove('bg-brand-pressed');
+          submitBtn.classList.add('bg-status-on-duty');
+          if (headerSaveBtn) {
+            headerSaveBtn.classList.remove('text-text-disabled', 'cursor-not-allowed');
+            headerSaveBtn.classList.add('text-brand-primary', 'cursor-pointer');
+            headerSaveBtn.removeAttribute('disabled');
+          }
+        }, 800);
+      });
+    }
+  })();
+</script></main>
+</body></html>

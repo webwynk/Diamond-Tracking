@@ -92,13 +92,17 @@ Done:
 - Cloudinary upload preset **`diamond`** — signing mode Signed, asset folder `diamond-images/visits`, overwrite-on-same-public-ID ON.
 - Map stack decided: **MapLibre + OpenFreeMap**. No account or token needed, so `env.json` carries no map credential.
 - `env.json` populated with all five client-side values; `.gitignore` created and verified against a test repo.
-- `designs/` folder created. **No design images supplied yet.**
+- `designs/` folder populated with all 30 reference images from `Design Reference/`.
+- Brand logo mark added at `assets/image/logo.png` and registered in `pubspec.yaml`.
 
 **Phase 0 Step 1 complete** (2026-10-13): Flutter scaffold, git initialised, build-time config wiring with loud startup failure, folder structure, strict lints, DM Sans bundled. Analyzer clean, 2 tests pass, debug APK builds, no secrets committed.
 
-**Phase 0 Step 2 complete** (2026-10-13, visually verified on emulator 2026-10-15): design-system tokens in `lib/core/theme/` — colours, typography, dimensions, and one forced light `ThemeData`. 22 tests pass, including WCAG contrast computed from the real token values. Visual verification confirmed on Android emulator by the owner. Temporary theme preview page renders every token for visual checking; **delete it when Phase 1 adds routing.**
+**Phase 0 Step 2 complete** (2026-10-13, visually verified on emulator 2026-10-15): design-system tokens in `lib/core/theme/` — colours, typography, dimensions, and one forced light `ThemeData`. 22 tests pass, including WCAG contrast computed from the real token values. Visual verification confirmed on Android emulator by the owner.
 
-Next: Phase 0 Step 3 — the shared widget library. **Needs explicit approval before starting.**
+**Phase 0 Step 3 complete** (2026-10-15): global shared widget library in `lib/shared/widgets/` — `AppButton`, `AppIconButton`, `AppTextField`, `AppCard`, `AppStatCard`, `AppStatusPill`, `AppBadge`, `AppEmptyState`, `AppBanner`, `AppErrorView`, `AppShimmer`, `AppListSkeleton`, `AppStatRowSkeleton`, `AppPaginationLoader`, `AppMapPlaceholder`, and `AppSnackbar`. 38 tests pass, debug APK builds, 0 analyze issues. Showcased in `theme_preview_page.dart`.
+
+**Phase 0 Exit Criteria fully met.**
+Next: Phase 1 — Auth, roles, and the background tracking spike. **Step 1: Profiles schema & role model with Supabase Auth. Needs explicit approval before starting.**
 
 ---
 

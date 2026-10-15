@@ -35,6 +35,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  assets:
+    - assets/image/
+
   # DM Sans is BUNDLED, not fetched at runtime, so the first screen is never
   # unstyled on a slow connection. See docs/03-DESIGN-SYSTEM.md.
   #

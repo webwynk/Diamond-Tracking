@@ -94,6 +94,58 @@ For a bug found but not yet fixed.
 
 # History
 
+## [2026-10-15] Phase 0 Step 3 — shared widget library
+
+**Type:** Feature
+**Phase:** Phase 0, Step 3
+**Scope:** `lib/shared/widgets/` (14 new files), `pubspec.yaml`, `assets/image/`, `designs/`, `lib/features/dev/theme_preview_page.dart`, `test/shared_widgets_test.dart`
+
+**What changed**
+
+The shared widget library is complete, providing production-grade, atomic and composite reusable components adhering strictly to docs/03-DESIGN-SYSTEM.md and reference screens 27–30 from docs/09-SCREEN-DESIGN-PROMPTS.md.
+
+- **`app_button.dart`** — `AppButton` supporting Primary, Secondary, Tertiary, and Destructive variants with inline loading spinner (label switches to loadingLabel and interaction is disabled) and `disabledReason` tooltip. `AppIconButton` enforces minimum 48×48 dp touch target and mandatory tooltip/semantic label.
+- **`app_text_field.dart`** — `AppTextField` strictly enforcing the rule that labels sit above the field (never placeholder-only), with 48 dp height, 12 dp radius, prefix/suffix support, and inline error banner with warning icon.
+- **`app_card.dart` & `app_stat_card.dart`** — `AppCard` flat surface container with 1px border. `AppStatCard` with overline title, tabular display metrics, unit label, and optional trend caption.
+- **`app_status_pill.dart` & `app_badge.dart`** — `AppStatusPill` enforcing colour + text label + 8 dp dot (colour alone is impossible). `AppBadge` for numeric counters.
+- **`app_empty_state.dart`** — Centered illustration/icon container, title, description, and action button matching Screen 28 reference, with factory presets for `noEmployees`, `nobodyOnDuty`, `noNotifications`, `filteredToNothing`, `searchNotFound`, `noRoute`, and `routeExpired`.
+- **`app_banner.dart` & `app_error_view.dart`** — Contextual telemetry banners matching Screen 29 (Offline info reassurance with cloud-off icon, Sync pending with count, GPS off blocking alert with Open settings action). `AppErrorView` load failure view with icon badge, title, caption, and retry button.
+- **`app_shimmer.dart`, `app_skeletons.dart`, `app_pagination_loader.dart`, `app_map_placeholder.dart`** — 1.5s sweeping gradient shimmer respecting `disableAnimations` / `accessibleNavigation`, `AppListSkeleton` (5 employee rows), `AppStatRowSkeleton`, `AppPaginationLoader` (56 dp spinner row, never a skeleton), and `AppMapPlaceholder` (180 dp branded placeholder, never a skeleton).
+- **`app_snackbar.dart`** — Standard dark `#1E293B` floating snackbar with `#4AA5C6` action text (passing WCAG AA at 5.22:1).
+- **`widgets.dart`** — Barrel export file for clean single-line imports.
+- Registered `assets/image/` in `pubspec.yaml` and loaded the brand logo mark from `assets/image/logo.png`.
+- Synced all 30 screen design PNGs into `designs/` matching `designs/README.md`.
+- Expanded `theme_preview_page.dart` with a full showcase of all shared widgets.
+
+**Why**
+Phase 0 Step 3, approved by the owner. Building the shared widgets before feature screens prevents ad-hoc styling and guarantees consistency and accessibility across both Employee and Admin flows.
+
+**Database impact**
+None.
+
+**Verified by**
+- [x] Re-read the diff as a reviewer
+- [x] Analyzer clean (0 issues)
+- [x] Formatter clean (`dart format`)
+- [x] 38 tests pass (22 existing + 16 new widget tests covering variants, touch targets, loading states, and accessibility)
+- [x] Debug APK builds cleanly (`assembleDebug` succeeded in 47.9s)
+- [x] Token discipline swept: grepped `lib/shared/widgets/` for literal hex, literal font sizes, and debug prints. Result: 0 matches.
+- [x] Brand logo mark loaded and verified in showcase
+- [x] All 30 reference designs synced into `designs/`
+
+**Bugs found and fixed during this step**
+1. Dead-code sweep found a literal `fontSize: 11` in `app_badge.dart`. Replaced with `AppTypography.overline.tabular.withColor(textColor)`.
+2. Initial draft used unexported token names `surfaceCard` and `borderInput`; corrected to `AppColors.surface` and `AppColors.neutral300`.
+3. Shimmer loop duration corrected from `skeletonLoop` to `AppMotion.shimmer`.
+
+**Result**
+Shared widget library complete, tested, and ready for feature screen development in Phase 1.
+
+**Follow-ups**
+- Phase 1 Step 1: Design `profiles` schema and role model with Supabase Auth.
+
+---
+
 ## [2026-10-13] Phase 0 Step 2 — design system theme
 
 **Type:** Feature

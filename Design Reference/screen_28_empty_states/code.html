@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_blank" name="shell-type"/><title>Diamond Agritech Tracking</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={"darkMode":"class","theme":{"extend":{"colors":{"text-primary":"#0F172A","status-on-duty-bg":"#DCFCE7","on-surface-variant":"#3f4850","on-primary":"#ffffff","on-secondary-container":"#00587e","tertiary-fixed":"#7ffc97","text-secondary":"#64748B","on-tertiary-fixed":"#002109","primary-fixed":"#cce5ff","surface-container-low":"#f2f3ff","secondary":"#00658f","tertiary-container":"#00873a","surface-bright":"#faf8ff","error":"#ba1a1a","on-tertiary":"#ffffff","inverse-surface":"#283044","on-primary-fixed-variant":"#004b73","status-on-duty":"#16A34A","surface-container":"#eaedff","on-tertiary-container":"#f7fff2","error-container":"#ffdad6","brand-primary":"#016893","brand-tint":"#E8F3F8","tertiary-fixed-dim":"#62df7d","status-off-duty":"#94A3B8","on-error-container":"#93000a","outline-variant":"#bfc7d2","secondary-container":"#86cfff","surface-tint":"#006398","border-divider":"#E2E8F0","text-disabled":"#94A3B8","primary-fixed-dim":"#93ccff","on-primary-container":"#fdfcff","status-stale":"#F59E0B","brand-chip-bg":"#C5E1EC","brand-pressed":"#015676","on-secondary-fixed-variant":"#004c6d","outline":"#707881","inverse-primary":"#93ccff","on-tertiary-fixed-variant":"#005320","tertiary":"#006b2c","secondary-fixed-dim":"#86cfff","inverse-on-surface":"#eef0ff","background":"#faf8ff","surface-container-lowest":"#ffffff","surface-variant":"#dae2fd","page-bg":"#F8FAFC","surface-dim":"#d2d9f4","surface-container-highest":"#dae2fd","on-secondary":"#ffffff","status-stale-bg":"#FEF3C7","on-surface":"#131b2e","on-error":"#ffffff","status-info-bg":"#E0F2FE","on-background":"#131b2e","surface-card":"#FFFFFF","secondary-fixed":"#c7e7ff","status-info":"#0284C7","border-input":"#CBD5E1","status-suspect":"#DC2626","status-suspect-bg":"#FEE2E2","primary":"#006194","on-secondary-fixed":"#001e2e","on-primary-fixed":"#001d31","surface-container-high":"#e2e7ff","status-blocked":"#1E293B","primary-container":"#007bb9","surface":"#faf8ff"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"space-base":"12px","space-xl":"32px","space-block":"40px","space-xs":"4px","space-2xs":"4px","space-sm":"8px","space-section":"48px","space-lg":"24px","space-3xs":"8px","margin":"16px","space-touch":"20px","space-md":"16px","gutter":"16px"},"fontFamily":{"caption-timestamp":["DM Sans"],"body-large":["DM Sans"],"headline-h2":["DM Sans"],"overline-micro":["DM Sans"],"display-stat":["DM Sans"],"label-medium":["DM Sans"],"body-default":["DM Sans"],"title-item":["DM Sans"],"headline-h3":["DM Sans"]},"fontSize":{"caption-timestamp":["12px",{"lineHeight":"16px","fontWeight":"400"}],"body-large":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-h2":["24px",{"lineHeight":"32px","fontWeight":"600"}],"overline-micro":["11px",{"lineHeight":"16px","letterSpacing":"0.05em","fontWeight":"600"}],"display-stat":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}],"label-medium":["13px",{"lineHeight":"18px","fontWeight":"500"}],"body-default":["14px",{"lineHeight":"20px","fontWeight":"400"}],"title-item":["18px",{"lineHeight":"26px","fontWeight":"600"}],"headline-h3":["20px",{"lineHeight":"28px","fontWeight":"600"}]}}}};</script></head><body class="bg-page-bg text-on-surface font-body-default text-body-default min-h-screen"><main class="w-full min-h-screen bg-page-bg"><div class="flex flex-col w-full">
+<div class="w-full max-w-5xl mx-auto px-4 py-8 md:py-12 flex flex-col items-center">
+<!-- Top System Specification Header -->
+<header class="w-full max-w-3xl mb-10 text-center flex flex-col items-center">
+<div class="inline-flex items-center gap-2 mb-2 px-2.5 py-1 bg-surface-card border border-border-divider">
+<span class="w-1.5 h-1.5 bg-brand-primary"></span>
+<span class="font-overline-micro text-overline-micro text-text-secondary uppercase tracking-widest">
+          DIAMOND AGRITECH · UI SYSTEM SPECIFICATION
+        </span>
+</div>
+<h1 class="font-headline-h2 text-headline-h2 text-text-primary tracking-tight mt-1 mb-2">
+        Screen 28 — Empty States Reference Sheet
+      </h1>
+<p class="font-body-default text-body-default text-text-secondary max-w-xl text-center">
+        Comprehensive reference matrix of default, filter, and error-adjacent empty view states across field tracking workflows.
+      </p>
+<div class="mt-4 flex flex-wrap items-center justify-center gap-4 text-text-secondary font-caption-timestamp text-caption-timestamp">
+<span class="inline-flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-status-on-duty"></span>
+          Matrix Mode: Android Telemetry v3.4
+        </span>
+<span class="text-text-disabled">/</span>
+<span>Canvas Scale: 1:1 Reference Target</span>
+<span class="text-text-disabled">/</span>
+<span class="text-brand-primary font-medium">6 Scenarios Calibrated</span>
+</div>
+</header>
+<!-- 2x3 Grid Container -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-10 gap-x-8 w-full max-w-4xl justify-items-center">
+<!-- Card 1: NO EMPLOYEES -->
+<div class="flex flex-col items-center w-full max-w-[260px]">
+<div class="w-full flex items-center justify-between pb-1.5 mb-2 px-1 border-b border-border-divider">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-wider">
+            CASE 01 · NO EMPLOYEES
+          </span>
+<span class="font-overline-micro text-overline-micro text-text-secondary">EMPTY_INIT</span>
+</div>
+<div class="w-full bg-surface-card rounded-2xl border border-border-divider shadow-sm p-4 flex flex-col items-center text-center justify-between min-h-[300px] transition-all hover:border-brand-primary/40">
+<div class="flex flex-col items-center w-full pt-2">
+<!-- Vector Illustration 56px -->
+<div class="w-14 h-14 rounded-full bg-brand-tint flex items-center justify-center mb-4 relative">
+<svg class="w-8 h-8 text-border-input" fill="none" viewbox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+<!-- Group outline -->
+<circle cx="12" cy="11" r="4.5" stroke="currentColor" stroke-width="1.8"></circle>
+<path d="M5 24c0-3.866 3.134-7 7-7 2.15 0 4.075.97 5.372 2.5" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+<circle cx="21" cy="12" r="3.5" stroke="currentColor" stroke-dasharray="2 2" stroke-width="1.5"></circle>
+<path d="M21 19c2.761 0 5 2.239 5 5" stroke="currentColor" stroke-dasharray="2 2" stroke-linecap="round" stroke-width="1.5"></path>
+</svg>
+<!-- Brand Accent Badge -->
+<span class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-brand-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</span>
+</div>
+<h3 class="font-title-item text-body-large font-semibold text-text-primary tracking-tight mb-1">
+              No employees yet
+            </h3>
+<p class="font-caption-timestamp text-caption-timestamp text-text-secondary max-w-[190px] leading-relaxed">
+              Add your first team member to initiate regional tracking.
+            </p>
+</div>
+<div class="w-full pt-4 mt-auto">
+<button class="w-full h-9 rounded-full bg-brand-primary hover:bg-brand-pressed text-on-primary font-label-medium text-label-medium inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer px-4">
+<span class="material-symbols-outlined text-[16px]">person_add</span>
+<span>Add employee</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 2: NOBODY ON DUTY -->
+<div class="flex flex-col items-center w-full max-w-[260px]">
+<div class="w-full flex items-center justify-between pb-1.5 mb-2 px-1 border-b border-border-divider">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-wider">
+            CASE 02 · NOBODY ON DUTY
+          </span>
+<span class="font-overline-micro text-overline-micro text-text-secondary">RADAR_IDLE</span>
+</div>
+<div class="w-full bg-surface-card rounded-2xl border border-border-divider shadow-sm p-4 flex flex-col items-center text-center justify-between min-h-[300px] transition-all hover:border-brand-primary/40">
+<div class="flex flex-col items-center w-full pt-2">
+<!-- Vector Illustration 56px -->
+<div class="w-14 h-14 rounded-full bg-brand-tint flex items-center justify-center mb-4 relative">
+<svg class="w-9 h-9 text-border-input" fill="none" viewbox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+<!-- Concentric radar circles -->
+<circle cx="18" cy="18" r="14" stroke="currentColor" stroke-dasharray="3 3" stroke-width="1.2"></circle>
+<circle cx="18" cy="18" r="8" stroke="currentColor" stroke-width="1.2"></circle>
+<!-- Map pin silhouette with brand center -->
+<path d="M18 7c-3.314 0-6 2.686-6 6 0 4.5 6 11 6 11s6-6.5 6-11c0-3.314-2.686-6-6-6z" fill="#FFFFFF" stroke="currentColor" stroke-width="1.4"></path>
+<circle cx="18" cy="13" fill="#016893" r="2.5"></circle>
+</svg>
+</div>
+<h3 class="font-title-item text-body-large font-semibold text-text-primary tracking-tight mb-1">
+              No one is on duty
+            </h3>
+<p class="font-caption-timestamp text-caption-timestamp text-text-secondary max-w-[190px] leading-relaxed">
+              Nobody has started duty today in this agritech sector.
+            </p>
+</div>
+<div class="w-full pt-4 mt-auto">
+<button class="w-full h-9 rounded-full bg-surface-card border-[1.5px] border-brand-primary text-brand-primary hover:bg-brand-tint font-label-medium text-label-medium inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer px-4">
+<span class="material-symbols-outlined text-[16px]">groups</span>
+<span>View team</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 3: NO NOTIFICATIONS -->
+<div class="flex flex-col items-center w-full max-w-[260px]">
+<div class="w-full flex items-center justify-between pb-1.5 mb-2 px-1 border-b border-border-divider">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-wider">
+            CASE 03 · NO NOTIFICATIONS
+          </span>
+<span class="font-overline-micro text-overline-micro text-text-secondary">FEED_CLEAR</span>
+</div>
+<div class="w-full bg-surface-card rounded-2xl border border-border-divider shadow-sm p-4 flex flex-col items-center text-center justify-between min-h-[300px] transition-all hover:border-brand-primary/40">
+<div class="flex flex-col items-center w-full pt-2">
+<!-- Vector Illustration 56px -->
+<div class="w-14 h-14 rounded-full bg-brand-tint flex items-center justify-center mb-4 relative">
+<svg class="w-8 h-8 text-border-input" fill="none" viewbox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+<!-- Bell outline -->
+<path d="M16 4a2 2 0 00-2 2v1.1A8.002 8.002 0 007 15c0 4-2 6-2 6h22s-2-2-2-6a8.002 8.002 0 00-7-7.9V6a2 2 0 00-2-2z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"></path>
+<path d="M13.5 25a2.5 2.5 0 005 0" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+</svg>
+<!-- Brand Accent Checkmark Badge -->
+<span class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-brand-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</span>
+</div>
+<h3 class="font-title-item text-body-large font-semibold text-text-primary tracking-tight mb-1">
+              You're all caught up
+            </h3>
+<p class="font-caption-timestamp text-caption-timestamp text-text-secondary max-w-[190px] leading-relaxed">
+              New alerts and dispatch notices will appear here.
+            </p>
+</div>
+<!-- Balanced Spacer Container (No button case) -->
+<div class="w-full pt-4 mt-auto">
+<div class="h-9 flex items-center justify-center border border-dashed border-border-divider rounded-full bg-page-bg/60">
+<span class="font-overline-micro text-overline-micro text-text-disabled tracking-wide flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-text-disabled"></span>
+                NO ACTIONS PENDING
+              </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 4: FILTERED TO NOTHING -->
+<div class="flex flex-col items-center w-full max-w-[260px]">
+<div class="w-full flex items-center justify-between pb-1.5 mb-2 px-1 border-b border-border-divider">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-wider">
+            CASE 04 · FILTERED TO NOTHING
+          </span>
+<span class="font-overline-micro text-overline-micro text-text-secondary">QUERY_ZERO</span>
+</div>
+<div class="w-full bg-surface-card rounded-2xl border border-border-divider shadow-sm p-4 flex flex-col items-center text-center justify-between min-h-[300px] transition-all hover:border-brand-primary/40">
+<div class="flex flex-col items-center w-full pt-2">
+<!-- Vector Illustration 56px -->
+<div class="w-14 h-14 rounded-full bg-brand-tint flex items-center justify-center mb-4 relative">
+<svg class="w-8 h-8 text-border-input" fill="none" viewbox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+<!-- Funnel outline -->
+<path d="M5 6h22l-8.5 10v9l-5 3v-12L5 6z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"></path>
+<!-- Slash accent in brand primary -->
+<path d="M7 25L25 7" stroke="#016893" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</div>
+<h3 class="font-title-item text-body-large font-semibold text-text-primary tracking-tight mb-1">
+              No results for these filters
+            </h3>
+<p class="font-caption-timestamp text-caption-timestamp text-text-secondary max-w-[190px] leading-relaxed">
+              Try removing one or more filters to view field records.
+            </p>
+</div>
+<div class="w-full pt-4 mt-auto">
+<button class="w-full h-9 rounded-full bg-surface-card border-[1.5px] border-brand-primary text-brand-primary hover:bg-brand-tint font-label-medium text-label-medium inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer px-4">
+<span class="material-symbols-outlined text-[16px]">filter_alt_off</span>
+<span>Clear filters</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 5: NO ROUTE -->
+<div class="flex flex-col items-center w-full max-w-[260px]">
+<div class="w-full flex items-center justify-between pb-1.5 mb-2 px-1 border-b border-border-divider">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-wider">
+            CASE 05 · NO ROUTE
+          </span>
+<span class="font-overline-micro text-overline-micro text-text-secondary">GPS_NULL</span>
+</div>
+<div class="w-full bg-surface-card rounded-2xl border border-border-divider shadow-sm p-4 flex flex-col items-center text-center justify-between min-h-[300px] transition-all hover:border-brand-primary/40">
+<div class="flex flex-col items-center w-full pt-2">
+<!-- Vector Illustration 56px -->
+<div class="w-14 h-14 rounded-full bg-brand-tint flex items-center justify-center mb-4 relative">
+<svg class="w-9 h-9 text-border-input" fill="none" viewbox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+<!-- Curved dotted path -->
+<path d="M7 26C8 20 13 22 17 17C21 12 25 14 28 8" stroke="currentColor" stroke-dasharray="3 3" stroke-linecap="round" stroke-width="2"></path>
+<circle cx="7" cy="26" fill="currentColor" r="2.5"></circle>
+<!-- Terminal node with brand question glyph -->
+<circle cx="28" cy="8" fill="#016893" r="5"></circle>
+<text fill="#FFFFFF" font-family="DM Sans" font-size="10" font-weight="700" text-anchor="middle" x="28" y="11.5">?</text>
+</svg>
+</div>
+<h3 class="font-title-item text-body-large font-semibold text-text-primary tracking-tight mb-1">
+              No location recorded
+            </h3>
+<p class="font-caption-timestamp text-caption-timestamp text-text-secondary max-w-[190px] leading-relaxed">
+              This employee did not go on duty on 08 Oct.
+            </p>
+</div>
+<div class="w-full pt-4 mt-auto">
+<button class="w-full h-9 rounded-full bg-surface-card border-[1.5px] border-brand-primary text-brand-primary hover:bg-brand-tint font-label-medium text-label-medium inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer px-4">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+<span>Pick another date</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 6: ROUTE EXPIRED -->
+<div class="flex flex-col items-center w-full max-w-[260px]">
+<div class="w-full flex items-center justify-between pb-1.5 mb-2 px-1 border-b border-border-divider">
+<span class="font-overline-micro text-overline-micro text-text-disabled uppercase tracking-wider">
+            CASE 06 · ROUTE EXPIRED
+          </span>
+<span class="font-overline-micro text-overline-micro text-text-secondary">ARCHIVE_60D</span>
+</div>
+<div class="w-full bg-surface-card rounded-2xl border border-border-divider shadow-sm p-4 flex flex-col items-center text-center justify-between min-h-[300px] transition-all hover:border-brand-primary/40">
+<div class="flex flex-col items-center w-full pt-2">
+<!-- Vector Illustration 56px -->
+<div class="w-14 h-14 rounded-full bg-brand-tint flex items-center justify-center mb-4 relative">
+<svg class="w-8 h-8 text-border-input" fill="none" viewbox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+<!-- Calendar sheet outline -->
+<rect height="20" rx="1.5" stroke="currentColor" stroke-width="1.8" width="22" x="5" y="7"></rect>
+<path d="M5 13h22" stroke="currentColor" stroke-width="1.5"></path>
+<path d="M10 4v4M22 4v4" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+<circle cx="11" cy="18" fill="currentColor" r="1.2"></circle>
+<circle cx="16" cy="18" fill="currentColor" r="1.2"></circle>
+<circle cx="11" cy="22" fill="currentColor" r="1.2"></circle>
+</svg>
+<!-- Brand clock circular accent badge -->
+<span class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-brand-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[15px]">schedule</span>
+</span>
+</div>
+<h3 class="font-title-item text-body-large font-semibold text-text-primary tracking-tight mb-1">
+              Route older than 60 days
+            </h3>
+<p class="font-caption-timestamp text-caption-timestamp text-text-secondary max-w-[190px] leading-relaxed">
+              Detailed routes are kept for 60 days. Totals are still available.
+            </p>
+</div>
+<div class="w-full pt-4 mt-auto">
+<button class="w-full h-9 rounded-full bg-surface-card border-[1.5px] border-brand-primary text-brand-primary hover:bg-brand-tint font-label-medium text-label-medium inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer px-4">
+<span class="material-symbols-outlined text-[16px]">bar_chart</span>
+<span>View summary</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Technical Specification Metainfo Strip -->
+<div class="w-full max-w-4xl mt-14 pt-6 border-t border-border-divider flex flex-col md:flex-row items-center justify-between gap-4">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 bg-brand-primary"></div>
+<span class="font-overline-micro text-overline-micro text-text-primary uppercase">
+          Field Telemetry Standards · Empty States Subsystem
+        </span>
+</div>
+<div class="flex items-center gap-6 font-caption-timestamp text-caption-timestamp text-text-secondary">
+<span>Corner Radius: <code class="text-text-primary font-mono">16px</code></span>
+<span>Illustration Size: <code class="text-text-primary font-mono">56×56px</code></span>
+<span>Button Height: <code class="text-text-primary font-mono">36px</code></span>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Simple micro-interaction for reference sheet demonstration
+  document.querySelectorAll('button').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const originalText = btn.innerText;
+      btn.classList.add('opacity-75');
+      setTimeout(() => {
+        btn.classList.remove('opacity-75');
+      }, 180);
+    });
+  });
+</script></main></body></html>
