@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../dashboard/presentation/widgets/admin_bottom_navigation.dart';
+import 'admin_employee_detail_page.dart';
 import 'controllers/admin_employee_list_controller.dart';
 import 'controllers/admin_employee_list_state.dart';
 import 'widgets/admin_employee_card.dart';
@@ -191,10 +192,11 @@ class AdminEmployeeListPage extends ConsumerWidget {
                           if (onEmployeeSelected != null) {
                             onEmployeeSelected!(employee);
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Selected ${employee.name}.'),
-                                duration: const Duration(seconds: 1),
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => AdminEmployeeDetailPage(
+                                  employee: employee,
+                                ),
                               ),
                             );
                           }
