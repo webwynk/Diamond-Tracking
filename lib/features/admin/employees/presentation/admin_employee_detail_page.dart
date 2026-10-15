@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../attendance/presentation/admin_attendance_page.dart';
+import '../../route_view/presentation/admin_route_view_page.dart';
 import 'admin_employee_form_page.dart';
 import 'controllers/admin_employee_list_controller.dart';
 import 'controllers/admin_employee_list_state.dart';
@@ -91,10 +92,11 @@ class AdminEmployeeDetailPage extends ConsumerWidget {
                           },
                       onRouteView: onRouteView ??
                           () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Opening route view for ${employee.name}...'),
-                                duration: const Duration(seconds: 1),
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => AdminRouteViewPage(
+                                  employeeId: employee.id,
+                                ),
                               ),
                             );
                           },
@@ -118,6 +120,16 @@ class AdminEmployeeDetailPage extends ConsumerWidget {
                           MaterialPageRoute<void>(
                             builder: (ctx) => AdminAttendancePage(
                               employeeId: employee.id,
+                              onViewRouteDay: (dayId) {
+                                Navigator.of(ctx).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => AdminRouteViewPage(
+                                      employeeId: employee.id,
+                                      dayId: dayId,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         );
@@ -134,6 +146,16 @@ class AdminEmployeeDetailPage extends ConsumerWidget {
                               MaterialPageRoute<void>(
                                 builder: (ctx) => AdminAttendancePage(
                                   employeeId: employee.id,
+                                  onViewRouteDay: (dayId) {
+                                    Navigator.of(ctx).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => AdminRouteViewPage(
+                                          employeeId: employee.id,
+                                          dayId: dayId,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
                             );
