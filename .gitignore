@@ -1,13 +1,30 @@
-# ---- Secrets: never commit ----
+# ---- Documentation & Markdown (Local-only, private) ----
+*.md
+docs/
+
+# ---- Secrets & Sensitive Data: never commit ----
 env.json
 env.*.json
 !env.example.json
 .env
 .env.*
+*.env
 *.keystore
 *.jks
+*.p12
+*.pem
+*.key
+*.cer
+*.crt
 key.properties
+android/key.properties
+android/local.properties
 service-account*.json
+*service-account*.json
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart
+*.log
 
 # ---- Flutter / Dart ----
 .dart_tool/
@@ -34,13 +51,17 @@ ios/.symlinks/
 ios/Flutter/Flutter.framework
 ios/Flutter/Generated.xcconfig
 
-# ---- IDE / OS ----
+# ---- IDE / OS / Editor ----
 .idea/
 .vscode/
 *.iml
 .DS_Store
 Thumbs.db
+scratch/
+.gemini/
+.agents/
 
 # ---- Supabase local ----
 supabase/.temp/
 supabase/.branches/
+
