@@ -13,6 +13,7 @@ import '../../../core/utils/duty_time_helper.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../duty/presentation/controllers/duty_controller.dart';
 import '../../duty/presentation/controllers/duty_state.dart';
+import '../../visits/presentation/visit_capture_sheet.dart';
 
 /// Screen 09: Employee Live Map.
 ///
@@ -514,7 +515,16 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
               color: AppColors.neutral0,
             ),
             isFullWidth: true,
-            onPressed: widget.onAddVisitPressed ?? () {},
+            onPressed: widget.onAddVisitPressed ??
+                () {
+                  VisitCaptureSheet.show(
+                    context,
+                    dutySessionId: state.activeSession?.id ?? 'session-active',
+                    employeeId: state.activeSession?.employeeId ?? 'current-employee',
+                    latitude: widget.initialLatitude,
+                    longitude: widget.initialLongitude,
+                  );
+                },
           ),
         ],
       ),

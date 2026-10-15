@@ -31,6 +31,7 @@ dependencies:
   geolocator: ^14.1.1
   battery_plus: ^7.1.2
   maplibre_gl: ^0.27.1
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
