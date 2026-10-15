@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../dashboard/presentation/widgets/admin_bottom_navigation.dart';
+import 'admin_place_form_page.dart';
 import 'controllers/admin_places_controller.dart';
 import 'controllers/admin_places_state.dart';
 import 'widgets/admin_place_card.dart';
@@ -152,12 +153,10 @@ class _AdminPlacesPageState extends ConsumerState<AdminPlacesPage> {
                             if (widget.onPlaceSelected != null) {
                               widget.onPlaceSelected!(place);
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Opening geofence perimeter for ${place.name}...',
-                                  ),
-                                  duration: const Duration(seconds: 1),
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (context) =>
+                                      AdminPlaceFormPage(place: place),
                                 ),
                               );
                             }
@@ -178,10 +177,9 @@ class _AdminPlacesPageState extends ConsumerState<AdminPlacesPage> {
         key: const Key('btn-add-place'),
         onPressed: widget.onCreatePlace ??
             () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Launching GPS Boundary Pin Mapper...'),
-                  duration: Duration(seconds: 1),
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) => const AdminPlaceFormPage(),
                 ),
               );
             },
