@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
+import '../../map/presentation/admin_live_map_page.dart';
 import 'controllers/admin_dashboard_controller.dart';
 import 'widgets/admin_bottom_navigation.dart';
 import 'widgets/admin_map_preview_card.dart';
@@ -402,6 +403,12 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                   onViewMap: () {
                     if (widget.onNavigateToMap != null) {
                       widget.onNavigateToMap!();
+                    } else {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AdminLiveMapPage(),
+                        ),
+                      );
                     }
                   },
                 ),
@@ -489,8 +496,16 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
         currentIndex: _selectedNavIndex,
         onTap: (index) {
           setState(() => _selectedNavIndex = index);
-          if (index == 1 && widget.onNavigateToMap != null) {
-            widget.onNavigateToMap!();
+          if (index == 1) {
+            if (widget.onNavigateToMap != null) {
+              widget.onNavigateToMap!();
+            } else {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const AdminLiveMapPage(),
+                ),
+              );
+            }
           } else if (index == 2 && widget.onNavigateToTeam != null) {
             widget.onNavigateToTeam!();
           }
