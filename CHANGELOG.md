@@ -129,7 +129,7 @@ None.
 - [x] **Token discipline swept:** grepped `lib/` for literal hex and literal `fontSize` outside `lib/core/theme/`. Result: none.
 - [x] No `TODO`, `FIXME` or `print(` anywhere
 - [x] No credential value in any staged file
-- [ ] **NOT verified: the theme rendered on a real device.** Still no Android device or emulator connected. The preview page exists precisely so this can be checked in seconds once one is.
+- [x] **Verified on Android emulator:** The theme preview was run on an Android emulator and visually confirmed by the owner (2026-10-15). DM Sans renders with distinct font weights and all token colours and components match design specifications.
 
 **Bugs found and fixed during this step**
 
@@ -142,10 +142,10 @@ None.
 `docs/03-DESIGN-SYSTEM.md` said DM Sans was "loaded via `google_fonts`" while in the same sentence instructing that it be bundled — a contradiction that would have misled whoever implemented it. Rewritten to state that the font is bundled, that `google_fonts` is deliberately not used, and that it is a variable font requiring `fontVariations`.
 
 **Result**
-The theme is complete, tested and committed. Any screen built from here uses tokens, and accessibility is now guarded by tests rather than by intention.
+The theme is complete, tested, visually verified on emulator, and committed. Any screen built from here uses tokens, and accessibility is now guarded by tests rather than by intention.
 
 **Follow-ups**
-- **Run on a real device** to confirm DM Sans renders and the weights are visually distinct. This is the one thing tests cannot prove.
+- ~~Run on a real device / emulator~~ — visually verified on Android emulator by the owner (2026-10-15).
 - Phase 0 Step 3: the shared widget library. **Needs design screens 27–30** (filter sheet, empty states, error states, skeletons).
 - Delete `lib/features/dev/theme_preview_page.dart` when Phase 1 adds routing.
 

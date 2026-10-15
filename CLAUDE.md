@@ -96,11 +96,9 @@ Done:
 
 **Phase 0 Step 1 complete** (2026-10-13): Flutter scaffold, git initialised, build-time config wiring with loud startup failure, folder structure, strict lints, DM Sans bundled. Analyzer clean, 2 tests pass, debug APK builds, no secrets committed.
 
-⚠ **Not yet verified: the app running on a real device.** No Android device or emulator is connected. A successful APK build is not the same as the app launching.
+**Phase 0 Step 2 complete** (2026-10-13, visually verified on emulator 2026-10-15): design-system tokens in `lib/core/theme/` — colours, typography, dimensions, and one forced light `ThemeData`. 22 tests pass, including WCAG contrast computed from the real token values. Visual verification confirmed on Android emulator by the owner. Temporary theme preview page renders every token for visual checking; **delete it when Phase 1 adds routing.**
 
-**Phase 0 Step 2 complete** (2026-10-13): design-system tokens in `lib/core/theme/` — colours, typography, dimensions, and one forced light `ThemeData`. 22 tests pass, including WCAG contrast computed from the real token values. A temporary theme preview page renders every token for visual checking; **delete it when Phase 1 adds routing.**
-
-Next: Phase 0 Step 3 — the shared widget library. **Needs design screens 27–30** (filter sheet, empty states, error states, skeletons). **Needs explicit approval before starting.**
+Next: Phase 0 Step 3 — the shared widget library. **Needs explicit approval before starting.**
 
 ---
 
