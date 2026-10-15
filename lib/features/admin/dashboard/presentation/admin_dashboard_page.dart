@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
+import '../../employees/presentation/admin_employee_list_page.dart';
 import '../../map/presentation/admin_live_map_page.dart';
 import 'controllers/admin_dashboard_controller.dart';
 import 'widgets/admin_bottom_navigation.dart';
@@ -506,8 +507,16 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                 ),
               );
             }
-          } else if (index == 2 && widget.onNavigateToTeam != null) {
-            widget.onNavigateToTeam!();
+          } else if (index == 2) {
+            if (widget.onNavigateToTeam != null) {
+              widget.onNavigateToTeam!();
+            } else {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const AdminEmployeeListPage(),
+                ),
+              );
+            }
           }
         },
       ),
