@@ -9,6 +9,7 @@ import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../auth/presentation/controllers/auth_state.dart';
 import '../../duty/presentation/controllers/duty_controller.dart';
 import '../../duty/presentation/controllers/duty_state.dart';
+import '../../duty/presentation/duty_off_summary_dialog.dart';
 
 /// Employee Home Dashboard uniting Screens 06, 07, and 08:
 /// - Screen 06: Employee Home (Duty Off)
@@ -34,6 +35,50 @@ class EmployeeHomePage extends ConsumerStatefulWidget {
 
 class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
   int _selectedTabIndex = 0;
+
+  Future<void> _handleEndDuty() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.neutral0,
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
+        title: const Text('End duty?', style: AppTypography.title),
+        content: const Text(
+          'This will stop background location tracking and finalize your daily attendance shift.',
+          style: AppTypography.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: Text(
+              'Cancel',
+              style: AppTypography.label.withColor(AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            key: const Key('confirm-end-duty-btn'),
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            child: Text(
+              'End duty',
+              style: AppTypography.label.withColor(AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final session =
+          await ref.read(dutyControllerProvider.notifier).endDuty();
+      if (session != null && mounted) {
+        DutyOffSummaryDialog.show(
+          context,
+          session: session,
+          onViewRoute: widget.onNavigateToMap,
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -275,20 +320,22 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
         children: <Widget>[
           const Icon(Icons.info, size: 20, color: AppColors.info),
           const SizedBox(width: AppSpacing.x2),
-          Text.rich(
-            TextSpan(
-              text: 'Duty hours today: ',
-              children: <TextSpan>[
-                TextSpan(
-                  text: '8:00 AM to 11:00 PM',
-                  style: AppTypography.body.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                text: 'Duty hours today: ',
+                children: <TextSpan>[
+                  TextSpan(
+                    text: '8:00 AM to 11:00 PM',
+                    style: AppTypography.body.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              style: AppTypography.body.withColor(AppColors.textPrimary),
             ),
-            style: AppTypography.body.withColor(AppColors.textPrimary),
           ),
         ],
       ),
@@ -343,7 +390,8 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
       return Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => ref.read(dutyControllerProvider.notifier).toggleDuty(),
+          key: const Key('btn-toggle-duty-active'),
+          onTap: _handleEndDuty,
           borderRadius: BorderRadius.circular(70),
           child: Container(
             height: 140,
@@ -470,32 +518,38 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: state.isOnDuty
-                      ? AppColors.success
-                      : AppColors.neutral400,
-                  shape: BoxShape.circle,
+          Expanded(
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: state.isOnDuty
+                        ? AppColors.success
+                        : AppColors.neutral400,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                state.isOnDuty
-                    ? 'GPS ACTIVE • VERIFIED TELEMETRY'
-                    : 'GPS STANDBY • SATELLITES ACQUIRED (${state.satellitesAcquired})',
-                style: AppTypography.overline.copyWith(
-                  color: state.isOnDuty
-                      ? AppColors.success
-                      : AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    state.isOnDuty
+                        ? 'GPS ACTIVE • VERIFIED TELEMETRY'
+                        : 'GPS STANDBY • SATELLITES ACQUIRED (${state.satellitesAcquired})',
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.overline.copyWith(
+                      color: state.isOnDuty
+                          ? AppColors.success
+                          : AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(width: AppSpacing.x2),
           Text(
             state.isOnDuty ? 'On duty' : 'Off duty',
             style: AppTypography.caption.withColor(

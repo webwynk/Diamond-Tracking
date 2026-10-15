@@ -298,9 +298,21 @@ void main() {
       await tester.pumpAndSettle();
       expect(mockTracking.isTracking, isTrue);
 
-      // End duty
+      // End duty: tap pill, confirm in dialog, then dismiss summary dialog
       await tester.tap(find.text('Tap to end duty'));
       await tester.pumpAndSettle();
+
+      final confirmBtn = find.byKey(const Key('confirm-end-duty-btn'));
+      if (confirmBtn.evaluate().isNotEmpty) {
+        await tester.tap(confirmBtn);
+        await tester.pumpAndSettle();
+      }
+
+      final summaryDoneBtn = find.byKey(const Key('btn-summary-done'));
+      if (summaryDoneBtn.evaluate().isNotEmpty) {
+        await tester.tap(summaryDoneBtn);
+        await tester.pumpAndSettle();
+      }
 
       // Tracking should be stopped
       expect(mockTracking.isTracking, isFalse);

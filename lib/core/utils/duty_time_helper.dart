@@ -75,4 +75,21 @@ abstract final class DutyTimeHelper {
     final year = ist.year;
     return '$day $month $year';
   }
+
+  /// Formats a time into "h:mm a" in IST (e.g. "8:04 AM").
+  static String formatTime(DateTime dateTime) {
+    final ist = toIst(dateTime);
+    final hour = ist.hour % 12 == 0 ? 12 : ist.hour % 12;
+    final minute = ist.minute.toString().padLeft(2, '0');
+    final ampm = ist.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $ampm';
+  }
+
+  /// Formats a shift interval like "12 Oct 2026 · 8:04 AM to 4:28 PM".
+  static String formatShiftInterval(DateTime start, DateTime? end) {
+    final startDate = formatDate(start);
+    final startTime = formatTime(start);
+    final endTime = end != null ? formatTime(end) : formatTime(DateTime.now());
+    return '$startDate · $startTime to $endTime';
+  }
 }
