@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../dashboard/presentation/widgets/admin_bottom_navigation.dart';
+import '../../reports/presentation/admin_reports_page.dart';
 import 'admin_place_form_page.dart';
 import 'controllers/admin_places_controller.dart';
 import 'controllers/admin_places_state.dart';
@@ -74,7 +75,15 @@ class _AdminPlacesPageState extends ConsumerState<AdminPlacesPage> {
         // Already on Places
         break;
       case 4:
-        widget.onNavigateToReports?.call();
+        if (widget.onNavigateToReports != null) {
+          widget.onNavigateToReports!();
+        } else {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (context) => const AdminReportsPage(),
+            ),
+          );
+        }
         break;
     }
   }

@@ -9,6 +9,7 @@ import '../../employees/presentation/admin_employee_list_page.dart';
 import '../../map/presentation/admin_live_map_page.dart';
 import '../../notifications/presentation/admin_notification_centre_page.dart';
 import '../../places/presentation/admin_places_page.dart';
+import '../../reports/presentation/admin_reports_page.dart';
 import 'controllers/admin_dashboard_controller.dart';
 import 'widgets/admin_bottom_navigation.dart';
 import 'widgets/admin_map_preview_card.dart';
@@ -26,12 +27,14 @@ class AdminDashboardPage extends ConsumerStatefulWidget {
     this.onNavigateToTeam,
     this.onNavigateToPlaces,
     this.onNavigateToNotifications,
+    this.onNavigateToReports,
   });
 
   final VoidCallback? onNavigateToMap;
   final VoidCallback? onNavigateToTeam;
   final VoidCallback? onNavigateToPlaces;
   final VoidCallback? onNavigateToNotifications;
+  final VoidCallback? onNavigateToReports;
 
   @override
   ConsumerState<AdminDashboardPage> createState() => _AdminDashboardPageState();
@@ -536,6 +539,16 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const AdminPlacesPage(),
+                ),
+              );
+            }
+          } else if (index == 4) {
+            if (widget.onNavigateToReports != null) {
+              widget.onNavigateToReports!();
+            } else {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const AdminReportsPage(),
                 ),
               );
             }
