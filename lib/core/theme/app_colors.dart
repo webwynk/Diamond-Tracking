@@ -169,6 +169,9 @@ abstract final class AppColors {
 
   /// Action text on [snackbarSurface].
   static const Color snackbarAction = primary400;
+
+  /// Modal barrier scrim: #0F172A at 50% opacity.
+  static const Color scrim = Color(0x800F172A);
 }
 
 /// Pairs a duty status colour with the text that must always accompany it.

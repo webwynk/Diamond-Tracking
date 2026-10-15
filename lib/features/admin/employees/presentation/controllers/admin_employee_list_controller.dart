@@ -57,6 +57,31 @@ class AdminEmployeeListNotifier extends Notifier<AdminEmployeeListState> {
     );
   }
 
+  void blockEmployee({
+    required String employeeId,
+    required String reason,
+  }) {
+    state = state.copyWith(
+      employees: state.employees.map((e) {
+        if (e.id != employeeId) return e;
+        return AdminEmployeeItem(
+          id: e.id,
+          name: e.name,
+          employeeCode: e.employeeCode,
+          phoneNumber: e.phoneNumber,
+          status: AdminEmployeeStatus.blocked,
+          isActive: false,
+          hasFlags: false,
+          dutyStartTime: null,
+          distanceTodayKm: e.distanceTodayKm,
+          locationName: 'Blocked ($reason)',
+          email: e.email,
+          role: e.role,
+        );
+      }).toList(),
+    );
+  }
+
   List<AdminEmployeeItem> _buildDefaultEmployees() {
     return const [
       // 1. Suresh Patel (On Duty)

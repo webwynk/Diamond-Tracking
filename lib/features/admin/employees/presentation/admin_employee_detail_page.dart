@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import 'admin_employee_form_page.dart';
+import 'controllers/admin_employee_list_controller.dart';
 import 'controllers/admin_employee_list_state.dart';
+import 'widgets/admin_block_employee_sheet.dart';
 import 'widgets/admin_employee_block_action_button.dart';
 import 'widgets/admin_employee_contact_card.dart';
 import 'widgets/admin_employee_detail_header.dart';
@@ -20,7 +23,7 @@ import 'widgets/admin_employee_recent_duty_card.dart';
 /// - "THIS MONTH" telemetry card with 2x2 metric grid and audit footnotes
 /// - "Recent duty" session log history card with "View all" link (Screen 22)
 /// - Danger zone "Block employee" action button (Screen 20)
-class AdminEmployeeDetailPage extends StatelessWidget {
+class AdminEmployeeDetailPage extends ConsumerWidget {
   const AdminEmployeeDetailPage({
     super.key,
     required this.employee,
@@ -45,7 +48,7 @@ class AdminEmployeeDetailPage extends StatelessWidget {
   final VoidCallback? onMoreOptions;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
@@ -139,13 +142,27 @@ class AdminEmployeeDetailPage extends StatelessWidget {
                     // Section 5: Danger Action: Block Employee
                     AdminEmployeeBlockActionButton(
                       onBlockPressed: onBlockEmployee ??
-                          () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Initiating block action for ${employee.name}...'),
-                                duration: const Duration(seconds: 1),
-                              ),
+                          () async {
+                            final confirmed = await AdminBlockEmployeeSheet.show(
+                              context,
+                              employee: employee,
+                              onConfirmBlock: (reason) async {
+                                ref
+                                    .read(adminEmployeeListControllerProvider.notifier)
+                                    .blockEmployee(
+                                      employeeId: employee.id,
+                                      reason: reason,
+                                    );
+                              },
                             );
+                            if (confirmed == true && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('${employee.name} has been blocked.'),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
                           },
                     ),
 
