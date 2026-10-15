@@ -94,6 +94,60 @@ For a bug found but not yet fixed.
 
 # History
 
+## [2026-10-15] Phase 1 Step 1 — profiles schema and role model
+
+**Type:** Schema
+**Phase:** Phase 1, Step 1
+**Scope:** `supabase/migrations/20261015000000_create_profiles_table.sql`, `lib/domain/entities/user_profile.dart`, `test/user_profile_test.dart`
+
+**What changed**
+
+Designed and prepared the core `public.profiles` database schema, Row-Level Security policies, and the corresponding Dart domain entity.
+
+- **`public.profiles` table:**
+  - Foreign key `id uuid primary key references auth.users(id) on delete cascade`.
+  - Roles: `role text check (role in ('admin', 'employee'))`.
+  - Status: `status text check (status in ('active', 'blocked')) default 'active'`.
+  - Immutable employee code: `employee_code text unique` with check that employees must have both code and phone.
+  - Device binding: `device_id text`.
+  - Security fields: `must_change_pin boolean`, `failed_login_attempts integer`, `locked_until timestamptz`.
+  - Block audit: `blocked_at timestamptz`, `blocked_reason text`, `blocked_by uuid`.
+  - Timestamps: `created_at`, `updated_at` (with auto-update trigger).
+- **Row-Level Security (RLS) Policies:**
+  - RLS enabled on `public.profiles`.
+  - Select: Admins see all profiles (`public.is_admin()`). Employees see only their own row (`id = (select auth.uid())`).
+  - Write: Admins can insert and update profiles. Direct client deletes are forbidden (no delete policy). Direct employee row updates are forbidden to prevent privilege escalation or self-unblocking.
+- **RPC Functions:**
+  - `is_admin()` — `security definer` role checker with `set search_path = ''`.
+  - `bind_my_device(p_device_id)` — atomic device binding for employees, refusing a second device.
+  - `complete_pin_change()` — marks `must_change_pin = false` for the authenticated caller.
+  - `handle_new_user()` — trigger on `auth.users` to automatically populate profile row upon user creation.
+- **Dart Domain Entity:**
+  - `UserProfile` model in `lib/domain/entities/user_profile.dart` with `UserRole` and `UserStatus` enums, parsing, serialization, copyWith, equality, and lockout checker (`isLocked`).
+- **Unit Tests:**
+  - 6 new unit tests in `test/user_profile_test.dart` testing parsing, admin/employee roles, active/blocked states, and lockout logic.
+
+**Why**
+Phase 1 Step 1, approved by the owner. Establishing the role model and RLS in the database before building login screens ensures that security is enforced by PostgreSQL and cannot be bypassed from the client.
+
+**Database impact**
+Table `public.profiles`, trigger `trigger_profiles_updated_at`, trigger `on_auth_user_created`, functions `is_admin`, `bind_my_device`, `complete_pin_change`, `handle_new_user`, and 4 RLS policies.
+
+**Verified by**
+- [x] Re-read the diff as a reviewer
+- [x] Analyzer clean (0 issues)
+- [x] Formatter clean (`dart format`)
+- [x] 44 tests pass (38 existing + 6 new profile domain tests)
+- [x] Migration SQL reviewed against docs/05-SECURITY.md and docs/06-SUPABASE-BEST-PRACTICES.md
+
+**Result**
+`profiles` schema, RLS policies, RPC functions, and Dart domain model are complete and tested.
+
+**Follow-ups**
+- Phase 1 Step 2: Apply SQL migration to live Supabase database and create the first admin in the Supabase dashboard.
+
+---
+
 ## [2026-10-15] Phase 0 Step 3 — shared widget library
 
 **Type:** Feature

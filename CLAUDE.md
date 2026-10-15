@@ -99,10 +99,11 @@ Done:
 
 **Phase 0 Step 2 complete** (2026-10-13, visually verified on emulator 2026-10-15): design-system tokens in `lib/core/theme/` — colours, typography, dimensions, and one forced light `ThemeData`. 22 tests pass, including WCAG contrast computed from the real token values. Visual verification confirmed on Android emulator by the owner.
 
-**Phase 0 Step 3 complete** (2026-10-15): global shared widget library in `lib/shared/widgets/` — `AppButton`, `AppIconButton`, `AppTextField`, `AppCard`, `AppStatCard`, `AppStatusPill`, `AppBadge`, `AppEmptyState`, `AppBanner`, `AppErrorView`, `AppShimmer`, `AppListSkeleton`, `AppStatRowSkeleton`, `AppPaginationLoader`, `AppMapPlaceholder`, and `AppSnackbar`. 38 tests pass, debug APK builds, 0 analyze issues. Showcased in `theme_preview_page.dart`.
+**Phase 0 complete.** All 3 foundation steps finished, 38 tests pass, debug APK builds, all 30 reference designs synced, official logo mark active.
 
-**Phase 0 Exit Criteria fully met.**
-Next: Phase 1 — Auth, roles, and the background tracking spike. **Step 1: Profiles schema & role model with Supabase Auth. Needs explicit approval before starting.**
+**Phase 1 Step 1 complete** (2026-10-15): `profiles` schema migration SQL in `supabase/migrations/20261015000000_create_profiles_table.sql` with RLS, atomic RPC functions (`is_admin`, `bind_my_device`, `complete_pin_change`), and `UserProfile` domain entity in `lib/domain/entities/user_profile.dart`. 44 tests pass, analyzer clean.
+
+Next: Phase 1 Step 2 — Apply migration to live Supabase database and create the first admin in the Supabase dashboard. **Needs explicit approval before starting.**
 
 ---
 
