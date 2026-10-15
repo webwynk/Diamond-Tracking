@@ -7,6 +7,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
 import '../../employees/presentation/admin_employee_list_page.dart';
 import '../../map/presentation/admin_live_map_page.dart';
+import '../../notifications/presentation/admin_notification_centre_page.dart';
 import 'controllers/admin_dashboard_controller.dart';
 import 'widgets/admin_bottom_navigation.dart';
 import 'widgets/admin_map_preview_card.dart';
@@ -192,7 +193,15 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                               color: AppColors.neutral0,
                             ),
                             tooltip: 'Notifications',
-                            onPressed: widget.onNavigateToNotifications,
+                            onPressed: widget.onNavigateToNotifications ??
+                                () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (ctx) =>
+                                          const AdminNotificationCentrePage(),
+                                    ),
+                                  );
+                                },
                           ),
                           Positioned(
                             top: 6,
