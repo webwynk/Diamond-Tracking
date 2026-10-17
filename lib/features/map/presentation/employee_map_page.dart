@@ -70,9 +70,7 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
     }
   }
 
-  /// Opens visit capture with the real session and GPS fix, or explains why it
-  /// cannot: a visit is never recorded with an invented position.
-  void _openVisitCapture(DutyScreenState state) {
+  Future<void> _openVisitCapture(DutyScreenState state) async {
     final session = state.activeSession;
     final location = state.lastLocation;
     if (session == null || location == null) {
@@ -82,13 +80,16 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
       );
       return;
     }
-    VisitCaptureSheet.show(
+    final saved = await VisitCaptureSheet.show(
       context,
       dutySessionId: session.id,
       employeeId: session.employeeId,
       latitude: location.latitude,
       longitude: location.longitude,
     );
+    if (saved == true && mounted) {
+      ref.read(dutyControllerProvider.notifier).refresh();
+    }
   }
 
   void _toggleMapStyle() {

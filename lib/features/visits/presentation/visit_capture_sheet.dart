@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,8 +11,12 @@ import 'controllers/visit_capture_controller.dart';
 
 /// Screen 10 — Visit Capture bottom sheet modal.
 ///
-/// Adheres strictly to PRD F10, business rule BR-12, and
-/// `Design Reference/screen_10_visit_capture/code.html`.
+/// Adheres strictly to PRD F10 (as amended 2026-10-18):
+/// - Field employees capture manual visits with active GPS position.
+/// - Optional store/shop name (max 80 chars).
+/// - Optional observation note (max 200 chars).
+/// - Optional in-situ photo strictly via camera (gallery unreachable).
+/// - No skip penalty or mandatory reason; visits can be saved directly with or without photo.
 class VisitCaptureSheet extends ConsumerStatefulWidget {
   const VisitCaptureSheet({
     super.key,
@@ -20,6 +25,7 @@ class VisitCaptureSheet extends ConsumerStatefulWidget {
     required this.latitude,
     required this.longitude,
     this.placeName,
+    this.storeName,
     this.placeId,
     this.distanceMeters,
     this.initialNote,
@@ -29,6 +35,7 @@ class VisitCaptureSheet extends ConsumerStatefulWidget {
   final String dutySessionId;
   final String employeeId;
   final String? placeName;
+  final String? storeName;
   final String? placeId;
   final double latitude;
   final double longitude;
@@ -44,9 +51,11 @@ class VisitCaptureSheet extends ConsumerStatefulWidget {
     required double latitude,
     required double longitude,
     String? placeName,
+    String? storeName,
     String? placeId,
     double? distanceMeters,
     String? initialNote,
+    VoidCallback? onSaved,
   }) {
     return showModalBottomSheet<bool>(
       context: context,
@@ -56,12 +65,14 @@ class VisitCaptureSheet extends ConsumerStatefulWidget {
       builder: (context) => VisitCaptureSheet(
         dutySessionId: dutySessionId,
         employeeId: employeeId,
-        placeName: placeName,
+        placeName: placeName ?? storeName,
+        storeName: storeName ?? placeName,
         placeId: placeId,
         latitude: latitude,
         longitude: longitude,
         distanceMeters: distanceMeters,
         initialNote: initialNote,
+        onSaved: onSaved,
       ),
     );
   }
@@ -71,19 +82,21 @@ class VisitCaptureSheet extends ConsumerStatefulWidget {
 }
 
 class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
+  late final TextEditingController _storeNameController;
   late final TextEditingController _noteController;
 
   @override
   void initState() {
     super.initState();
+    final initialStore = widget.storeName ?? '';
+    _storeNameController = TextEditingController(text: initialStore);
     _noteController = TextEditingController();
 
-    // Initialize visit state after build
+    // Initialize visit state after first build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(visitCaptureControllerProvider.notifier)
-          .initVisit(
-            placeName: widget.placeName,
+      ref.read(visitCaptureControllerProvider.notifier).initVisit(
+            storeName: initialStore,
+            placeName: widget.placeName ?? initialStore,
             placeId: widget.placeId,
             latitude: widget.latitude,
             longitude: widget.longitude,
@@ -97,6 +110,7 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
 
   @override
   void dispose() {
+    _storeNameController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -278,7 +292,7 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
               ),
               const SizedBox(height: AppSpacing.x4),
 
-              // Geofence Arrival Strip
+              // GPS Arrival Strip & Location details
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(AppSpacing.x3),
@@ -328,6 +342,50 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.x4),
+
+              // Store / Shop Name Input (Optional, max 80 chars)
+              Text(
+                'STORE OR SHOP NAME (OPTIONAL)',
+                style: AppTypography.overline.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.x2),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.x3,
+                  vertical: AppSpacing.x2,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.neutral0,
+                  borderRadius: AppRadius.mdAll,
+                  border: Border.all(color: AppColors.neutral300),
+                ),
+                child: TextField(
+                  key: const Key('store-name-input'),
+                  controller: _storeNameController,
+                  maxLength: 80,
+                  style: AppTypography.bodyLarge,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    hintText: 'e.g. Kisan Seva Kendra',
+                    hintStyle: TextStyle(
+                      color: AppColors.neutral400,
+                      fontSize: 15,
+                      fontFamily: AppTypography.fontFamily,
+                    ),
+                    counterText: '',
+                  ),
+                  onChanged: (text) {
+                    ref
+                        .read(visitCaptureControllerProvider.notifier)
+                        .updateStoreName(text);
+                  },
                 ),
               ),
               const SizedBox(height: AppSpacing.x4),
@@ -415,10 +473,10 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
                         height: 200,
                       )
                     else
-                      // Fallback realistic crop field under daylight
+                      // Daylight Indian Agricultural Crop Field Placeholder
                       const _FarmFieldPlaceholder(),
 
-                    // Retake Camera Button (Top-Right)
+                    // Retake / Take Camera Button (Top-Right)
                     if (!state.photoSkipped)
                       Positioned(
                         top: AppSpacing.x3,
@@ -692,17 +750,16 @@ class _FarmFieldPainter extends CustomPainter {
 
     // Lush green agricultural crop rows
     final fieldPaint = Paint()
-      ..shader =
-          const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF388E3C), // Vibrant green crop rows
-              Color(0xFF1B5E20), // Rich deep foliage
-            ],
-          ).createShader(
-            Rect.fromLTWH(0, size.height * 0.4, size.width, size.height * 0.6),
-          );
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFF388E3C), // Vibrant green crop rows
+          Color(0xFF1B5E20), // Rich deep foliage
+        ],
+      ).createShader(
+        Rect.fromLTWH(0, size.height * 0.4, size.width, size.height * 0.6),
+      );
 
     canvas.drawRect(
       Rect.fromLTWH(0, size.height * 0.4, size.width, size.height * 0.6),

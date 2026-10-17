@@ -2,7 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/services/camera_service.dart';
-import '../../../../data/repositories/local_visit_repository.dart';
+import '../../../../core/utils/id_generator.dart';
+import '../../../../data/repositories/supabase_visit_repository.dart';
 import '../../../../domain/entities/visit_record.dart';
 import '../../../../domain/repositories/visit_repository.dart';
 
@@ -13,81 +14,105 @@ final cameraServiceProvider = Provider<CameraService>((ref) {
 
 /// Provider for the global [VisitRepository] dependency.
 final visitRepositoryProvider = Provider<VisitRepository>((ref) {
-  return LocalVisitRepository();
+  return SupabaseVisitRepository();
 });
 
 /// State for the visit capture bottom sheet.
 @immutable
 class VisitCaptureState {
   const VisitCaptureState({
-    this.placeName = '',
-    this.placeId,
+    this.storeName = '',
     this.arrivalTime = '',
-    this.distanceMeters,
     this.latitude,
     this.longitude,
+    this.accuracy,
     this.photoPath,
     this.geotagTimestamp = '',
     this.geotagCoordinates = '',
     this.note = '',
-    this.photoSkipped = false,
-    this.photoSkipReason,
     this.isSaving = false,
     this.isSaved = false,
     this.errorMessage,
-  });
+    // Legacy parameters
+    String? placeName,
+    String? placeId,
+    double? distanceMeters,
+    bool photoSkipped = false,
+    String? photoSkipReason,
+  })  : _legacyPlaceName = placeName,
+        _legacyPlaceId = placeId,
+        _legacyDistanceMeters = distanceMeters,
+        _legacyPhotoSkipped = photoSkipped,
+        _legacyPhotoSkipReason = photoSkipReason;
 
-  final String placeName;
-  final String? placeId;
+  final String storeName;
   final String arrivalTime;
-  final double? distanceMeters;
 
   /// Null until a GPS position is supplied by [VisitCaptureNotifier.initVisit].
   final double? latitude;
   final double? longitude;
+  final double? accuracy;
   final String? photoPath;
   final String geotagTimestamp;
   final String geotagCoordinates;
   final String note;
-  final bool photoSkipped;
-  final String? photoSkipReason;
   final bool isSaving;
   final bool isSaved;
   final String? errorMessage;
 
+  final String? _legacyPlaceName;
+  final String? _legacyPlaceId;
+  final double? _legacyDistanceMeters;
+  final bool _legacyPhotoSkipped;
+  final String? _legacyPhotoSkipReason;
+
+  // Backward compatibility getters
+  String get placeName =>
+      storeName.isNotEmpty ? storeName : (_legacyPlaceName ?? '');
+  String? get placeId => _legacyPlaceId;
+  double? get distanceMeters => _legacyDistanceMeters;
+  bool get photoSkipped =>
+      _legacyPhotoSkipped || (photoPath == null && isSaved);
+  String? get photoSkipReason => _legacyPhotoSkipReason;
+
   VisitCaptureState copyWith({
-    String? placeName,
-    String? placeId,
+    String? storeName,
     String? arrivalTime,
-    double? distanceMeters,
     double? latitude,
     double? longitude,
+    double? accuracy,
     String? photoPath,
     String? geotagTimestamp,
     String? geotagCoordinates,
     String? note,
-    bool? photoSkipped,
-    String? photoSkipReason,
     bool? isSaving,
     bool? isSaved,
     String? errorMessage,
+    // Legacy support
+    String? placeName,
+    String? placeId,
+    double? distanceMeters,
+    bool? photoSkipped,
+    String? photoSkipReason,
   }) {
     return VisitCaptureState(
-      placeName: placeName ?? this.placeName,
-      placeId: placeId ?? this.placeId,
+      storeName: storeName ?? placeName ?? this.storeName,
       arrivalTime: arrivalTime ?? this.arrivalTime,
-      distanceMeters: distanceMeters ?? this.distanceMeters,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      accuracy: accuracy ?? this.accuracy,
       photoPath: photoPath ?? this.photoPath,
       geotagTimestamp: geotagTimestamp ?? this.geotagTimestamp,
       geotagCoordinates: geotagCoordinates ?? this.geotagCoordinates,
       note: note ?? this.note,
-      photoSkipped: photoSkipped ?? this.photoSkipped,
-      photoSkipReason: photoSkipReason ?? this.photoSkipReason,
       isSaving: isSaving ?? this.isSaving,
       isSaved: isSaved ?? this.isSaved,
       errorMessage: errorMessage,
+      placeName: placeName ?? _legacyPlaceName,
+      placeId: placeId ?? _legacyPlaceId,
+      distanceMeters: distanceMeters ?? _legacyDistanceMeters,
+      photoSkipped: photoSkipped ?? _legacyPhotoSkipped,
+      photoSkipReason: photoSkipReason ?? _legacyPhotoSkipReason,
     );
   }
 }
@@ -95,11 +120,11 @@ class VisitCaptureState {
 /// Global provider for managing the visit capture flow.
 final visitCaptureControllerProvider =
     NotifierProvider<VisitCaptureNotifier, VisitCaptureState>(
-      VisitCaptureNotifier.new,
-    );
+  VisitCaptureNotifier.new,
+);
 
 /// Controller governing visit photo capture, geotag overlay, note updates,
-/// and visit submission adhering to PRD F10 & BR-12.
+/// and visit submission adhering strictly to PRD F10.
 class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
   late final CameraService _cameraService;
   late final VisitRepository _visitRepository;
@@ -112,12 +137,14 @@ class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
     return const VisitCaptureState();
   }
 
-  /// Initializes the visit capture state with place and GPS context.
+  /// Initializes the visit capture state with store name and GPS context.
   void initVisit({
+    String? storeName,
     String? placeName,
     String? placeId,
     required double latitude,
     required double longitude,
+    double? accuracy,
     double? distanceMeters,
     String? initialNote,
   }) {
@@ -130,23 +157,30 @@ class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
         '${latitude.toStringAsFixed(4)}° N, ${longitude.toStringAsFixed(4)}° E';
 
     state = state.copyWith(
-      placeName: placeName ?? '',
+      storeName: storeName ?? placeName ?? '',
+      placeName: placeName ?? storeName ?? '',
       placeId: placeId,
       latitude: latitude,
       longitude: longitude,
+      accuracy: accuracy,
       distanceMeters: distanceMeters,
       arrivalTime: formattedTime,
       geotagTimestamp: formattedDate,
       geotagCoordinates: formattedCoords,
       note: initialNote ?? '',
-      photoSkipped: false,
-      photoSkipReason: null,
       isSaved: false,
       isSaving: false,
     );
   }
 
-  /// Captures an in-situ photo using the device camera.
+  /// Updates the optional store / shop name text (capped at 80 characters).
+  void updateStoreName(String text) {
+    if (text.length <= 80) {
+      state = state.copyWith(storeName: text);
+    }
+  }
+
+  /// Captures an in-situ photo strictly via the device camera.
   Future<void> takePhoto() async {
     final path = await _cameraService.capturePhoto();
     if (path != null) {
@@ -158,11 +192,14 @@ class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
 
       state = state.copyWith(
         photoPath: path,
-        photoSkipped: false,
-        photoSkipReason: null,
         geotagTimestamp: formattedDate,
       );
     }
+  }
+
+  /// Clears the currently captured photo.
+  void clearPhoto() {
+    state = state.copyWith(photoPath: null);
   }
 
   /// Updates the visit note text (capped at 200 characters).
@@ -172,12 +209,12 @@ class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
     }
   }
 
-  /// Skips the photo requirement by recording a valid reason per BR-12.
-  void skipPhoto(String reason) {
+  /// Backwards-compatible skipPhoto (records reason if passed).
+  void skipPhoto([String? reason]) {
     state = state.copyWith(
-      photoSkipped: true,
-      photoSkipReason: reason.trim(),
       photoPath: null,
+      photoSkipped: true,
+      photoSkipReason: reason?.trim(),
     );
   }
 
@@ -192,8 +229,7 @@ class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
     final longitude = state.longitude;
     if (latitude == null || longitude == null) {
       state = state.copyWith(
-        errorMessage:
-            'No GPS position for this visit. Try again once GPS locks.',
+        errorMessage: 'No GPS position for this visit. Try again once GPS locks.',
       );
       return false;
     }
@@ -202,18 +238,17 @@ class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
 
     try {
       final record = VisitRecord(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        dutySessionId: dutySessionId,
+        id: IdGenerator.uuidV4(),
+        sessionId: dutySessionId,
         employeeId: employeeId,
-        placeName: state.placeName.isEmpty ? 'Field location' : state.placeName,
-        placeId: state.placeId,
+        storeName: state.storeName.trim().isNotEmpty
+            ? state.storeName.trim()
+            : (state.placeName.trim().isNotEmpty ? state.placeName.trim() : null),
+        note: state.note.trim().isEmpty ? null : state.note.trim(),
         latitude: latitude,
         longitude: longitude,
-        distanceMeters: state.distanceMeters,
-        photoPath: state.photoPath,
-        photoSkipped: state.photoSkipped,
-        photoSkipReason: state.photoSkipReason,
-        notes: state.note.isEmpty ? null : state.note,
+        accuracy: state.accuracy,
+        localPhotoPath: state.photoPath,
         capturedAt: DateTime.now().toUtc(),
         synced: false,
       );
