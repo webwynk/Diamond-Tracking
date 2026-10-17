@@ -6,7 +6,7 @@ publish_to: 'none'
 # version is <build-name>+<build-number>.
 # On Android, build-name becomes versionName and build-number becomes versionCode.
 # versionCode must increase on every Play upload and APK build (Rule 10).
-version: 1.5.1+23
+version: 1.5.2+24
 
 environment:
   sdk: ^3.12.2
