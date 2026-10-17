@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../core/errors/app_exceptions.dart';
 import '../../../../../data/repositories/supabase_employee_repository.dart';
+import '../../../../../domain/entities/live_position.dart';
 import '../../../../../domain/repositories/employee_repository.dart';
 import 'admin_employee_list_state.dart';
 
@@ -18,6 +19,11 @@ final adminEmployeeListControllerProvider =
 
 /// Riverpod 3 Notifier managing roster filtering, search queries, and status filters.
 class AdminEmployeeListNotifier extends Notifier<AdminEmployeeListState> {
+  /// What the live feed last said about everyone on duty (employee id to
+  /// status), or null before it has said anything reliable. Kept so a reload of
+  /// the roster does not bring back the older, one-off picture.
+  Map<String, LiveStatus>? _live;
+
   @override
   AdminEmployeeListState build() {
     return const AdminEmployeeListState(
@@ -39,7 +45,7 @@ class AdminEmployeeListNotifier extends Notifier<AdminEmployeeListState> {
     try {
       final items = await ref.read(employeeRepositoryProvider).getEmployees();
       state = state.copyWith(
-        employees: items,
+        employees: _withLive(items),
         isLoading: false,
         hasLoaded: true,
       );
@@ -51,6 +57,55 @@ class AdminEmployeeListNotifier extends Notifier<AdminEmployeeListState> {
         errorMessage: 'Could not load the team. Please try again.',
       );
     }
+  }
+
+  /// Shows who is on duty as the live feed says it now, the same people and the
+  /// same wording as the live map: someone on duty is "On duty", "No update" or
+  /// "Check needed" (a flagged position); everyone else, not blocked, is off
+  /// duty. The roster only records who was on duty when it was read.
+  ///
+  /// Call it only when the live feed has loaded: an unknown feed must never
+  /// turn everyone "off duty".
+  void applyLiveStatuses(Map<String, LiveStatus> live) {
+    _live = live;
+    if (!state.hasLoaded) return;
+    final updated = _withLive(state.employees);
+    final changed = !_sameStatuses(state.employees, updated);
+    if (changed) state = state.copyWith(employees: updated);
+  }
+
+  List<AdminEmployeeItem> _withLive(List<AdminEmployeeItem> items) {
+    final live = _live;
+    if (live == null) return items;
+    return [
+      for (final employee in items)
+        if (!employee.isActive ||
+            employee.status == AdminEmployeeStatus.blocked)
+          employee
+        else
+          _liveItem(employee, live[employee.id]),
+    ];
+  }
+
+  AdminEmployeeItem _liveItem(AdminEmployeeItem employee, LiveStatus? live) {
+    final status = switch (live) {
+      null => AdminEmployeeStatus.offDuty,
+      LiveStatus.active => AdminEmployeeStatus.onDuty,
+      LiveStatus.stale => AdminEmployeeStatus.stale,
+      LiveStatus.suspect => AdminEmployeeStatus.needsCheck,
+    };
+    final flagged = live == LiveStatus.suspect;
+    if (status == employee.status && flagged == employee.hasFlags) {
+      return employee;
+    }
+    return employee.copyWith(status: status, hasFlags: flagged);
+  }
+
+  bool _sameStatuses(List<AdminEmployeeItem> a, List<AdminEmployeeItem> b) {
+    for (var i = 0; i < a.length; i++) {
+      if (!identical(a[i], b[i])) return false;
+    }
+    return true;
   }
 
   void setFilter(AdminEmployeeFilter filter) {

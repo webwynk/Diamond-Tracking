@@ -6,7 +6,7 @@ publish_to: 'none'
 # version is <build-name>+<build-number>.
 # On Android, build-name becomes versionName and build-number becomes versionCode.
 # versionCode must increase on every Play upload and APK build (Rule 10).
-version: 1.5.0+22
+version: 1.5.1+23
 
 environment:
   sdk: ^3.12.2
@@ -48,6 +48,7 @@ dependencies:
   flutter_foreground_task: ^11.0.3
   pdf: ^3.13.1
   printing: ^5.15.1
+  shared_preferences: ^2.5.6
 
 dev_dependencies:
   flutter_test:

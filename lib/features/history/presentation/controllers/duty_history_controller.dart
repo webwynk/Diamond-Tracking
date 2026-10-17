@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/errors/app_exceptions.dart';
 import '../../../../core/utils/duty_time_helper.dart';
 import '../../../../domain/entities/duty_session.dart';
 import '../../../../domain/repositories/duty_repository.dart';
@@ -20,9 +21,23 @@ final dutyHistoryControllerProvider =
 /// Everything shown comes from the employee's own recorded sessions. When there
 /// are none the screen is empty, and when loading fails it says so: it never
 /// substitutes sample records.
+///
+/// The months are IST months and "now" is the server's clock, the same as the
+/// admin's attendance screen, so the two screens add up the same sessions the
+/// same way. It loads every session from the start of last month (not just the
+/// newest few), so last month's totals are complete.
 class DutyHistoryNotifier extends Notifier<DutyHistoryState> {
+  /// Sessions read per request.
+  static const int _pageSize = 100;
+
+  /// Safety cap on sessions read (two months hold a small fraction of this).
+  static const int _maxSessions = 600;
+
   late final DutyRepository _dutyRepository;
   List<DutySession> _sessions = const <DutySession>[];
+
+  /// The server's clock when the history was loaded (UTC).
+  DateTime _serverNow = DateTime.now().toUtc();
 
   @override
   DutyHistoryState build() {
@@ -51,15 +66,46 @@ class DutyHistoryNotifier extends Notifier<DutyHistoryState> {
     }
 
     try {
-      _sessions = await _dutyRepository.getDutyHistory(
-        employeeId: authState.profile.id,
+      _serverNow = await _readServerNow();
+      final ist = DutyTimeHelper.toIst(_serverNow);
+      final windowStart = DutyTimeHelper.istDayStartUtc(
+        DateTime(ist.year, ist.month - 1),
       );
+      _sessions = await _loadSince(authState.profile.id, windowStart);
       _publish(state.filter);
     } catch (_) {
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Could not load your duty history.',
       );
+    }
+  }
+
+  /// The server's clock. If it cannot be read the history is still shown, on
+  /// the phone's clock, rather than failing the whole screen.
+  Future<DateTime> _readServerNow() async {
+    try {
+      return await _dutyRepository.getServerTime();
+    } on AppException {
+      return DateTime.now().toUtc();
+    }
+  }
+
+  /// Every session that started on or after [start], newest first.
+  Future<List<DutySession>> _loadSince(
+    String employeeId,
+    DateTime start,
+  ) async {
+    final all = <DutySession>[];
+    while (true) {
+      final page = await _dutyRepository.getDutyHistory(
+        employeeId: employeeId,
+        startDate: start,
+        limit: _pageSize,
+        offset: all.length,
+      );
+      all.addAll(page);
+      if (page.length < _pageSize || all.length >= _maxSessions) return all;
     }
   }
 
@@ -72,9 +118,15 @@ class DutyHistoryNotifier extends Notifier<DutyHistoryState> {
 
   /// Applies [filter] to the loaded sessions and publishes list and summary.
   void _publish(DutyHistoryFilter filter) {
-    final now = DateTime.now();
-    final thisMonth = DateTime(now.year, now.month);
-    final lastMonth = DateTime(now.year, now.month - 1);
+    final ist = DutyTimeHelper.toIst(_serverNow);
+    final thisMonth = DateTime(ist.year, ist.month);
+    final lastMonth = DateTime(ist.year, ist.month - 1);
+
+    // A wall-clock IST month as a UTC instant, so the label is not shifted
+    // again by the phone's zone.
+    String monthLabel(DateTime month) => DutyTimeHelper.formatMonthAndYear(
+      DateTime.utc(month.year, month.month),
+    );
 
     bool inMonth(DutySession s, DateTime month) {
       final ist = DutyTimeHelper.toIst(s.startedAt);
@@ -84,17 +136,17 @@ class DutyHistoryNotifier extends Notifier<DutyHistoryState> {
     final (List<DutySession> selected, String label) = switch (filter) {
       DutyHistoryFilter.thisMonth => (
         _sessions.where((s) => inMonth(s, thisMonth)).toList(),
-        DutyTimeHelper.formatMonthAndYear(thisMonth),
+        monthLabel(thisMonth),
       ),
       DutyHistoryFilter.lastMonth => (
         _sessions.where((s) => inMonth(s, lastMonth)).toList(),
-        DutyTimeHelper.formatMonthAndYear(lastMonth),
+        monthLabel(lastMonth),
       ),
       DutyHistoryFilter.autoEnded => (
         _sessions.where(_isAutoEnded).toList(),
         'AUTO-ENDED SHIFTS',
       ),
-      DutyHistoryFilter.custom => (_sessions, 'ALL SHIFTS'),
+      DutyHistoryFilter.custom => (_sessions, 'LAST 2 MONTHS'),
     };
 
     state = state.copyWith(
@@ -127,7 +179,9 @@ class DutyHistoryNotifier extends Notifier<DutyHistoryState> {
           session.startedAt,
           session.endedAt,
         ),
-        durationStr: DutyTimeHelper.formatElapsed(session.elapsedDuration),
+        durationStr: DutyTimeHelper.formatElapsed(
+          session.durationAt(_serverNow),
+        ),
         distanceStr: session.formattedDistanceKm,
         visitsStr: '${session.visitsCount} visits',
         rawSession: session,
@@ -144,23 +198,22 @@ class DutyHistoryNotifier extends Notifier<DutyHistoryState> {
     }
 
     final totalDays = sessions.length;
-    var totalMinutes = 0;
+    var total = Duration.zero;
     var totalKm = 0.0;
     var totalVisits = 0;
 
     for (final s in sessions) {
-      totalMinutes += s.elapsedDuration.inMinutes;
+      total += s.durationAt(_serverNow);
       totalKm += s.totalDistanceKm;
       totalVisits += s.visitsCount;
     }
 
-    final hours = totalMinutes ~/ 60;
-    final minutes = totalMinutes % 60;
-
+    // Added to the second, then shown, so the total equals the sessions listed
+    // (the admin's attendance screen adds them the same way).
     return DutyHistorySummary(
       periodLabel: periodLabel,
       totalDays: totalDays,
-      totalHours: '${hours}h ${minutes}m',
+      totalHours: DutyTimeHelper.formatElapsed(total),
       totalKm: double.parse(totalKm.toStringAsFixed(1)),
       totalVisits: totalVisits,
     );

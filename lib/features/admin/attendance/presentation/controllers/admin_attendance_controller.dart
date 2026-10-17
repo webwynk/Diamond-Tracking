@@ -91,14 +91,12 @@ class AdminAttendanceNotifier extends Notifier<AdminAttendanceState> {
     state = state.copyWith(load: AttendanceLoad.loading, clearError: true);
 
     // The IST month as a UTC interval (IST has no daylight saving).
-    final startUtc = DateTime.utc(
-      month.year,
-      month.month,
-    ).subtract(DutyTimeHelper.istOffset);
-    final endUtc = DateTime.utc(
-      month.year,
-      month.month + 1,
-    ).subtract(DutyTimeHelper.istOffset);
+    final startUtc = DutyTimeHelper.istDayStartUtc(
+      DateTime(month.year, month.month),
+    );
+    final endUtc = DutyTimeHelper.istDayStartUtc(
+      DateTime(month.year, month.month + 1),
+    );
 
     try {
       final source = await ref

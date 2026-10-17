@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../domain/entities/live_position.dart';
 import '../../../shared/widgets/app_bottom_navigation_bar.dart';
 import '../../../shared/widgets/lazy_indexed_stack.dart';
 import '../dashboard/presentation/admin_dashboard_page.dart';
 import '../employees/presentation/admin_employee_list_page.dart';
+import '../employees/presentation/controllers/admin_employee_list_controller.dart';
 import '../map/presentation/admin_live_map_page.dart';
+import '../map/presentation/controllers/admin_live_map_controller.dart';
 import '../places/presentation/admin_places_page.dart';
 import '../reports/presentation/admin_reports_page.dart';
 import 'admin_tab.dart';
@@ -49,6 +52,18 @@ class AdminShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tab = ref.watch(adminTabProvider);
     final notifier = ref.read(adminTabProvider.notifier);
+
+    // The Team list shows who is on duty as the live feed says it now, so it
+    // never disagrees with the map. Skipped until the feed has loaded: unknown
+    // is not "nobody is on duty".
+    ref.listen(adminLiveMapControllerProvider, (_, live) {
+      if (live.isLoading || live.errorMessage != null) return;
+      ref.read(adminEmployeeListControllerProvider.notifier).applyLiveStatuses(
+        <String, LiveStatus>{
+          for (final officer in live.officers) officer.id: officer.status,
+        },
+      );
+    });
 
     return PopScope(
       // Back on any other tab returns to Home before it leaves the app.

@@ -1,3 +1,4 @@
+import 'package:diamond_tracking/core/errors/app_exceptions.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/domain/entities/duty_session.dart';
 import 'package:diamond_tracking/domain/entities/location_point.dart';
@@ -20,6 +21,15 @@ import 'package:flutter_test/flutter_test.dart';
 class _FakeDutyRepository implements DutyRepository {
   List<DutySession> historySessions = [];
   bool failHistory = false;
+
+  /// Every history request: where it started and which page.
+  final List<({DateTime? startDate, int limit, int offset})> historyCalls = [];
+
+  /// The server's clock; the phone's when null.
+  DateTime? serverNow;
+
+  /// Set to make reading the server clock fail.
+  Exception? serverTimeError;
 
   @override
   Future<DutySession?> getActiveDutySession({
@@ -53,12 +63,17 @@ class _FakeDutyRepository implements DutyRepository {
     int limit = 30,
     int offset = 0,
   }) async {
+    historyCalls.add((startDate: startDate, limit: limit, offset: offset));
     if (failHistory) throw Exception('network down');
-    return historySessions;
+    return historySessions.skip(offset).take(limit).toList();
   }
 
   @override
-  Future<DateTime> getServerTime() async => DateTime.now().toUtc();
+  Future<DateTime> getServerTime() async {
+    final failure = serverTimeError;
+    if (failure != null) throw failure;
+    return serverNow ?? DateTime.now().toUtc();
+  }
 
   @override
   Future<PointIngestResult> ingestLocationPoints({
@@ -271,6 +286,172 @@ void main() {
 
         notifier.setFilter(DutyHistoryFilter.custom);
         expect(read().items.length, 3);
+      },
+    );
+  });
+
+  group('DutyHistoryController: IST months, the server clock, every session', () {
+    // Saturday 17 October 2026, 10:00 IST, on the server's clock.
+    final serverNow = DateTime.utc(2026, 10, 17, 4, 30);
+
+    DutySession at(String id, DateTime startedUtc, {Duration? length}) =>
+        _session(id, startedUtc, length: length ?? const Duration(hours: 8));
+
+    test('the months are IST months, whatever the phone says', () async {
+      final repo = _FakeDutyRepository()
+        ..serverNow = serverNow
+        ..historySessions = [
+          at('oct5', DateTime.utc(2026, 10, 5, 4)),
+          // 00:30 IST on 1 October: this month, though still 30 September in UTC.
+          at('oct1-night', DateTime.utc(2026, 9, 30, 19)),
+          // 23:30 IST on 30 September: last month.
+          at('sep30-night', DateTime.utc(2026, 9, 30, 18)),
+          at('sep10', DateTime.utc(2026, 9, 10, 4)),
+        ];
+      final container = containerWith(repo);
+      final notifier = container.read(dutyHistoryControllerProvider.notifier);
+      await notifier.loadHistory();
+
+      DutyHistoryState read() => container.read(dutyHistoryControllerProvider);
+
+      expect(read().items.map((i) => i.id), ['oct5', 'oct1-night']);
+      expect(read().summary.periodLabel, 'OCTOBER 2026');
+
+      notifier.setFilter(DutyHistoryFilter.lastMonth);
+      expect(read().items.map((i) => i.id), ['sep30-night', 'sep10']);
+      expect(read().summary.periodLabel, 'SEPTEMBER 2026');
+    });
+
+    test('last month in January is December of the year before', () async {
+      final repo = _FakeDutyRepository()
+        ..serverNow = DateTime.utc(2027, 1, 10, 4)
+        ..historySessions = [
+          at('jan', DateTime.utc(2027, 1, 5, 4)),
+          at('dec', DateTime.utc(2026, 12, 20, 4)),
+        ];
+      final container = containerWith(repo);
+      final notifier = container.read(dutyHistoryControllerProvider.notifier);
+      await notifier.loadHistory();
+
+      notifier.setFilter(DutyHistoryFilter.lastMonth);
+
+      expect(
+        container.read(dutyHistoryControllerProvider).items.map((i) => i.id),
+        ['dec'],
+      );
+      expect(
+        container.read(dutyHistoryControllerProvider).summary.periodLabel,
+        'DECEMBER 2026',
+      );
+    });
+
+    test('asks for every session from the IST start of last month', () async {
+      final repo = _FakeDutyRepository()..serverNow = serverNow;
+      final container = containerWith(repo);
+
+      await container
+          .read(dutyHistoryControllerProvider.notifier)
+          .loadHistory();
+
+      // 00:00 IST on 1 September = 18:30 UTC on 31 August.
+      expect(
+        repo.historyCalls.first.startDate,
+        DateTime.utc(2026, 8, 31, 18, 30),
+      );
+      expect(repo.historyCalls.first.offset, 0);
+    });
+
+    test('reads page after page until it has them all', () async {
+      final repo = _FakeDutyRepository()
+        ..serverNow = serverNow
+        ..historySessions = [
+          for (var i = 0; i < 250; i++)
+            at('s$i', DateTime.utc(2026, 10, 1, 4).add(Duration(minutes: i))),
+        ];
+      final container = containerWith(repo);
+      final notifier = container.read(dutyHistoryControllerProvider.notifier);
+
+      await notifier.loadHistory();
+
+      // The controller also loads once by itself when it is first read, so the
+      // pages are asked for twice over; what matters is which pages.
+      expect(repo.historyCalls.map((c) => c.offset).toSet(), {0, 100, 200});
+      expect(
+        container.read(dutyHistoryControllerProvider).summary.totalDays,
+        250,
+      );
+    });
+
+    test(
+      'a session still open runs to the SERVER clock, not the phone clock',
+      () async {
+        final repo = _FakeDutyRepository()
+          ..serverNow = serverNow
+          ..historySessions = [
+            DutySession(
+              id: 'open',
+              employeeId: 'emp_1',
+              startedAt: serverNow.subtract(const Duration(hours: 2)),
+            ),
+          ];
+        final container = containerWith(repo);
+
+        await container
+            .read(dutyHistoryControllerProvider.notifier)
+            .loadHistory();
+
+        final state = container.read(dutyHistoryControllerProvider);
+        expect(state.items.single.durationStr, '2h 0m');
+        expect(state.summary.totalHours, '2h 0m');
+      },
+    );
+
+    test(
+      'the total adds the seconds, not minutes rounded one by one',
+      () async {
+        final repo = _FakeDutyRepository()
+          ..serverNow = serverNow
+          ..historySessions = [
+            at(
+              'a',
+              DateTime.utc(2026, 10, 5, 4),
+              length: const Duration(minutes: 30, seconds: 40),
+            ),
+            at(
+              'b',
+              DateTime.utc(2026, 10, 6, 4),
+              length: const Duration(minutes: 30, seconds: 40),
+            ),
+          ];
+        final container = containerWith(repo);
+
+        await container
+            .read(dutyHistoryControllerProvider.notifier)
+            .loadHistory();
+
+        // 61 min 20 s, not 30 + 30 = 60 min.
+        expect(
+          container.read(dutyHistoryControllerProvider).summary.totalHours,
+          '1h 1m',
+        );
+      },
+    );
+
+    test(
+      'if the server clock cannot be read the history still loads',
+      () async {
+        final repo = _FakeDutyRepository()
+          ..serverTimeError = const NetworkException()
+          ..historySessions = [_session('s1', thisMonthA)];
+        final container = containerWith(repo);
+
+        await container
+            .read(dutyHistoryControllerProvider.notifier)
+            .loadHistory();
+
+        final state = container.read(dutyHistoryControllerProvider);
+        expect(state.errorMessage, isNull);
+        expect(state.items.length, 1);
       },
     );
   });

@@ -14,6 +14,7 @@ import 'package:diamond_tracking/features/home/presentation/employee_home_page.d
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MockAuthRepository implements AuthRepository {
   UserProfile? mockProfile;
@@ -85,6 +86,9 @@ class _FakeDutyNotifier extends DutyNotifier {
 }
 
 void main() {
+  // Signing in reads this phone's saved device id.
+  setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
+
   Widget buildTestableWidget(Widget child, {MockAuthRepository? repo}) {
     final mockRepo = repo ?? MockAuthRepository();
     return ProviderScope(

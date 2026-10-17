@@ -128,11 +128,7 @@ class AdminRouteViewNotifier extends Notifier<AdminRouteViewState> {
     );
 
     // The IST day as a UTC interval (IST has no daylight saving).
-    final startUtc = DateTime.utc(
-      date.year,
-      date.month,
-      date.day,
-    ).subtract(DutyTimeHelper.istOffset);
+    final startUtc = DutyTimeHelper.istDayStartUtc(date);
     final endUtc = startUtc.add(const Duration(days: 1));
 
     try {

@@ -6,6 +6,20 @@ abstract final class DutyTimeHelper {
   /// IST is UTC + 5 hours and 30 minutes.
   static const Duration istOffset = Duration(hours: 5, minutes: 30);
 
+  /// 00:00 IST on the IST calendar day [wallDate] (only its year, month and day
+  /// count; day 0 or 32 roll over as in [DateTime]), as a UTC instant. IST has
+  /// no daylight saving, so a day is exactly 24 hours.
+  ///
+  /// The one place an IST day or month is turned into the UTC interval the
+  /// server is asked for: the end of a period is the start of the day after it.
+  static DateTime istDayStartUtc(DateTime wallDate) {
+    return DateTime.utc(
+      wallDate.year,
+      wallDate.month,
+      wallDate.day,
+    ).subtract(istOffset);
+  }
+
   /// Converts any [DateTime] into `Asia/Kolkata` (IST) wall clock time.
   static DateTime toIst(DateTime dateTime) {
     return dateTime.toUtc().add(istOffset);

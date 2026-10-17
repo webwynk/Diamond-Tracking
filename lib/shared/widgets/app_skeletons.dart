@@ -5,10 +5,7 @@ import '../../core/theme/app_dimens.dart';
 import 'app_card.dart';
 import 'app_shimmer.dart';
 
-export 'skeletons/widgets/duty_history_skeleton.dart';
-export 'skeletons/widgets/enhanced_map_placeholder.dart';
 export 'skeletons/widgets/notification_list_skeleton.dart';
-export 'skeletons/widgets/pagination_loader_card.dart';
 
 /// Atomic placeholder bar/box for skeleton loaders.
 class AppShimmerBox extends StatelessWidget {

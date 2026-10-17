@@ -104,11 +104,9 @@ class SupabaseDutyRepository implements DutyRepository {
       // "Yesterday" is a calendar day in IST (docs/08 section 4), so its
       // bounds are IST midnights expressed in UTC.
       final todayIst = DutyTimeHelper.nowIst;
-      final yesterdayStartUtc = DateTime.utc(
-        todayIst.year,
-        todayIst.month,
-        todayIst.day - 1,
-      ).subtract(DutyTimeHelper.istOffset);
+      final yesterdayStartUtc = DutyTimeHelper.istDayStartUtc(
+        DateTime(todayIst.year, todayIst.month, todayIst.day - 1),
+      );
       final todayStartUtc = yesterdayStartUtc.add(const Duration(days: 1));
 
       final response = await _supabase

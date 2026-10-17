@@ -56,11 +56,17 @@ class DutySession {
   /// Whether the session is currently active and accepting GPS points.
   bool get isOpen => status == DutySessionStatus.open && endedAt == null;
 
-  /// Computes elapsed duration.
-  Duration get elapsedDuration {
-    final end = endedAt ?? DateTime.now().toUtc();
-    return end.difference(startedAt);
+  /// How long the session lasted. An open one runs to [now]: pass the server's
+  /// clock where the figure is kept or compared (history, totals), as the phone's
+  /// clock may be wrong. Never negative.
+  Duration durationAt(DateTime now) {
+    final length = (endedAt ?? now).difference(startedAt);
+    return length.isNegative ? Duration.zero : length;
   }
+
+  /// Elapsed time on the phone's own clock, for the live timer on the duty
+  /// screens only.
+  Duration get elapsedDuration => durationAt(DateTime.now().toUtc());
 
   /// Formatted duration string (e.g. "8h 12m" or "0h 0m").
   String get formattedElapsed => DutyTimeHelper.formatElapsed(elapsedDuration);

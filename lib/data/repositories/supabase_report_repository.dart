@@ -52,16 +52,10 @@ class SupabaseReportRepository implements ReportRepository {
   }) {
     return _run('load the report data', () async {
       // The IST days as a UTC interval (IST has no daylight saving).
-      final startUtc = DateTime.utc(
-        from.year,
-        from.month,
-        from.day,
-      ).subtract(DutyTimeHelper.istOffset);
-      final endUtc = DateTime.utc(
-        to.year,
-        to.month,
-        to.day + 1,
-      ).subtract(DutyTimeHelper.istOffset);
+      final startUtc = DutyTimeHelper.istDayStartUtc(from);
+      final endUtc = DutyTimeHelper.istDayStartUtc(
+        DateTime(to.year, to.month, to.day + 1),
+      );
 
       final rows = <Map<String, dynamic>>[];
       var cut = false;
