@@ -5,8 +5,8 @@ publish_to: 'none'
 
 # version is <build-name>+<build-number>.
 # On Android, build-name becomes versionName and build-number becomes versionCode.
-# versionCode must increase on every Play upload.
-version: 1.0.0+1
+# versionCode must increase on every Play upload and APK build (Rule 10).
+version: 1.5.0+22
 
 environment:
   sdk: ^3.12.2
@@ -15,12 +15,14 @@ dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.8
-
   # Backend: Postgres, Auth, Realtime, Edge Functions.
   # Supabase Storage is NOT used - visit photos go to Cloudinary.
   # See docs/06-SUPABASE-BEST-PRACTICES.md.
   supabase_flutter: ^2.18.3
+
+  # Already pulled in by supabase_flutter; declared because the data layer
+  # catches its ClientException and tests inject its MockClient.
+  http: ^1.6.0
 
   # State management for the whole app. Never mix in another approach.
   # See CLAUDE.md locked decisions.
@@ -33,17 +35,40 @@ dependencies:
   maplibre_gl: ^0.27.1
   image_picker: ^1.1.2
 
+  # On-phone database for the GPS queue: points, the active session and a
+  # pending duty-off must survive restarts and force-kills (docs/08 section 6).
+  drift: ^2.35.2
+  drift_flutter: ^0.3.1
+  # Already pulled in by drift; used directly to set WAL journalling and a busy
+  # timeout on the tracking database, which two isolates open at once.
+  sqlite3: ^3.5.2
+
+  # The Android foreground service that keeps GPS tracking alive with a visible
+  # notification, independent of any screen (PRD F3, docs/08 section 5).
+  flutter_foreground_task: ^11.0.3
+  pdf: ^3.13.1
+  printing: ^5.15.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^6.0.0
 
+  # Code generation for drift (generated mappers, never hand-written).
+  drift_dev: ^2.35.1
+  build_runner: ^2.15.1
+
 flutter:
   uses-material-design: true
 
+  # The two DM Sans files are static cuts (wght 400 and 700, opsz 14) of the
+  # variable font below, for the PDF reports only: the PDF library cannot pick a
+  # weight from a variable font.
   assets:
     - assets/image/
+    - assets/fonts/DMSans-Regular.ttf
+    - assets/fonts/DMSans-Bold.ttf
 
   # DM Sans is BUNDLED, not fetched at runtime, so the first screen is never
   # unstyled on a slow connection. See docs/03-DESIGN-SYSTEM.md.

@@ -5,6 +5,9 @@ import 'package:permission_handler/permission_handler.dart' as ph;
 /// Abstracted so presentation logic and tests can run reliably without being
 /// coupled to underlying Android platform channel calls.
 abstract class PermissionService {
+  /// Whether the phone's location service (GPS switch) is turned on.
+  Future<bool> isLocationServiceEnabled();
+
   /// Whether foreground fine/coarse location is granted.
   Future<bool> isLocationGranted();
 
@@ -30,6 +33,12 @@ abstract class PermissionService {
 /// Production implementation of [PermissionService] backed by `permission_handler`.
 class DevicePermissionService implements PermissionService {
   const DevicePermissionService();
+
+  @override
+  Future<bool> isLocationServiceEnabled() async {
+    final status = await ph.Permission.location.serviceStatus;
+    return status.isEnabled;
+  }
 
   @override
   Future<bool> isLocationGranted() async {

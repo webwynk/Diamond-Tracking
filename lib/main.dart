@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config/env.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/splash_page.dart';
-
 
 /// Entry point.
 ///
@@ -16,6 +16,9 @@ Future<void> main() async {
 
   // Fail loudly and immediately rather than launching a misconfigured app.
   Env.validate();
+
+  // Lets the background tracking service send updates to the screens.
+  FlutterForegroundTask.initCommunicationPort();
 
   await Supabase.initialize(
     url: Env.supabaseUrl,
@@ -42,4 +45,3 @@ class DiamondTrackingApp extends StatelessWidget {
     );
   }
 }
-

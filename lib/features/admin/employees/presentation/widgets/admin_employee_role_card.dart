@@ -35,10 +35,7 @@ class AdminEmployeeRoleCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
-              const Text(
-                'ROLE',
-                style: AppTypography.overline,
-              ),
+              const Text('ROLE', style: AppTypography.overline),
               Text(
                 'Permissions tier',
                 style: AppTypography.caption.copyWith(
@@ -147,8 +144,9 @@ class _RoleTile extends StatelessWidget {
                       color: isSelected
                           ? AppColors.primary600
                           : AppColors.neutral700,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w500,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

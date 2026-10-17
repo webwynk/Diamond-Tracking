@@ -42,9 +42,7 @@ class EnhancedMapPlaceholder extends StatelessWidget {
             children: <Widget>[
               // CAD Blueprint Overlay Custom Painter
               Positioned.fill(
-                child: CustomPaint(
-                  painter: _CadBlueprintPainter(),
-                ),
+                child: CustomPaint(painter: _CadBlueprintPainter()),
               ),
 
               // Centered Floating Status Widget
@@ -184,8 +182,18 @@ class _CadBlueprintPainter extends CustomPainter {
     final centerX = size.width / 2;
     final centerY = size.height / 2;
 
-    _drawDashedLine(canvas, Offset(0, centerY), Offset(size.width, centerY), crosshairPaint);
-    _drawDashedLine(canvas, Offset(centerX, 0), Offset(centerX, size.height), crosshairPaint);
+    _drawDashedLine(
+      canvas,
+      Offset(0, centerY),
+      Offset(size.width, centerY),
+      crosshairPaint,
+    );
+    _drawDashedLine(
+      canvas,
+      Offset(centerX, 0),
+      Offset(centerX, size.height),
+      crosshairPaint,
+    );
 
     // Concentric Dashed Radar Ring
     final ringPaint = Paint()
@@ -212,12 +220,10 @@ class _CadBlueprintPainter extends CustomPainter {
     const dashSpace = 4.0;
     final dx = p2.dx - p1.dx;
     final dy = p2.dy - p1.dy;
-    final count = (math.sqrt(dx * dx + dy * dy) / (dashWidth + dashSpace)).floor();
+    final count = (math.sqrt(dx * dx + dy * dy) / (dashWidth + dashSpace))
+        .floor();
     for (var i = 0; i < count; i++) {
-      final start = Offset(
-        p1.dx + (dx / count) * i,
-        p1.dy + (dy / count) * i,
-      );
+      final start = Offset(p1.dx + (dx / count) * i, p1.dy + (dy / count) * i);
       final end = Offset(
         p1.dx + (dx / count) * (i + 0.5),
         p1.dy + (dy / count) * (i + 0.5),

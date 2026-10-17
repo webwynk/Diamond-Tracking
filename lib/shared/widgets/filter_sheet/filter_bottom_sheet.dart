@@ -17,10 +17,7 @@ import 'widgets/filter_status_chips.dart';
 /// Provides reusable multi-criteria filtering across employee status,
 /// duty state, date ranges, and sorting.
 class FilterBottomSheet extends ConsumerStatefulWidget {
-  const FilterBottomSheet({
-    super.key,
-    this.initialState,
-  });
+  const FilterBottomSheet({super.key, this.initialState});
 
   final FilterSheetState? initialState;
 
@@ -34,9 +31,8 @@ class FilterBottomSheet extends ConsumerStatefulWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: const Color(0x660F172A),
-      builder: (BuildContext ctx) => FilterBottomSheet(
-        initialState: initialState,
-      ),
+      builder: (BuildContext ctx) =>
+          FilterBottomSheet(initialState: initialState),
     );
   }
 
@@ -74,9 +70,7 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           // Header with Drag Handle & "Clear all"
-          FilterSheetHeader(
-            onClearAll: notifier.clearAll,
-          ),
+          FilterSheetHeader(onClearAll: notifier.clearAll),
 
           // Scrollable filter criteria
           Flexible(
@@ -125,10 +119,7 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
             decoration: const BoxDecoration(
               color: AppColors.surface,
               border: Border(
-                top: BorderSide(
-                  color: AppColors.neutral200,
-                  width: 1,
-                ),
+                top: BorderSide(color: AppColors.neutral200, width: 1),
               ),
             ),
             child: Row(
@@ -176,7 +167,7 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
                         ),
                       ),
                       child: Text(
-                        state.resultsButtonLabel,
+                        'Apply filters',
                         style: AppTypography.label.copyWith(
                           color: AppColors.surface,
                           fontWeight: FontWeight.w600,

@@ -10,10 +10,7 @@ import '../../app_skeletons.dart';
 /// Matches Screen 30 (item 3): Grouped container with 4 rows of 76 dp
 /// notification item placeholders separated by 1 dp dividers.
 class NotificationListSkeleton extends StatelessWidget {
-  const NotificationListSkeleton({
-    super.key,
-    this.itemCount = 4,
-  });
+  const NotificationListSkeleton({super.key, this.itemCount = 4});
 
   final int itemCount;
 

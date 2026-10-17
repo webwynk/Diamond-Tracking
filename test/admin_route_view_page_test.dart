@@ -1,280 +1,400 @@
+import 'package:diamond_tracking/core/errors/app_exceptions.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
-import 'package:diamond_tracking/features/admin/employees/presentation/admin_employee_detail_page.dart';
-import 'package:diamond_tracking/features/admin/employees/presentation/controllers/admin_employee_list_state.dart';
-import 'package:diamond_tracking/features/admin/employees/presentation/widgets/admin_employee_quick_actions.dart';
+import 'package:diamond_tracking/domain/entities/admin_duty_session.dart';
+import 'package:diamond_tracking/domain/entities/route_day.dart';
 import 'package:diamond_tracking/features/admin/route_view/presentation/admin_route_view_page.dart';
-import 'package:diamond_tracking/features/admin/route_view/presentation/controllers/admin_route_view_controller.dart';
 import 'package:diamond_tracking/features/admin/route_view/presentation/widgets/admin_route_date_pill.dart';
-import 'package:diamond_tracking/features/admin/route_view/presentation/widgets/admin_route_floating_app_bar.dart';
 import 'package:diamond_tracking/features/admin/route_view/presentation/widgets/admin_route_map_view.dart';
-import 'package:diamond_tracking/features/admin/route_view/presentation/widgets/admin_route_summary_sheet.dart';
+import 'package:diamond_tracking/shared/widgets/app_top_bar.dart';
+import 'package:diamond_tracking/shared/widgets/india_map.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/fake_route.dart';
+
 void main() {
-  const sureshPatel = AdminEmployeeItem(
-    id: 'emp-1',
-    name: 'Suresh Patel',
-    employeeCode: 'DA-022',
-    phoneNumber: '+91 98201 44556',
-    status: AdminEmployeeStatus.onDuty,
-    dutyStartTime: '8:04 AM',
-    distanceTodayKm: '38.6 km',
-    locationName: 'Shivpuri Agricultural Cluster',
+  late FakeRouteRepository repository;
+  final today = istDayStartUtc(2026, 10, 17);
+
+  setUp(() => repository = FakeRouteRepository());
+
+  RouteDay dayOf(
+    List<AdminDutySession> sessions, {
+    List<RoutePoint>? points,
+    bool truncated = false,
+  }) => RouteDay(
+    sessions: sessions,
+    points: points ?? routeWalk(),
+    serverNow: kRouteNow,
+    truncated: truncated,
   );
 
-  Widget buildTestableWidget(Widget child, {ProviderContainer? container}) {
-    if (container != null) {
-      return UncontrolledProviderScope(
-        container: container,
+  Future<void> pumpPage(
+    WidgetTester tester, {
+    String? dayId,
+    VoidCallback? onBack,
+    bool settle = true,
+  }) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: routeOverrides(repository),
         child: MaterialApp(
           theme: AppTheme.light,
-          home: child,
+          home: AdminRouteViewPage(
+            employeeId: 'e1',
+            employeeName: 'Asha Patil',
+            dayId: dayId,
+            onBack: onBack,
+          ),
         ),
-      );
-    }
-    return ProviderScope(
-      child: MaterialApp(
-        theme: AppTheme.light,
-        home: child,
       ),
     );
+    if (settle) {
+      for (var i = 0; i < 4; i++) {
+        await tester.pump();
+      }
+    }
   }
 
-  group('Screen 23 AdminRouteViewPage Visual & Structural Tests', () {
-    testWidgets('renders all visual elements matching HTML design reference', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('shows the employee, the day and the date selector', (
+    tester,
+  ) async {
+    await pumpPage(tester);
 
-      await tester.pumpWidget(
-        buildTestableWidget(const AdminRouteViewPage()),
-      );
-      await tester.pumpAndSettle();
+    expect(find.byType(AppTopBar), findsOneWidget);
+    expect(find.text('Route'), findsOneWidget);
+    expect(find.text('Asha Patil · Sat, 17 Oct'), findsOneWidget);
+    expect(find.byType(AdminRouteDatePill), findsOneWidget);
+    expect(find.byType(AdminRouteMapView), findsOneWidget);
+    expect(find.byType(IndiaMap), findsOneWidget);
+  });
 
-      // 1. Floating Top App Bar
-      expect(find.byType(AdminRouteFloatingAppBar), findsOneWidget);
-      expect(find.text('Route'), findsOneWidget);
-      expect(find.text('Suresh Patel · Sat, 11 Oct'), findsOneWidget);
-      expect(find.byKey(const Key('btn-route-back')), findsOneWidget);
-      expect(find.byKey(const Key('btn-route-share')), findsOneWidget);
+  testWidgets('back goes back', (tester) async {
+    var backed = false;
+    await pumpPage(tester, onBack: () => backed = true);
 
-      // 2. Centered Date Selector Pill
-      expect(find.byType(AdminRouteDatePill), findsOneWidget);
-      expect(find.text('Sat, 11 Oct'), findsWidgets);
-      expect(find.byKey(const Key('btn-route-prev-date')), findsOneWidget);
-      expect(find.byKey(const Key('btn-route-next-date')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('btn-route-back')));
 
-      // 3. Map View & Waypoints
-      expect(find.byType(AdminRouteMapView), findsOneWidget);
-      expect(find.text('© OpenStreetMap contributors'), findsOneWidget);
-      expect(find.byKey(const Key('btn-map-fit-route')), findsOneWidget);
-      expect(find.byKey(const Key('btn-map-layers')), findsOneWidget);
+    expect(backed, isTrue);
+  });
 
-      // Markers (Start, Stop, Visits 1-5, Flag, End)
-      expect(find.byKey(const Key('marker-wp-start')), findsOneWidget);
-      expect(find.byKey(const Key('marker-wp-end')), findsOneWidget);
-      expect(find.byKey(const Key('marker-wp-visit-1')), findsOneWidget);
-      expect(find.byKey(const Key('marker-wp-visit-2')), findsOneWidget);
-      expect(find.byKey(const Key('marker-wp-visit-3')), findsOneWidget);
-      expect(find.byKey(const Key('marker-wp-visit-4')), findsOneWidget);
-      expect(find.byKey(const Key('marker-wp-visit-5')), findsOneWidget);
-      expect(find.byKey(const Key('marker-wp-stop-1')), findsOneWidget);
-      expect(find.byKey(const Key('marker-wp-stop-2')), findsOneWidget);
-      expect(find.byKey(const Key('marker-wp-flag-1')), findsOneWidget);
+  group('a day with a route', () {
+    setUp(() => repository.days[today] = dayOf([routeSession('s1')]));
 
-      // 4. Lower 38% Telemetry Audit Summary Sheet
-      expect(find.byType(AdminRouteSummarySheet), findsOneWidget);
+    testWidgets('shows the server totals under the map', (tester) async {
+      await pumpPage(tester);
 
-      // 4 Stat Blocks
-      expect(find.text('47.3 km'), findsOneWidget);
+      expect(find.byKey(const Key('route-summary-sheet')), findsOneWidget);
+      String valueIn(String key) => tester
+          .widgetList<Text>(
+            find.descendant(
+              of: find.byKey(Key(key)),
+              matching: find.byType(Text),
+            ),
+          )
+          .first
+          .data!;
+      expect(valueIn('route-stat-distance'), '12.3 km');
+      expect(valueIn('route-stat-hours'), '7h 26m');
+      expect(valueIn('route-stat-visits'), '2');
+      expect(valueIn('route-stat-flagged'), '0');
       expect(find.text('Distance'), findsOneWidget);
-      expect(find.text('8h 08m'), findsOneWidget);
       expect(find.text('Duty hours'), findsOneWidget);
-      expect(find.text('5'), findsWidgets);
-      expect(find.text('Visits'), findsOneWidget);
-      expect(find.text('1'), findsWidgets);
-      expect(find.text('Flag'), findsOneWidget);
-
-      // Inline Metadata Row
-      expect(find.text('8:04 AM – 6:12 PM'), findsOneWidget);
-      expect(find.text('2 long stops'), findsOneWidget);
-
-      // Red Flag Alert Strip
-      expect(
-        find.text('1 flagged point excluded from distance'),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('btn-route-view-flag')), findsOneWidget);
-
-      // "View visits" Action Button
-      expect(find.byKey(const Key('btn-route-view-visits')), findsOneWidget);
-      expect(find.text('View visits'), findsOneWidget);
+      expect(find.text('8:04 AM – 3:30 PM'), findsOneWidget);
+      expect(find.byKey(const Key('route-flag-note')), findsNothing);
     });
 
-    testWidgets('date selector pill navigates between dates', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('explains the markers and offers to show the whole route', (
+      tester,
+    ) async {
+      await pumpPage(tester);
 
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+      expect(find.byKey(const Key('route-legend')), findsOneWidget);
+      expect(find.text('Start'), findsOneWidget);
+      expect(find.text('End'), findsOneWidget);
+      expect(find.text('Now'), findsNothing);
+      expect(find.byKey(const Key('btn-route-fit')), findsOneWidget);
+    });
 
-      await tester.pumpWidget(
-        buildTestableWidget(
-          const AdminRouteViewPage(),
-          container: container,
+    testWidgets('has no playback, speed, scrubber or satellite control', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+
+      expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
+      expect(find.byIcon(Icons.pause_rounded), findsNothing);
+      expect(find.byType(Slider), findsNothing);
+      expect(find.textContaining('Satellite'), findsNothing);
+      expect(find.byKey(const Key('btn-route-layers')), findsNothing);
+      expect(find.text('View visits'), findsNothing);
+    });
+
+    testWidgets('names a duty that ended automatically', (tester) async {
+      repository.days[today] = dayOf([
+        routeSession('s1', status: 'auto_curfew'),
+      ]);
+      await pumpPage(tester);
+
+      expect(find.text('Duty ended automatically'), findsOneWidget);
+    });
+  });
+
+  group('today, still on duty', () {
+    testWidgets('says hours so far and that the last marker is now', (
+      tester,
+    ) async {
+      repository.days[today] = dayOf([routeSession('s1', open: true, km: 2.1)]);
+      await pumpPage(tester);
+
+      expect(find.text('Duty hours so far'), findsOneWidget);
+      expect(find.text('On duty now'), findsOneWidget);
+      expect(find.text('8:04 AM – now'), findsOneWidget);
+      expect(find.text('Now'), findsOneWidget);
+      expect(find.text('End'), findsNothing);
+      expect(find.byKey(const Key('route-distance-unavailable')), findsNothing);
+    });
+
+    testWidgets(
+      'does not pretend to know a distance the server could not give',
+      (tester) async {
+        repository.days[today] = dayOf([
+          routeSession('s1', open: true, km: null),
+        ]);
+        await pumpPage(tester);
+
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('route-stat-distance')),
+            matching: find.text('—'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const Key('route-distance-unavailable')),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('an open session on a past day is not "now"', (tester) async {
+      final yesterday = istDayStartUtc(2026, 10, 16);
+      repository.days[yesterday] = dayOf([
+        routeSession(
+          's1',
+          open: true,
+          startedAt: DateTime.utc(2026, 10, 16, 3),
+          km: 1,
         ),
-      );
-      await tester.pumpAndSettle();
+      ]);
+      await pumpPage(tester, dayId: '2026-10-16');
 
-      expect(
-        container.read(adminRouteViewControllerProvider).selectedDateText,
-        'Sat, 11 Oct',
-      );
-
-      // Tap Previous Date Chevron
-      await tester.tap(find.byKey(const Key('btn-route-prev-date')));
-      await tester.pumpAndSettle();
-
-      expect(
-        container.read(adminRouteViewControllerProvider).selectedDateText,
-        'Fri, 10 Oct',
-      );
-      expect(find.text('Fri, 10 Oct'), findsWidgets);
-
-      // Tap Next Date Chevron
-      await tester.tap(find.byKey(const Key('btn-route-next-date')));
-      await tester.pumpAndSettle();
-
-      expect(
-        container.read(adminRouteViewControllerProvider).selectedDateText,
-        'Sat, 11 Oct',
-      );
+      expect(find.text('Now'), findsNothing);
+      expect(find.text('End'), findsOneWidget);
     });
+  });
 
-    testWidgets('tapping flagged anomaly View link opens anomaly audit dialog', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        buildTestableWidget(const AdminRouteViewPage()),
+  group('flagged points', () {
+    testWidgets('are explained in words and left out of the figures', (
+      tester,
+    ) async {
+      repository.days[today] = dayOf(
+        [routeSession('s1')],
+        points: [
+          routePoint(20.0000, 73, 0),
+          routePoint(21.0, 74, 5, isMock: true),
+          routePoint(20.0001, 73, 10),
+          routePoint(20.0002, 73, 20, accuracy: 400),
+          routePoint(20.0100, 73, 30),
+        ],
       );
-      await tester.pumpAndSettle();
+      await pumpPage(tester);
 
-      // Tap "View" on the flagged point alert strip
-      await tester.tap(find.byKey(const Key('btn-route-view-flag')));
-      await tester.pumpAndSettle();
-
-      // Dialog opens
-      expect(find.text('Flagged Telemetry Anomaly'), findsOneWidget);
+      final note = find.byKey(const Key('route-flag-note'));
+      expect(note, findsOneWidget);
       expect(
-        find.textContaining('GPS Jump / Mock Provider'),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('Location coordinate leaped 8.4 km in 2 seconds'),
-        findsOneWidget,
-      );
-
-      // Close Dialog
-      await tester.tap(find.text('Close'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Flagged Telemetry Anomaly'), findsNothing);
-    });
-
-    testWidgets('tapping View visits button opens visits bottom sheet', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        buildTestableWidget(const AdminRouteViewPage()),
-      );
-      await tester.pumpAndSettle();
-
-      // Tap "View visits" button
-      await tester.tap(find.byKey(const Key('btn-route-view-visits')));
-      await tester.pumpAndSettle();
-
-      // Modal Bottom Sheet displays all 5 visits
-      expect(find.text('Recorded Visits (5)'), findsOneWidget);
-      expect(find.text('Shinde Orchards'), findsOneWidget);
-      expect(find.text('Kisan Agro Hub'), findsOneWidget);
-      expect(find.text('Shivpuri Farm'), findsOneWidget);
-      expect(find.text('Someshwar Krishi Seva'), findsOneWidget);
-      expect(find.text('Gangapur Cooperative'), findsOneWidget);
-    });
-
-    testWidgets('tapping map controls toggles layers and fit route', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
-      await tester.pumpWidget(
-        buildTestableWidget(
-          const AdminRouteViewPage(),
-          container: container,
+        find.descendant(
+          of: note,
+          matching: find.textContaining('2 flagged points are left out'),
         ),
+        findsOneWidget,
       );
-      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: note,
+          matching: find.textContaining(
+            '1 impossible jump not drawn as travel',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Fake location'), findsOneWidget);
+      expect(find.text('Low accuracy'), findsOneWidget);
+    });
 
-      // Tap Layers Button
-      await tester.tap(find.byKey(const Key('btn-map-layers')));
+    testWidgets('a single flagged point reads naturally', (tester) async {
+      repository.days[today] = dayOf(
+        [routeSession('s1')],
+        points: [
+          routePoint(20.0000, 73, 0),
+          routePoint(21.0, 74, 5, isMock: true),
+          routePoint(20.0001, 73, 10),
+        ],
+      );
+      await pumpPage(tester);
+
+      expect(
+        find.textContaining('1 flagged point is left out of the route'),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('states', () {
+    testWidgets('loading is shown, not an empty route', (tester) async {
+      repository.gate(today);
+      await pumpPage(tester, settle: false);
       await tester.pump();
 
-      expect(
-        find.text('Satellite imagery basemap enabled.'),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('route-loading')), findsOneWidget);
+      expect(find.text('No location recorded'), findsNothing);
+      expect(find.byKey(const Key('route-summary-sheet')), findsNothing);
 
-      // Tap Fit Route Button
-      await tester.tap(find.byKey(const Key('btn-map-fit-route')));
-      await tester.pump();
-
-      expect(
-        find.text('Route centered to full 47.3 km corridor.'),
-        findsOneWidget,
-      );
+      repository.release(today);
+      for (var i = 0; i < 4; i++) {
+        await tester.pump();
+      }
+      expect(find.byKey(const Key('route-loading')), findsNothing);
     });
 
-    testWidgets('AdminEmployeeDetailPage quick action Route view opens AdminRouteViewPage',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('a day with no duty says so plainly, with no totals', (
+      tester,
+    ) async {
+      await pumpPage(tester);
 
-      await tester.pumpWidget(
-        buildTestableWidget(
-          const AdminEmployeeDetailPage(employee: sureshPatel),
-        ),
+      expect(find.text('No location recorded'), findsOneWidget);
+      expect(
+        find.text('No duty points recorded for Sat, 17 Oct.'),
+        findsOneWidget,
       );
-      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('route-summary-sheet')), findsNothing);
+      expect(find.byKey(const Key('btn-route-fit')), findsNothing);
+    });
 
-      // Verify Quick Action "Route view" is present
-      expect(find.byType(AdminEmployeeQuickActions), findsOneWidget);
-      expect(find.text('Route view'), findsOneWidget);
+    testWidgets('duty without a usable location keeps the totals', (
+      tester,
+    ) async {
+      repository.days[today] = dayOf([routeSession('s1')], points: const []);
+      await pumpPage(tester);
 
-      // Tap "Route view"
-      await tester.tap(find.text('Route view'));
-      await tester.pumpAndSettle();
+      expect(find.text('No usable location'), findsOneWidget);
+      expect(find.byKey(const Key('route-summary-sheet')), findsOneWidget);
+      expect(find.byKey(const Key('route-legend')), findsNothing);
+      expect(find.byKey(const Key('btn-route-fit')), findsNothing);
+    });
 
-      // AdminRouteViewPage opens
-      expect(find.byType(AdminRouteViewPage), findsOneWidget);
-      expect(find.text('Route'), findsOneWidget);
-      expect(find.text('Suresh Patel · Sat, 11 Oct'), findsOneWidget);
+    testWidgets('a day older than 30 days: no route, totals kept', (
+      tester,
+    ) async {
+      repository.days[istDayStartUtc(2026, 9, 10)] = dayOf([
+        routeSession(
+          's1',
+          startedAt: DateTime.utc(2026, 9, 10, 3),
+          endedAt: DateTime.utc(2026, 9, 10, 9),
+          km: 21.5,
+        ),
+      ]);
+      await pumpPage(tester, dayId: '2026-09-10');
+
+      expect(find.text('Route older than 30 days'), findsOneWidget);
+      expect(find.text('21.5 km'), findsOneWidget);
+      expect(find.byKey(const Key('route-legend')), findsNothing);
+      expect(find.byKey(const Key('btn-route-fit')), findsNothing);
+    });
+
+    testWidgets('a failed load is an error with Retry, then recovers', (
+      tester,
+    ) async {
+      repository.error = const NetworkException();
+      await pumpPage(tester);
+
+      expect(find.byKey(const Key('route-error')), findsOneWidget);
+      expect(find.text("Couldn't load the route"), findsOneWidget);
+      expect(find.text('No location recorded'), findsNothing);
+
+      repository.error = null;
+      repository.days[today] = dayOf([routeSession('s1')]);
+      await tester.tap(find.text('Retry'));
+      for (var i = 0; i < 4; i++) {
+        await tester.pump();
+      }
+
+      expect(find.byKey(const Key('route-error')), findsNothing);
+      expect(find.byKey(const Key('route-summary-sheet')), findsOneWidget);
+    });
+
+    testWidgets('a day cut at the safety cap says so', (tester) async {
+      repository.days[today] = dayOf([routeSession('s1')], truncated: true);
+      await pumpPage(tester);
+
+      expect(find.byKey(const Key('route-truncated')), findsOneWidget);
+    });
+  });
+
+  group('the date and reload', () {
+    testWidgets('previous and next move the day and load it', (tester) async {
+      repository.days[istDayStartUtc(2026, 10, 16)] = dayOf([
+        routeSession(
+          's1',
+          startedAt: DateTime.utc(2026, 10, 16, 3),
+          endedAt: DateTime.utc(2026, 10, 16, 9),
+          km: 4,
+        ),
+      ]);
+      await pumpPage(tester);
+      expect(find.text('Asha Patil · Sat, 17 Oct'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.chevron_left_rounded));
+      for (var i = 0; i < 4; i++) {
+        await tester.pump();
+      }
+      expect(find.text('Asha Patil · Fri, 16 Oct'), findsOneWidget);
+      expect(find.text('4.0 km'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.chevron_right_rounded));
+      for (var i = 0; i < 4; i++) {
+        await tester.pump();
+      }
+      expect(find.text('Asha Patil · Sat, 17 Oct'), findsOneWidget);
+    });
+
+    testWidgets('the reload button reads the day again', (tester) async {
+      await pumpPage(tester);
+      final calls = repository.calls.length;
+
+      await tester.tap(find.byKey(const Key('btn-route-refresh')));
+      for (var i = 0; i < 4; i++) {
+        await tester.pump();
+      }
+
+      expect(repository.calls.length, calls + 1);
+    });
+
+    testWidgets('opens on the day it was given', (tester) async {
+      await pumpPage(tester, dayId: '2026-10-10');
+
+      expect(find.text('Asha Patil · Sat, 10 Oct'), findsOneWidget);
+    });
+
+    testWidgets('opens on today for a day it cannot read', (tester) async {
+      await pumpPage(tester, dayId: 'not-a-day');
+
+      expect(find.text('Asha Patil · Sat, 17 Oct'), findsOneWidget);
     });
   });
 }

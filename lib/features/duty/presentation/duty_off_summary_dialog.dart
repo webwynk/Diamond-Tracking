@@ -70,8 +70,10 @@ class DutyOffSummaryDialog extends StatelessWidget {
     // Calculate elapsed duration
     final end = session.endedAt ?? DateTime.now().toUtc();
     final elapsed = end.difference(session.startedAt);
-    final formattedInterval =
-        DutyTimeHelper.formatShiftInterval(session.startedAt, session.endedAt);
+    final formattedInterval = DutyTimeHelper.formatShiftInterval(
+      session.startedAt,
+      session.endedAt,
+    );
     final formattedHours = DutyTimeHelper.formatElapsed(elapsed);
     final formattedDistance =
         '${DutyTimeHelper.formatDistanceKm(session.totalDistanceKm)} km';
@@ -339,11 +341,7 @@ class _MetricRow extends StatelessWidget {
                   ],
                 ),
                 alignment: Alignment.center,
-                child: Icon(
-                  icon,
-                  size: 16,
-                  color: AppColors.neutral600,
-                ),
+                child: Icon(icon, size: 16, color: AppColors.neutral600),
               ),
               const SizedBox(width: AppSpacing.x2),
               Flexible(

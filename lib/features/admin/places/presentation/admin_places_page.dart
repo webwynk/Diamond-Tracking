@@ -4,21 +4,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../dashboard/presentation/widgets/admin_bottom_navigation.dart';
-import '../../reports/presentation/admin_reports_page.dart';
+import '../../../../shared/widgets/app_badge.dart';
+import '../../../../shared/widgets/app_empty_state.dart';
+import '../../../../shared/widgets/app_top_bar.dart';
 import 'admin_place_form_page.dart';
 import 'controllers/admin_places_controller.dart';
 import 'controllers/admin_places_state.dart';
 import 'widgets/admin_place_card.dart';
 import 'widgets/admin_places_filter_chips.dart';
 import 'widgets/admin_places_search_bar.dart';
-import 'widgets/admin_places_telemetry_banner.dart';
-import 'widgets/admin_places_top_bar.dart';
 
 /// Screen 24 — Places List (Admin).
 ///
 /// Complete geofenced boundary registry and management console:
-/// - 56 dp white app bar with "38 ACTIVE" pill badge and calibration/export tools
+/// - Shared top app bar (brand) with "38 ACTIVE" pill badge and calibration/export tools
 /// - Pinned 48 dp search field with instant filtering
 /// - Horizontally scrolling category chips (All, Farms, Dealers, Offices, Warehouses, Inactive)
 /// - RTK Synced geofence telemetry micro-banner (accuracy ±1.8m)
@@ -26,26 +25,11 @@ import 'widgets/admin_places_top_bar.dart';
 /// - Dynamic empty state when search/filter returns 0 matches
 /// - Field agronomy perimeter helper banner
 /// - 56 dp floating action button to create new geofences
-/// - Persistent 5-item admin bottom navigation bar (Places tab active)
 class AdminPlacesPage extends ConsumerStatefulWidget {
-  const AdminPlacesPage({
-    super.key,
-    this.onBack,
-    this.onCreatePlace,
-    this.onPlaceSelected,
-    this.onNavigateToHome,
-    this.onNavigateToMap,
-    this.onNavigateToTeam,
-    this.onNavigateToReports,
-  });
+  const AdminPlacesPage({super.key, this.onCreatePlace, this.onPlaceSelected});
 
-  final VoidCallback? onBack;
   final VoidCallback? onCreatePlace;
   final ValueChanged<AdminPlaceItem>? onPlaceSelected;
-  final VoidCallback? onNavigateToHome;
-  final VoidCallback? onNavigateToMap;
-  final VoidCallback? onNavigateToTeam;
-  final VoidCallback? onNavigateToReports;
 
   @override
   ConsumerState<AdminPlacesPage> createState() => _AdminPlacesPageState();
@@ -60,32 +44,15 @@ class _AdminPlacesPageState extends ConsumerState<AdminPlacesPage> {
     super.dispose();
   }
 
-  void _handleNavigation(int index) {
-    switch (index) {
-      case 0:
-        widget.onNavigateToHome?.call();
-        break;
-      case 1:
-        widget.onNavigateToMap?.call();
-        break;
-      case 2:
-        widget.onNavigateToTeam?.call();
-        break;
-      case 3:
-        // Already on Places
-        break;
-      case 4:
-        if (widget.onNavigateToReports != null) {
-          widget.onNavigateToReports!();
-        } else {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (context) => const AdminReportsPage(),
-            ),
-          );
-        }
-        break;
+  void _openCreateForm(BuildContext context) {
+    final override = widget.onCreatePlace;
+    if (override != null) {
+      override();
+      return;
     }
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const AdminPlaceFormPage()));
   }
 
   @override
@@ -96,25 +63,14 @@ class _AdminPlacesPageState extends ConsumerState<AdminPlacesPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AdminPlacesTopBar(
-        activePlacesCount: state.activePlacesCount,
-        onBack: widget.onBack,
-        onTuneFilter: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Geofence satellite RTK calibration: ±1.8m nominal.'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        },
-        onExportCoordinates: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Exporting 38 geofence perimeters (GeoJSON / CSV)...'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        },
+      appBar: AppTopBar(
+        style: AppTopBarStyle.brand,
+        title: 'Places',
+        titleTrailing: AppBadge(
+          label: '${state.activePlacesCount} ACTIVE',
+          backgroundColor: AppColors.primary50,
+          textColor: AppColors.primary700,
+        ),
       ),
       body: Column(
         children: <Widget>[
@@ -138,13 +94,21 @@ class _AdminPlacesPageState extends ConsumerState<AdminPlacesPage> {
           ),
           const SizedBox(height: AppSpacing.x2 + 2),
 
-          // 3. Telemetry Sub-Banner
-          const AdminPlacesTelemetryBanner(),
-          const SizedBox(height: AppSpacing.x2),
-
-          // 4. Places List Stream / Empty State
+          // 3. Places List Stream / Empty State
           Expanded(
-            child: filteredPlaces.isEmpty
+            child: state.places.isEmpty
+                ? Center(
+                    child: AppEmptyState(
+                      icon: Icons.domain_outlined,
+                      title: 'No places yet',
+                      description:
+                          'Add your first farm, dealer, office or warehouse.',
+                      actionLabel: 'Add place',
+                      onActionPressed: () => _openCreateForm(context),
+                      isActionOutlined: false,
+                    ),
+                  )
+                : filteredPlaces.isEmpty
                 ? _buildEmptyState(context, notifier)
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(
@@ -172,11 +136,6 @@ class _AdminPlacesPageState extends ConsumerState<AdminPlacesPage> {
                           },
                         );
                       }),
-
-                      const SizedBox(height: AppSpacing.x2),
-
-                      // Field Agronomy Helper Banner
-                      _buildAgronomyHelperBanner(),
                     ],
                   ),
           ),
@@ -184,23 +143,12 @@ class _AdminPlacesPageState extends ConsumerState<AdminPlacesPage> {
       ),
       floatingActionButton: FloatingActionButton(
         key: const Key('btn-add-place'),
-        onPressed: widget.onCreatePlace ??
-            () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (context) => const AdminPlaceFormPage(),
-                ),
-              );
-            },
+        onPressed: () => _openCreateForm(context),
         backgroundColor: AppColors.primary600,
         foregroundColor: AppColors.neutral0,
         elevation: 4,
         shape: const CircleBorder(),
         child: const Icon(Icons.add_rounded, size: 28),
-      ),
-      bottomNavigationBar: AdminBottomNavigationBar(
-        currentIndex: 3, // Places tab active
-        onTap: _handleNavigation,
       ),
     );
   }
@@ -238,9 +186,7 @@ class _AdminPlacesPageState extends ConsumerState<AdminPlacesPage> {
             Text(
               'Try modifying search terms or resetting category filters to display rural polygon anchors.',
               textAlign: TextAlign.center,
-              style: AppTypography.body.copyWith(
-                color: AppColors.neutral500,
-              ),
+              style: AppTypography.body.copyWith(color: AppColors.neutral500),
             ),
             const SizedBox(height: AppSpacing.x4),
             ElevatedButton(
@@ -265,49 +211,6 @@ class _AdminPlacesPageState extends ConsumerState<AdminPlacesPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildAgronomyHelperBanner() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.neutral200, width: 1),
-      ),
-      padding: const EdgeInsets.all(AppSpacing.x4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Icon(
-            Icons.info_outline_rounded,
-            color: AppColors.primary600,
-            size: 20,
-          ),
-          const SizedBox(width: AppSpacing.x3),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Need a custom perimeter?',
-                  style: AppTypography.label.copyWith(
-                    color: AppColors.neutral900,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Walk the field boundary with RTK handheld mode turned ON, or tap the action button to drop GPS pins.',
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.neutral500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

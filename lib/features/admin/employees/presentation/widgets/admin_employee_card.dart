@@ -25,10 +25,7 @@ class AdminEmployeeCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isBlocked ? AppColors.background : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(
-          color: AppColors.border,
-          width: 1.0,
-        ),
+        border: Border.all(color: AppColors.border, width: 1.0),
       ),
       child: Material(
         color: Colors.transparent,
@@ -80,7 +77,9 @@ class AdminEmployeeCard extends StatelessWidget {
                               employee.name,
                               style: AppTypography.title.copyWith(
                                 color: isBlocked
-                                    ? AppColors.textPrimary.withValues(alpha: 0.7)
+                                    ? AppColors.textPrimary.withValues(
+                                        alpha: 0.7,
+                                      )
                                     : AppColors.textPrimary,
                                 fontWeight: FontWeight.w600,
                                 decoration: isBlocked

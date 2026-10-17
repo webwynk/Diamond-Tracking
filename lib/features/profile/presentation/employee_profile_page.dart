@@ -6,6 +6,7 @@ import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/duty_time_helper.dart';
 import '../../../shared/widgets/app_snackbar.dart';
+import '../../auth/presentation/auth_navigation.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../auth/presentation/controllers/auth_state.dart';
 import '../../duty/presentation/controllers/duty_controller.dart';
@@ -23,10 +24,7 @@ import 'widgets/update_pin_dialog.dart';
 /// operational monthly metrics, PIN change capability, privacy details,
 /// and safe logout.
 class EmployeeProfilePage extends ConsumerWidget {
-  const EmployeeProfilePage({
-    super.key,
-    this.onBack,
-  });
+  const EmployeeProfilePage({super.key, this.onBack});
 
   final VoidCallback? onBack;
 
@@ -35,9 +33,7 @@ class EmployeeProfilePage extends ConsumerWidget {
       context: context,
       builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             const Icon(
@@ -48,9 +44,7 @@ class EmployeeProfilePage extends ConsumerWidget {
             const SizedBox(width: AppSpacing.x2),
             Text(
               'Privacy & Tracking',
-              style: AppTypography.title.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              style: AppTypography.title.copyWith(color: AppColors.textPrimary),
             ),
           ],
         ),
@@ -117,25 +111,66 @@ class EmployeeProfilePage extends ConsumerWidget {
     );
   }
 
+  /// Logging out while on duty would stop tracking and leave the office
+  /// looking at a dead marker, so duty has to be turned off first.
+  Future<void> _showEndDutyFirst(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        key: const Key('dialog-end-duty-first'),
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'End duty first',
+          style: AppTypography.title.copyWith(color: AppColors.textPrimary),
+        ),
+        content: Text(
+          'You are on duty. Turn duty off before logging out, so your route is '
+          'saved and the office is not left tracking a stopped phone.',
+          style: AppTypography.body.copyWith(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            key: const Key('btn-end-duty-first-ok'),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text(
+              'OK',
+              style: AppTypography.label.copyWith(
+                color: AppColors.primary600,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleLogout(BuildContext context, WidgetRef ref) async {
+    final duty = ref.read(dutyControllerProvider.notifier);
+    final check = await duty.checkBeforeSignOut();
+    if (!context.mounted) return;
+    if (check.onDuty) {
+      await _showEndDutyFirst(context);
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Log out?',
-          style: AppTypography.title.copyWith(
-            color: AppColors.textPrimary,
-          ),
+          style: AppTypography.title.copyWith(color: AppColors.textPrimary),
         ),
         content: Text(
-          'Are you sure you want to log out of your Diamond Agritech employee account?',
-          style: AppTypography.body.copyWith(
-            color: AppColors.textSecondary,
-          ),
+          check.unsyncedPoints > 0
+              ? '${check.unsyncedPoints} location points have not reached the '
+                    'office yet and will be lost if you log out now. Connect to '
+                    'the internet and try again, or log out anyway.'
+              : 'Are you sure you want to log out of your Diamond Agritech employee account?',
+          style: AppTypography.body.copyWith(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
@@ -163,10 +198,11 @@ class EmployeeProfilePage extends ConsumerWidget {
     );
 
     if (confirmed == true && context.mounted) {
+      final navigator = Navigator.of(context);
+      // Delete this employee's tracking data from the phone before signing out.
+      await duty.clearLocalTrackingData();
       await ref.read(authControllerProvider.notifier).signOut();
-      if (context.mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      }
+      AuthNavigation.goToLogin(navigator);
     }
   }
 
@@ -177,16 +213,16 @@ class EmployeeProfilePage extends ConsumerWidget {
     final historyState = ref.watch(dutyHistoryControllerProvider);
 
     // Profile Fallbacks
-    String fullName = 'Ramesh Kumar';
-    String employeeCode = 'DA-014';
-    String initials = 'RK';
-    String phone = '+91 98765 43210';
-    String email = 'ramesh.k@diamondagritech.in';
-    String joinedDate = '04 Mar 2026';
+    String fullName = 'Employee';
+    String employeeCode = '—';
+    String initials = 'EM';
+    String phone = '—';
+    String email = '—';
+    String joinedDate = '—';
 
     if (authState is AuthAuthenticated) {
       fullName = authState.profile.fullName;
-      employeeCode = authState.profile.employeeCode ?? 'DA-014';
+      employeeCode = authState.profile.employeeCode ?? '—';
       phone = authState.profile.phone ?? phone;
       email = authState.profile.email ?? email;
       joinedDate = DutyTimeHelper.formatDate(authState.profile.createdAt);
@@ -195,7 +231,9 @@ class EmployeeProfilePage extends ConsumerWidget {
       if (parts.length >= 2) {
         initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
       } else if (parts.isNotEmpty && parts[0].isNotEmpty) {
-        initials = parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
+        initials = parts[0]
+            .substring(0, parts[0].length >= 2 ? 2 : 1)
+            .toUpperCase();
       }
     }
 

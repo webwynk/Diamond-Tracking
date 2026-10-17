@@ -39,15 +39,8 @@ class AdminEmployeeDetailsCard extends StatelessWidget {
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
-              Text(
-                'EMPLOYEE DETAILS',
-                style: AppTypography.overline,
-              ),
-              Icon(
-                Icons.badge_outlined,
-                size: 16,
-                color: AppColors.neutral400,
-              ),
+              Text('EMPLOYEE DETAILS', style: AppTypography.overline),
+              Icon(Icons.badge_outlined, size: 16, color: AppColors.neutral400),
             ],
           ),
           const SizedBox(height: AppSpacing.x4),

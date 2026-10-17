@@ -30,7 +30,7 @@ class AdminPlaceFormSheet extends StatelessWidget {
   final ValueChanged<PlaceFormType> onTypeChanged;
   final ValueChanged<double> onRadiusChanged;
   final ValueChanged<bool> onActiveChanged;
-  final VoidCallback onCopyCoordinates;
+  final VoidCallback? onCopyCoordinates;
 
   @override
   Widget build(BuildContext context) {
@@ -39,9 +39,7 @@ class AdminPlaceFormSheet extends StatelessWidget {
       decoration: const BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-        border: Border(
-          top: BorderSide(color: AppColors.neutral200, width: 1),
-        ),
+        border: Border(top: BorderSide(color: AppColors.neutral200, width: 1)),
         boxShadow: [
           BoxShadow(
             color: Color(0x0A000000),
@@ -83,20 +81,8 @@ class AdminPlaceFormSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              Container(
+              SizedBox(
                 height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(
-                    color: errorMessage != null
-                        ? AppColors.error
-                        : AppColors.neutral300,
-                    width: 1,
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
-                alignment: Alignment.centerLeft,
                 child: TextField(
                   key: const Key('input-place-name'),
                   controller: nameController,
@@ -104,10 +90,32 @@ class AdminPlaceFormSheet extends StatelessWidget {
                     color: AppColors.neutral900,
                     fontWeight: FontWeight.w500,
                   ),
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
+                  decoration: InputDecoration(
+                    hintText: 'Enter place name',
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.x4,
+                      vertical: 12,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: AppRadius.mdAll,
+                      borderSide: BorderSide(
+                        color: errorMessage != null
+                            ? AppColors.error
+                            : AppColors.neutral300,
+                        width: 1,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: AppRadius.mdAll,
+                      borderSide: BorderSide(
+                        color: errorMessage != null
+                            ? AppColors.error
+                            : AppColors.primary600,
+                        width: 1.5,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -116,9 +124,7 @@ class AdminPlaceFormSheet extends StatelessWidget {
                 Text(
                   errorMessage!,
                   key: const Key('text-form-error'),
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.error,
-                  ),
+                  style: AppTypography.caption.copyWith(color: AppColors.error),
                 ),
               ],
               const SizedBox(height: AppSpacing.x3),
@@ -350,7 +356,9 @@ class AdminPlaceFormSheet extends StatelessWidget {
                       value: isActive,
                       onChanged: onActiveChanged,
                       activeThumbColor: AppColors.primary600,
-                      activeTrackColor: AppColors.primary600.withValues(alpha: 0.38),
+                      activeTrackColor: AppColors.primary600.withValues(
+                        alpha: 0.38,
+                      ),
                     ),
                   ],
                 ),

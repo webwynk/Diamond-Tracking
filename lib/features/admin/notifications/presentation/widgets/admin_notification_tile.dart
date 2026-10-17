@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_dimens.dart';
 import '../../../../../core/theme/app_typography.dart';
-import '../controllers/admin_notification_state.dart';
+import '../admin_notification_presenter.dart';
 
 /// 76 dp notification row for Screen 21.
 ///
@@ -24,7 +24,7 @@ class AdminNotificationTile extends StatelessWidget {
     required this.onTap,
   });
 
-  final AdminNotificationItem item;
+  final AdminNotificationRow item;
   final VoidCallback onTap;
 
   @override
@@ -49,10 +49,7 @@ class AdminNotificationTile extends StatelessWidget {
                   left: 0,
                   top: 0,
                   bottom: 0,
-                  child: Container(
-                    width: 4,
-                    color: AppColors.primary600,
-                  ),
+                  child: Container(width: 4, color: AppColors.primary600),
                 ),
 
               Padding(
@@ -71,11 +68,7 @@ class AdminNotificationTile extends StatelessWidget {
                         color: item.badgeColor,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        item.icon,
-                        color: item.iconColor,
-                        size: 22,
-                      ),
+                      child: Icon(item.icon, color: item.iconColor, size: 22),
                     ),
                     const SizedBox(width: AppSpacing.x4),
 
@@ -116,7 +109,7 @@ class AdminNotificationTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: <Widget>[
                         Text(
-                          item.timestamp,
+                          item.timeText,
                           style: AppTypography.caption.copyWith(
                             color: AppColors.neutral400,
                             fontFeatures: const <FontFeature>[

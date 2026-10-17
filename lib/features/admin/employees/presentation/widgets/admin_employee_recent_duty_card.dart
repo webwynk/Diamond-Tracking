@@ -21,42 +21,23 @@ class EmployeeDutyLogRecord {
   final String distanceStr;
 }
 
-/// Screen 18 "Recent duty" Card: Section header with "View all" CTA and 3 session history rows.
+/// Screen 18 "Recent duty" Card: Section header with "View all" CTA and the session history rows.
 class AdminEmployeeRecentDutyCard extends StatelessWidget {
   const AdminEmployeeRecentDutyCard({
     super.key,
-    this.logs = defaultLogs,
+    this.logs = const <EmployeeDutyLogRecord>[],
+    this.emptyText = 'No duty recorded this month.',
     this.onViewAll,
     this.onLogSelected,
   });
 
   final List<EmployeeDutyLogRecord> logs;
+
+  /// Said when there is nothing to list: "no duty", "loading" or "could not
+  /// load" are different things and must not look the same.
+  final String emptyText;
   final VoidCallback? onViewAll;
   final ValueChanged<EmployeeDutyLogRecord>? onLogSelected;
-
-  static const List<EmployeeDutyLogRecord> defaultLogs = [
-    EmployeeDutyLogRecord(
-      id: 'log-1',
-      dateStr: '12 Oct 2026',
-      timeWindow: '8:04 AM – 6:12 PM',
-      durationStr: '8h 08m',
-      distanceStr: '47.3 km',
-    ),
-    EmployeeDutyLogRecord(
-      id: 'log-2',
-      dateStr: '11 Oct 2026',
-      timeWindow: '8:10 AM – 5:45 PM',
-      durationStr: '9h 35m',
-      distanceStr: '52.1 km',
-    ),
-    EmployeeDutyLogRecord(
-      id: 'log-3',
-      dateStr: '10 Oct 2026',
-      timeWindow: '7:55 AM – 4:20 PM',
-      durationStr: '8h 25m',
-      distanceStr: '44.8 km',
-    ),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +84,18 @@ class AdminEmployeeRecentDutyCard extends StatelessWidget {
 
           const SizedBox(height: AppSpacing.x1),
 
-          // 2. Three 64 dp Shift Rows
+          // 2. Shift rows, or an honest empty message
+          if (logs.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.x4),
+              child: Text(
+                emptyText,
+                key: const Key('text-recent-duty-empty'),
+                style: AppTypography.body.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
           for (int i = 0; i < logs.length; i++) ...[
             if (i > 0) const Divider(color: AppColors.border, height: 1),
             _buildDutyRow(logs[i]),

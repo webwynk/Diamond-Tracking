@@ -1,235 +1,653 @@
+import 'package:diamond_tracking/core/errors/app_exceptions.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
+import 'package:diamond_tracking/domain/entities/admin_activity_event.dart';
+import 'package:diamond_tracking/domain/entities/user_profile.dart';
+import 'package:diamond_tracking/domain/repositories/live_location_repository.dart';
+import 'package:diamond_tracking/domain/repositories/notification_repository.dart';
 import 'package:diamond_tracking/features/admin/dashboard/presentation/admin_dashboard_page.dart';
-import 'package:diamond_tracking/features/admin/dashboard/presentation/widgets/admin_bottom_navigation.dart';
 import 'package:diamond_tracking/features/admin/dashboard/presentation/widgets/admin_map_preview_card.dart';
+import 'package:diamond_tracking/features/admin/dashboard/presentation/widgets/admin_profile_sheet.dart';
 import 'package:diamond_tracking/features/admin/dashboard/presentation/widgets/admin_recent_activity_card.dart';
 import 'package:diamond_tracking/features/admin/dashboard/presentation/widgets/admin_stat_card.dart';
+import 'package:diamond_tracking/features/admin/employees/presentation/controllers/admin_employee_list_state.dart';
+import 'package:diamond_tracking/features/admin/shell/admin_tab.dart';
+import 'package:diamond_tracking/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:diamond_tracking/features/auth/presentation/controllers/auth_state.dart';
+import 'package:diamond_tracking/shared/widgets/app_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/fake_admin_activity.dart';
+import 'support/fake_employee_repository.dart';
+import 'support/fake_live_locations.dart';
+import 'support/fake_notification_repository.dart';
+
+class TestAuthNotifier extends AuthNotifier {
+  TestAuthNotifier(this._initialState);
+  final AuthState _initialState;
+
+  @override
+  AuthState build() => _initialState;
+}
+
+final testAdminProfile = UserProfile(
+  id: 'admin-123',
+  role: UserRole.admin,
+  status: UserStatus.active,
+  fullName: 'Operations Administrator',
+  email: 'admin@diamondagritech.in',
+  mustChangePin: false,
+  failedLoginAttempts: 0,
+  createdAt: DateTime(2026, 1, 1),
+  updatedAt: DateTime(2026, 1, 1),
+);
+
 void main() {
-  Widget buildTestableAdminDashboard({
-    VoidCallback? onNavigateToMap,
-    VoidCallback? onNavigateToTeam,
+  late FakeLiveLocationRepository live;
+  late FakeEmployeeRepository roster;
+  late FakeAdminActivityRepository activity;
+  late FakeNotificationRepository notifications;
+
+  setUp(() {
+    live = FakeLiveLocationRepository();
+    roster = FakeEmployeeRepository(
+      roster: [
+        rosterEmployee('e-asha', 'Asha Patil', 'DA-101'),
+        rosterEmployee('e-ravi', 'Ravi Kumar', 'DA-102'),
+        rosterEmployee('e-meena', 'Meena Joshi', 'DA-103'),
+        rosterEmployee('e-sunil', 'Sunil More', 'DA-104'),
+        rosterEmployee('e-leena', 'Leena Shah', 'DA-105'),
+        // Active but not on duty:
+        const AdminEmployeeItem(
+          id: 'e-off',
+          name: 'Off Duty Person',
+          employeeCode: 'DA-106',
+          phoneNumber: '+919820000106',
+          status: AdminEmployeeStatus.offDuty,
+        ),
+        // Blocked people are not counted as off duty:
+        const AdminEmployeeItem(
+          id: 'e-blocked',
+          name: 'Blocked Person',
+          employeeCode: 'DA-107',
+          phoneNumber: '+919820000107',
+          status: AdminEmployeeStatus.blocked,
+          isActive: false,
+        ),
+      ],
+    );
+    activity = FakeAdminActivityRepository();
+    notifications = FakeNotificationRepository();
+  });
+
+  /// Asha fresh, Ravi stale, Meena flagged.
+  void threePeople() {
+    live.positions = [
+      livePosition('e-asha'),
+      livePosition('e-ravi', ago: const Duration(minutes: 9)),
+      livePosition('e-meena', isMock: true),
+    ];
+  }
+
+  Future<void> pumpPage(
+    WidgetTester tester, {
     VoidCallback? onNavigateToNotifications,
-  }) {
-    return ProviderScope(
-      child: MaterialApp(
-        theme: AppTheme.light,
-        home: AdminDashboardPage(
-          onNavigateToMap: onNavigateToMap,
-          onNavigateToTeam: onNavigateToTeam,
-          onNavigateToNotifications: onNavigateToNotifications,
+    VoidCallback? onProfilePressed,
+    bool settle = true,
+  }) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...liveMapOverrides(live, roster),
+          activityOverride(activity),
+          notificationOverride(notifications),
+          authControllerProvider.overrideWith(
+            () => TestAuthNotifier(AuthAuthenticated(testAdminProfile)),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: AdminDashboardPage(
+            onNavigateToNotifications: onNavigateToNotifications,
+            onProfilePressed: onProfilePressed,
+          ),
         ),
       ),
     );
+    if (settle) await settleFrames(tester);
   }
 
-  group('Screen 14 AdminDashboardPage Widget Tests', () {
-    testWidgets('renders header with branding, refresh action, and notification badge',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  /// The Home owns timers (live feed, activity), so the page is taken down
+  /// before the test ends (the framework checks for timers before tear-down).
+  Future<void> closePage(WidgetTester tester) =>
+      tester.pumpWidget(const SizedBox());
 
-      bool notified = false;
-      await tester.pumpWidget(
-        buildTestableAdminDashboard(
+  /// The big number inside the stat card labelled [label].
+  Finder valueOf(String label, String value) => find.descendant(
+    of: find.ancestor(
+      of: find.text(label),
+      matching: find.byType(AdminStatCard),
+    ),
+    matching: find.text(value),
+  );
+
+  group('Screen 14 AdminDashboardPage header', () {
+    testWidgets(
+      'renders header with branding and a notification bell without invented badge',
+      (tester) async {
+        bool notified = false;
+        await pumpPage(
+          tester,
           onNavigateToNotifications: () => notified = true,
-        ),
-      );
-      await tester.pump();
+        );
 
-      // Brand headers
-      expect(find.text('Diamond Agritech'), findsOneWidget);
-      expect(find.text('Admin • Home'), findsOneWidget);
+        expect(find.text('Diamond Agritech'), findsOneWidget);
+        expect(find.text('Admin • Home'), findsOneWidget);
+        expect(find.byType(AppBadge), findsNothing);
 
-      // Notification badge (7 unread notifications)
-      expect(find.text('7'), findsOneWidget);
+        await tester.tap(find.byTooltip('Notifications'));
+        await tester.pump();
+        expect(notified, isTrue);
+        await closePage(tester);
+      },
+    );
 
-      // Tap notification bell
-      await tester.tap(find.byTooltip('Notifications'));
-      await tester.pump();
-      expect(notified, isTrue);
+    testWidgets('shows the date from the clock, not a fixed date', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+
+      expect(find.textContaining('12 October 2026 · 2:48 PM'), findsNothing);
+      expect(find.textContaining('${DateTime.now().year}'), findsOneWidget);
+      await closePage(tester);
     });
+  });
 
-    testWidgets('renders 2x2 stat cards with correct metrics and styling',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  group('duty counts come from the same live feed as the map', () {
+    testWidgets('show a dash while loading, never a made-up zero', (
+      tester,
+    ) async {
+      threePeople();
+      await pumpPage(tester, settle: false);
 
-      await tester.pumpWidget(buildTestableAdminDashboard());
-      await tester.pump();
-
-      // Section header
-      expect(find.text('TELEMETRY LIVE'), findsOneWidget);
-
-      // 4 Stat Cards
       expect(find.byType(AdminStatCard), findsNWidgets(4));
-      expect(find.text('112'), findsOneWidget);
-      expect(find.text('ON DUTY'), findsOneWidget);
+      expect(find.text('–'), findsNWidgets(4));
+      expect(find.text('0'), findsNothing);
 
-      expect(find.text('31'), findsOneWidget);
-      expect(find.text('OFF DUTY'), findsOneWidget);
-
-      expect(find.text('4'), findsOneWidget);
-      expect(find.text('NO UPDATE'), findsOneWidget);
-
-      expect(find.text('3'), findsOneWidget);
-      expect(find.text('NEEDS CHECK'), findsOneWidget);
+      await settleFrames(tester);
+      expect(find.text('–'), findsNothing);
+      await closePage(tester);
     });
 
-    testWidgets('renders live map preview card with clusters, calibration badge, and navigates',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('count everyone on duty, the quiet ones and the flagged ones', (
+      tester,
+    ) async {
+      threePeople();
+      await pumpPage(tester);
 
-      bool mapNavigated = false;
-      await tester.pumpWidget(
-        buildTestableAdminDashboard(
-          onNavigateToMap: () => mapNavigated = true,
-        ),
+      // 3 on duty (fresh, stale and flagged all count as on duty), 1 quiet,
+      // 1 flagged. Off duty: the 6 active staff minus the 3 on duty. The
+      // blocked person is not counted.
+      expect(valueOf('ON DUTY', '3'), findsOneWidget);
+      expect(valueOf('OFF DUTY', '3'), findsOneWidget);
+      expect(valueOf('NO UPDATE', '1'), findsOneWidget);
+      expect(valueOf('NEEDS CHECK', '1'), findsOneWidget);
+      await closePage(tester);
+    });
+
+    testWidgets('are zero when nobody is on duty and the load succeeded', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+
+      expect(valueOf('ON DUTY', '0'), findsOneWidget);
+      expect(valueOf('NO UPDATE', '0'), findsOneWidget);
+      expect(valueOf('NEEDS CHECK', '0'), findsOneWidget);
+      // Every active employee is off duty (6); the blocked one is excluded.
+      expect(valueOf('OFF DUTY', '6'), findsOneWidget);
+      await closePage(tester);
+    });
+
+    testWidgets('move when someone starts duty, without any reload', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+      expect(valueOf('ON DUTY', '0'), findsOneWidget);
+
+      live.emit(LivePositionChanged(livePosition('e-asha')));
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(valueOf('ON DUTY', '1'), findsOneWidget);
+      expect(valueOf('OFF DUTY', '5'), findsOneWidget);
+      await closePage(tester);
+    });
+
+    testWidgets('show dashes, not zeros, when the load failed', (tester) async {
+      live.error = const NetworkException();
+      await pumpPage(tester);
+
+      expect(find.text('–'), findsNWidgets(4));
+      expect(find.text('0'), findsNothing);
+      await closePage(tester);
+    });
+
+    testWidgets('every stat card opens the Team tab', (tester) async {
+      await pumpPage(tester);
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AdminDashboardPage)),
       );
-      await tester.pump();
+      final tab = container.listen(adminTabProvider, (_, _) {});
+      addTearDown(tab.close);
+
+      for (final label in ['ON DUTY', 'OFF DUTY', 'NO UPDATE', 'NEEDS CHECK']) {
+        container.read(adminTabProvider.notifier).select(AdminTab.home);
+        await tester.tap(find.text(label));
+        await tester.pump();
+        expect(tab.read(), AdminTab.team, reason: label);
+      }
+      await closePage(tester);
+    });
+  });
+
+  group('live map card', () {
+    testWidgets('lists who is on duty with how fresh each position is', (
+      tester,
+    ) async {
+      threePeople();
+      await pumpPage(tester);
 
       expect(find.byType(AdminMapPreviewCard), findsOneWidget);
       expect(find.text('Live map'), findsOneWidget);
-      expect(find.text('View all'), findsOneWidget);
-
-      // Map clusters
-      expect(find.text('12'), findsOneWidget);
-      expect(find.text('8'), findsOneWidget);
-
-      // Accuracy and legal attribution badges
-      expect(find.text('98.4% Acc.'), findsOneWidget);
-      expect(find.text('Mapbox © OpenStreetMap'), findsOneWidget);
-
-      // Tap View full map
-      await tester.tap(find.text('View all'));
-      await tester.pump();
-      expect(mapNavigated, isTrue);
+      expect(find.text('No one is on duty'), findsNothing);
+      expect(find.byKey(const Key('preview-officer-e-asha')), findsOneWidget);
+      expect(find.text('Asha Patil'), findsOneWidget);
+      expect(find.text('Just now'), findsNWidgets(2));
+      expect(find.text('9 min ago'), findsOneWidget);
+      // A worrying status is in words as well as colour.
+      expect(find.text('No update 5 min'), findsOneWidget);
+      expect(find.text('Check needed'), findsOneWidget);
+      expect(find.byKey(const Key('preview-more')), findsNothing);
+      await closePage(tester);
     });
 
-    testWidgets('renders recent activity card with stream rows', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('shows only the first three and counts the rest', (
+      tester,
+    ) async {
+      live.positions = [
+        livePosition('e-asha'),
+        livePosition('e-ravi'),
+        livePosition('e-meena'),
+        livePosition('e-sunil'),
+        livePosition('e-leena'),
+      ];
+      await pumpPage(tester);
 
-      await tester.pumpWidget(buildTestableAdminDashboard());
+      expect(find.byKey(const Key('preview-officer-e-asha')), findsOneWidget);
+      expect(find.byKey(const Key('preview-officer-e-sunil')), findsNothing);
+      expect(find.text('+2 more on duty'), findsOneWidget);
+      await closePage(tester);
+    });
+
+    testWidgets('says plainly when nobody is on duty, and navigates', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AdminDashboardPage)),
+      );
+      final tab = container.listen(adminTabProvider, (_, _) {});
+      addTearDown(tab.close);
+      expect(tab.read(), AdminTab.home);
+
+      expect(find.text('No one is on duty'), findsOneWidget);
+      expect(find.text('View all'), findsOneWidget);
+      // No drawn map, invented clusters or wrong attribution.
+      expect(find.text('Mapbox © OpenStreetMap'), findsNothing);
+
+      await tester.tap(find.text('View all'));
       await tester.pump();
+      expect(tab.read(), AdminTab.map);
+      await closePage(tester);
+    });
+
+    testWidgets('a person row opens the Map tab', (tester) async {
+      threePeople();
+      await pumpPage(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AdminDashboardPage)),
+      );
+      final tab = container.listen(adminTabProvider, (_, _) {});
+      addTearDown(tab.close);
+
+      await tester.tap(find.text('Ravi Kumar'));
+      await tester.pump();
+
+      expect(tab.read(), AdminTab.map);
+      await closePage(tester);
+    });
+
+    testWidgets('loading and failure are not "No one is on duty"', (
+      tester,
+    ) async {
+      live.error = const NetworkException();
+      await pumpPage(tester, settle: false);
+      expect(find.byKey(const Key('preview-loading')), findsOneWidget);
+      expect(find.text('No one is on duty'), findsNothing);
+
+      await settleFrames(tester);
+      expect(find.byKey(const Key('preview-error')), findsOneWidget);
+      expect(find.text('No one is on duty'), findsNothing);
+      await closePage(tester);
+    });
+  });
+
+  group('recent activity', () {
+    testWidgets('shows real events, newest first, worded for the admin', (
+      tester,
+    ) async {
+      activity.events = [
+        activityEvent(
+          AdminActivityKind.dutyStarted,
+          id: 'start:1',
+          ago: const Duration(minutes: 2),
+        ),
+        activityEvent(
+          AdminActivityKind.dutyEnded,
+          id: 'end:2',
+          name: 'Ravi Kumar',
+          code: 'DA-102',
+          ago: const Duration(hours: 1, minutes: 5),
+        ),
+        activityEvent(
+          AdminActivityKind.dutyAutoEnded,
+          id: 'end:3',
+          name: 'Meena Joshi',
+          code: 'DA-103',
+          ago: const Duration(days: 1),
+        ),
+        activityEvent(
+          AdminActivityKind.employeeBlocked,
+          id: 'audit:4',
+          name: 'Sunil More',
+          code: 'DA-104',
+          detail: 'by Operations Administrator',
+          ago: const Duration(minutes: 30),
+        ),
+      ];
+      await pumpPage(tester);
 
       expect(find.byType(AdminRecentActivityCard), findsOneWidget);
       expect(find.text('Recent activity'), findsOneWidget);
-      expect(find.text('See all'), findsOneWidget);
-
-      // Activity entries
-      expect(find.text('Suresh Patel started duty'), findsOneWidget);
-      expect(find.text('Anil Sharma — location flagged'), findsOneWidget);
-      expect(find.text('Vijay Singh reached Shivpuri Farm'), findsOneWidget);
-      expect(find.text('Prakash Rao — no update 12 min'), findsOneWidget);
+      expect(find.text('Asha Patil started duty'), findsOneWidget);
+      expect(find.text('2 min ago'), findsOneWidget);
+      expect(find.text('Ravi Kumar ended duty'), findsOneWidget);
+      expect(find.text('1 h 5 min ago'), findsOneWidget);
+      expect(find.text('Duty ended automatically'), findsOneWidget);
+      expect(find.text('Meena Joshi · DA-103'), findsOneWidget);
+      expect(find.text('1 d ago'), findsOneWidget);
+      expect(find.text('Sunil More was blocked'), findsOneWidget);
+      expect(find.text('by Operations Administrator'), findsOneWidget);
+      expect(find.text('No activity yet'), findsNothing);
+      await closePage(tester);
     });
 
-    testWidgets('tapping Broadcast Alert opens modal and submits', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('says "No activity yet" only after a successful empty load', (
+      tester,
+    ) async {
+      await pumpPage(tester, settle: false);
+      expect(find.byKey(const Key('activity-loading')), findsOneWidget);
+      expect(find.text('No activity yet'), findsNothing);
 
-      await tester.pumpWidget(buildTestableAdminDashboard());
+      await settleFrames(tester);
+      expect(find.byKey(const Key('activity-loading')), findsNothing);
+      expect(find.text('No activity yet'), findsOneWidget);
+      await closePage(tester);
+    });
+
+    testWidgets('a failed load is an error with Retry, then recovers', (
+      tester,
+    ) async {
+      activity.error = const NetworkException();
+      await pumpPage(tester);
+
+      expect(find.byKey(const Key('activity-error')), findsOneWidget);
+      expect(find.text('No activity yet'), findsNothing);
+
+      activity
+        ..error = null
+        ..events = [activityEvent(AdminActivityKind.dutyStarted)];
+      await tester.ensureVisible(find.byKey(const Key('btn-activity-retry')));
+      await tester.tap(find.byKey(const Key('btn-activity-retry')));
+      await settleFrames(tester);
+
+      expect(find.byKey(const Key('activity-error')), findsNothing);
+      expect(find.text('Asha Patil started duty'), findsOneWidget);
+      await closePage(tester);
+    });
+
+    testWidgets('reloads when someone starts duty, and every minute', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+      final loads = activity.fetchCount;
+
+      live.emit(LivePositionChanged(livePosition('e-asha')));
+      await tester.pump(const Duration(seconds: 1));
+      await settleFrames(tester);
+      expect(activity.fetchCount, loads + 1);
+
+      await tester.pump(const Duration(minutes: 1));
+      await settleFrames(tester);
+      expect(activity.fetchCount, greaterThan(loads + 1));
+      await closePage(tester);
+    });
+
+    testWidgets('a failed refresh keeps what is already shown', (tester) async {
+      activity.events = [activityEvent(AdminActivityKind.dutyStarted)];
+      await pumpPage(tester);
+      expect(find.text('Asha Patil started duty'), findsOneWidget);
+
+      activity.error = const NetworkException();
+      await tester.pump(const Duration(minutes: 1));
+      await settleFrames(tester);
+
+      expect(find.text('Asha Patil started duty'), findsOneWidget);
+      expect(find.byKey(const Key('activity-error')), findsNothing);
+      await closePage(tester);
+    });
+
+    testWidgets('See all opens notifications', (tester) async {
+      bool opened = false;
+      await pumpPage(tester, onNavigateToNotifications: () => opened = true);
+
+      await tester.ensureVisible(
+        find.byKey(const Key('btn-see-all-activities')),
+      );
+      await tester.tap(find.byKey(const Key('btn-see-all-activities')));
       await tester.pump();
 
-      final broadcastBtn = find.byKey(const Key('btn-broadcast-alert'));
-      expect(broadcastBtn, findsOneWidget);
+      expect(opened, isTrue);
+      await closePage(tester);
+    });
+  });
 
-      await tester.tap(broadcastBtn);
-      await tester.pumpAndSettle();
+  testWidgets('pull to refresh reloads the live positions and the activity', (
+    tester,
+  ) async {
+    await pumpPage(tester);
+    final liveLoads = live.fetchCount;
+    final activityLoads = activity.fetchCount;
+    threePeople();
+
+    await tester.fling(
+      find.byType(SingleChildScrollView),
+      const Offset(0, 400),
+      1000,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await settleFrames(tester);
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(live.fetchCount, greaterThan(liveLoads));
+    expect(activity.fetchCount, greaterThan(activityLoads));
+    expect(valueOf('ON DUTY', '3'), findsOneWidget);
+    await closePage(tester);
+  });
+
+  testWidgets(
+    'has no Broadcast Alert or Export Day Log action (features removed)',
+    (tester) async {
+      await pumpPage(tester);
+
+      expect(find.byKey(const Key('btn-broadcast-alert')), findsNothing);
+      expect(find.text('Broadcast Alert'), findsNothing);
+      expect(find.byKey(const Key('btn-export-day-log')), findsNothing);
+      expect(find.text('Export Day Log'), findsNothing);
+      await closePage(tester);
+    },
+  );
+
+  group('the bell', () {
+    testWidgets(
+      'shows the SERVER unread count, not the rows that happen to be loaded',
+      (tester) async {
+        notifications.all = [
+          for (var id = 120; id >= 1; id--) notification(id),
+        ];
+        await pumpPage(tester);
+
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('admin-notifications-btn')),
+            matching: find.text('99+'),
+          ),
+          findsOneWidget,
+        );
+        await closePage(tester);
+      },
+    );
+
+    testWidgets('shows a small exact count', (tester) async {
+      notifications.all = [for (var id = 3; id >= 1; id--) notification(id)];
+      await pumpPage(tester);
 
       expect(
         find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.text('Broadcast Alert'),
+          of: find.byKey(const Key('admin-notifications-btn')),
+          matching: find.text('3'),
         ),
         findsOneWidget,
       );
-      expect(find.text('Send Broadcast'), findsOneWidget);
-
-      // Tap Send Broadcast
-      await tester.tap(find.text('Send Broadcast'));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(AlertDialog), findsNothing);
-      expect(find.text('Broadcast notification queued for delivery.'), findsOneWidget);
+      await closePage(tester);
     });
 
-    testWidgets('tapping Export Day Log shows feedback snackbar', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets(
+      'rises the moment a notification arrives, without opening the centre',
+      (tester) async {
+        notifications.all = [notification(1)];
+        await pumpPage(tester);
 
-      await tester.pumpWidget(buildTestableAdminDashboard());
-      await tester.pump();
+        notifications.emit(NotificationArrived(notification(2)));
+        await tester.pump();
 
-      final exportBtn = find.byKey(const Key('btn-export-day-log'));
-      expect(exportBtn, findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('admin-notifications-btn')),
+            matching: find.text('2'),
+          ),
+          findsOneWidget,
+        );
+        await closePage(tester);
+      },
+    );
 
-      await tester.tap(exportBtn);
-      await tester.pump();
+    testWidgets(
+      'has no number when nothing is unread, and when the count cannot be read',
+      (tester) async {
+        notifications.countError = const NetworkException();
+        await pumpPage(tester);
 
-      expect(
-        find.text('Exporting attendance & telemetry day log as CSV...'),
-        findsOneWidget,
+        expect(find.byType(AppBadge), findsNothing);
+        await closePage(tester);
+      },
+    );
+
+    testWidgets('pull to refresh reads the notifications again too', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+      final calls = notifications.pageCalls.length;
+      notifications.all = [notification(1)];
+
+      await tester.fling(
+        find.byType(SingleChildScrollView).first,
+        const Offset(0, 400),
+        1000,
       );
-    });
-
-    testWidgets('refresh icon button triggers telemetry refresh and snackbar',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(buildTestableAdminDashboard());
       await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await settleFrames(tester);
+      await tester.pump(const Duration(seconds: 1));
 
-      await tester.tap(find.byTooltip('Refresh Data'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-
-      expect(find.text('Dashboard telemetry refreshed.'), findsOneWidget);
-    });
-
-    testWidgets('renders 5-item admin bottom navigation bar and selects tabs',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(buildTestableAdminDashboard());
-      await tester.pump();
-
-      expect(find.byType(AdminBottomNavigationBar), findsOneWidget);
-      expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Map'), findsOneWidget);
-      expect(find.text('Team'), findsOneWidget);
-      expect(find.text('Places'), findsOneWidget);
-      expect(find.text('Reports'), findsOneWidget);
-
-      // Tap Team tab
-      await tester.tap(find.text('Team'));
-      await tester.pump();
-
-      // Tap Map tab
-      await tester.tap(find.text('Map'));
-      await tester.pump();
+      expect(notifications.pageCalls.length, greaterThan(calls));
+      await closePage(tester);
     });
   });
+
+  group('admin profile', () {
+    testWidgets(
+      'tapping admin profile avatar opens AdminProfileSheet with metadata',
+      (tester) async {
+        await pumpPage(tester);
+
+        final profileBtn = find.byKey(const Key('admin-profile-btn'));
+        expect(profileBtn, findsOneWidget);
+
+        await tester.tap(profileBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AdminProfileSheet), findsOneWidget);
+        expect(find.text('Admin Profile'), findsOneWidget);
+        expect(find.text('ACTIVE'), findsOneWidget);
+        expect(find.text('ADMINISTRATOR'), findsOneWidget);
+        expect(find.text('Diamond Agritech Pvt Ltd'), findsOneWidget);
+        expect(find.text('v1.0.2 (Build 3)'), findsOneWidget);
+        expect(find.byKey(const Key('btn-admin-logout')), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('btn-close-admin-profile')));
+        await tester.pumpAndSettle();
+        expect(find.byType(AdminProfileSheet), findsNothing);
+        await closePage(tester);
+      },
+    );
+
+    testWidgets('custom onProfilePressed callback executes when provided', (
+      tester,
+    ) async {
+      bool profileTapped = false;
+      await pumpPage(tester, onProfilePressed: () => profileTapped = true);
+
+      await tester.tap(find.byKey(const Key('admin-profile-btn')));
+      await tester.pump();
+
+      expect(profileTapped, isTrue);
+      await closePage(tester);
+    });
+  });
+}
+
+/// Lets queued async work finish.
+Future<void> settleFrames(WidgetTester tester) async {
+  for (var i = 0; i < 4; i++) {
+    await tester.pump();
+  }
 }

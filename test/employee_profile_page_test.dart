@@ -1,10 +1,10 @@
 import 'package:diamond_tracking/core/theme/app_theme.dart';
+import 'package:diamond_tracking/core/utils/duty_time_helper.dart';
 import 'package:diamond_tracking/domain/entities/duty_session.dart';
-import 'package:diamond_tracking/domain/entities/location_point.dart';
 import 'package:diamond_tracking/domain/entities/user_profile.dart';
 import 'package:diamond_tracking/domain/repositories/auth_repository.dart';
-import 'package:diamond_tracking/domain/repositories/duty_repository.dart';
 import 'package:diamond_tracking/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:diamond_tracking/features/auth/presentation/controllers/auth_state.dart';
 import 'package:diamond_tracking/features/duty/presentation/controllers/duty_controller.dart';
 import 'package:diamond_tracking/features/profile/presentation/employee_profile_page.dart';
 import 'package:diamond_tracking/features/profile/presentation/widgets/profile_details_card.dart';
@@ -15,6 +15,8 @@ import 'package:diamond_tracking/features/profile/presentation/widgets/update_pi
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/fake_duty.dart';
 
 class _FakeAuthRepository implements AuthRepository {
   UserProfile? mockProfile;
@@ -56,24 +58,16 @@ class _FakeAuthRepository implements AuthRepository {
   Stream<UserProfile?> get authProfileChanges => const Stream.empty();
 }
 
-class _FakeDutyRepository implements DutyRepository {
-  @override
-  Future<DutySession?> getActiveDutySession({required String employeeId}) async => null;
+/// Starts signed in as [profile] while still using the injected repository.
+class _SignedInNotifier extends AuthNotifier {
+  _SignedInNotifier(this.profile);
+  final UserProfile profile;
 
   @override
-  Future<DutySession> startDutySession({required String employeeId}) async => throw UnimplementedError();
-
-  @override
-  Future<DutySession> endDutySession({required String sessionId, String? endReason, String? notes}) async => throw UnimplementedError();
-
-  @override
-  Future<DutySession?> getYesterdayDutySession({required String employeeId}) async => null;
-
-  @override
-  Future<List<DutySession>> getDutyHistory({required String employeeId, DateTime? startDate, DateTime? endDate, int limit = 30, int offset = 0}) async => [];
-
-  @override
-  Future<void> uploadLocationPointsBatch({required List<LocationPoint> points}) async {}
+  AuthState build() {
+    super.build();
+    return AuthAuthenticated(profile);
+  }
 }
 
 void main() {
@@ -94,13 +88,25 @@ void main() {
   Widget buildTestWidget({
     _FakeAuthRepository? authRepo,
     VoidCallback? onBack,
+    FakeDutyRepository? dutyRepository,
+    FakeTrackingService? tracking,
   }) {
     final repo = authRepo ?? (_FakeAuthRepository()..mockProfile = testProfile);
 
     return ProviderScope(
       overrides: [
         authRepositoryProvider.overrideWithValue(repo),
-        dutyRepositoryProvider.overrideWithValue(_FakeDutyRepository()),
+        dutyRepositoryProvider.overrideWithValue(
+          dutyRepository ?? FakeDutyRepository(),
+        ),
+        trackingServiceProvider.overrideWithValue(
+          tracking ?? FakeTrackingService(),
+        ),
+        trackingUploaderProvider.overrideWithValue(FakeUploader()),
+        if (repo.mockProfile != null)
+          authControllerProvider.overrideWith(
+            () => _SignedInNotifier(repo.mockProfile!),
+          ),
       ],
       child: MaterialApp(
         theme: AppTheme.light,
@@ -110,90 +116,133 @@ void main() {
   }
 
   group('Screen 13 — EmployeeProfilePage Widget Tests', () {
-    testWidgets('renders all visual elements matching HTML design specifications',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets(
+      'a profile without phone or email shows dashes, never invented contacts',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-      final authRepo = _FakeAuthRepository()..mockProfile = testProfile;
-      await tester.pumpWidget(buildTestWidget(authRepo: authRepo));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+        final bare = UserProfile(
+          id: 'emp_9',
+          role: UserRole.employee,
+          status: UserStatus.active,
+          fullName: 'Meena Kulkarni',
+          mustChangePin: false,
+          failedLoginAttempts: 0,
+          createdAt: DateTime(2026, 5, 6),
+          updatedAt: DateTime(2026, 5, 6),
+        );
+        await tester.pumpWidget(
+          buildTestWidget(authRepo: _FakeAuthRepository()..mockProfile = bare),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
 
-      // 1. Hero Header
-      expect(find.byType(ProfileHeaderHero), findsOneWidget);
-      expect(find.text('Ramesh Kumar'), findsOneWidget);
-      expect(find.text('DA-014'), findsOneWidget);
-      expect(find.text('RK'), findsOneWidget); // Initials
-      expect(find.byKey(const Key('profile-back-btn')), findsOneWidget);
+        expect(find.text('Meena Kulkarni'), findsOneWidget);
+        expect(find.text('+91 98765 43210'), findsNothing);
+        expect(find.text('ramesh.k@diamondagritech.in'), findsNothing);
+        expect(find.text('DA-014'), findsNothing);
+        expect(find.text('—'), findsWidgets);
+      },
+    );
 
-      // 2. Card 1 — MY DETAILS
-      expect(find.byType(ProfileDetailsCard), findsOneWidget);
-      expect(find.text('MY DETAILS'), findsOneWidget);
-      expect(find.text('+91 98765 43210'), findsOneWidget);
-      expect(find.text('ramesh.k@diamondagritech.in'), findsOneWidget);
-      expect(find.text('04 Mar 2026'), findsOneWidget);
+    testWidgets(
+      'renders all visual elements matching HTML design specifications',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-      // 3. Card 2 — THIS MONTH
-      expect(find.byType(ProfileMonthStatsGrid), findsOneWidget);
-      expect(find.text('THIS MONTH'), findsOneWidget);
-      expect(find.text('Days worked'), findsOneWidget);
-      expect(find.text('Hours'), findsOneWidget);
-      expect(find.text('Distance'), findsOneWidget);
-      expect(find.text('Visits'), findsOneWidget);
+        final authRepo = _FakeAuthRepository()..mockProfile = testProfile;
+        await tester.pumpWidget(buildTestWidget(authRepo: authRepo));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
 
-      // 4. Card 3 — Security & Actions
-      expect(find.byType(ProfileSecurityActionsCard), findsOneWidget);
-      expect(find.text('Change PIN'), findsOneWidget);
-      expect(find.text('Privacy and tracking'), findsOneWidget);
-      expect(find.text('Active'), findsOneWidget); // Status on duty / active badge
+        // 1. Hero Header
+        expect(find.byType(ProfileHeaderHero), findsOneWidget);
+        expect(find.text('Ramesh Kumar'), findsOneWidget);
+        expect(find.text('DA-014'), findsOneWidget);
+        expect(find.text('RK'), findsOneWidget); // Initials
+        expect(find.byKey(const Key('profile-back-btn')), findsOneWidget);
 
-      // 5. Action 4 — Outlined Logout Button
-      expect(find.byKey(const Key('btn-logout')), findsOneWidget);
-      expect(find.text('Log out'), findsOneWidget);
+        // 2. Card 1 — MY DETAILS
+        expect(find.byType(ProfileDetailsCard), findsOneWidget);
+        expect(find.text('MY DETAILS'), findsOneWidget);
+        expect(find.text('+91 98765 43210'), findsOneWidget);
+        expect(find.text('ramesh.k@diamondagritech.in'), findsOneWidget);
+        expect(find.text('04 Mar 2026'), findsOneWidget);
 
-      // 6. Footer
-      expect(find.text('Diamond Agritech · v1.0.0'), findsOneWidget);
-    });
+        // 3. Card 2 — THIS MONTH
+        expect(find.byType(ProfileMonthStatsGrid), findsOneWidget);
+        expect(find.text('THIS MONTH'), findsOneWidget);
+        expect(find.text('Days worked'), findsOneWidget);
+        expect(find.text('Hours'), findsOneWidget);
+        expect(find.text('Distance'), findsOneWidget);
+        expect(find.text('Visits'), findsOneWidget);
 
-    testWidgets('tapping Change PIN row opens UpdatePinDialog and allows PIN update',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+        // 4. Card 3 — Security & Actions
+        expect(find.byType(ProfileSecurityActionsCard), findsOneWidget);
+        expect(find.text('Change PIN'), findsOneWidget);
+        expect(find.text('Privacy and tracking'), findsOneWidget);
+        expect(
+          find.text('Active'),
+          findsOneWidget,
+        ); // Status on duty / active badge
 
-      final authRepo = _FakeAuthRepository()..mockProfile = testProfile;
-      await tester.pumpWidget(buildTestWidget(authRepo: authRepo));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+        // 5. Action 4 — Outlined Logout Button
+        expect(find.byKey(const Key('btn-logout')), findsOneWidget);
+        expect(find.text('Log out'), findsOneWidget);
 
-      // Tap Change PIN row
-      await tester.tap(find.byKey(const Key('btn-change-pin-row')));
-      await tester.pumpAndSettle();
+        // 6. Footer
+        expect(find.text('Diamond Agritech · v1.0.0'), findsOneWidget);
+      },
+    );
 
-      // Verify Dialog is presented
-      expect(find.byType(UpdatePinDialog), findsOneWidget);
-      expect(find.text('Update Security PIN'), findsOneWidget);
-      expect(find.text('New 4-Digit PIN'), findsOneWidget);
+    testWidgets(
+      'tapping Change PIN row opens UpdatePinDialog and allows PIN update',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-      // Enter 4-digit PIN
-      await tester.enterText(find.byKey(const Key('pin-input-field')), '4321');
-      await tester.pump();
+        final authRepo = _FakeAuthRepository()..mockProfile = testProfile;
+        await tester.pumpWidget(buildTestWidget(authRepo: authRepo));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
 
-      // Tap Save New PIN
-      await tester.tap(find.byKey(const Key('btn-save-pin')));
-      await tester.pumpAndSettle();
+        // Tap Change PIN row
+        await tester.tap(find.byKey(const Key('btn-change-pin-row')));
+        await tester.pumpAndSettle();
 
-      // Dialog should close and PIN should be updated in repository
-      expect(find.byType(UpdatePinDialog), findsNothing);
-      expect(authRepo.updatedPin, '4321');
-    });
+        // Verify Dialog is presented
+        expect(find.byType(UpdatePinDialog), findsOneWidget);
+        expect(find.text('Update Security PIN'), findsOneWidget);
+        expect(find.text('New 4-Digit PIN'), findsOneWidget);
 
-    testWidgets('tapping Privacy and Tracking row presents privacy modal',
-        (tester) async {
+        // Enter 4-digit PIN
+        await tester.enterText(
+          find.byKey(const Key('pin-input-field')),
+          '4321',
+        );
+        await tester.pump();
+
+        // Tap Save New PIN
+        await tester.tap(find.byKey(const Key('btn-save-pin')));
+        await tester.pumpAndSettle();
+
+        // Dialog should close and PIN should be updated in repository
+        expect(find.byType(UpdatePinDialog), findsNothing);
+        expect(authRepo.updatedPin, '4321');
+      },
+    );
+
+    testWidgets('tapping Privacy and Tracking row presents privacy modal', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -215,43 +264,124 @@ void main() {
       expect(find.text('Privacy & Tracking'), findsNothing);
     });
 
-    testWidgets('tapping Log out shows confirmation dialog and confirms sign out',
-        (tester) async {
+    testWidgets(
+      'tapping Log out shows confirmation dialog and confirms sign out',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final authRepo = _FakeAuthRepository()..mockProfile = testProfile;
+        await tester.pumpWidget(buildTestWidget(authRepo: authRepo));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // Tap Log out button
+        await tester.tap(find.byKey(const Key('btn-logout')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Log out?'), findsOneWidget);
+        expect(find.byKey(const Key('confirm-logout-btn')), findsOneWidget);
+
+        // Tap Confirm Log out
+        await tester.tap(find.byKey(const Key('confirm-logout-btn')));
+        await tester.pumpAndSettle();
+
+        expect(authRepo.signedOut, true);
+      },
+    );
+
+    testWidgets('logging out wipes the tracking data on the phone', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final tracking = FakeTrackingService();
+      await tester.pumpWidget(buildTestWidget(tracking: tracking));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.byKey(const Key('btn-logout')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('confirm-logout-btn')));
+      await tester.pumpAndSettle();
+
+      expect(tracking.localDataCleared, isTrue);
+    });
+
+    testWidgets('on duty, logging out asks the employee to end duty first', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
       final authRepo = _FakeAuthRepository()..mockProfile = testProfile;
-      await tester.pumpWidget(buildTestWidget(authRepo: authRepo));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      final duty = FakeDutyRepository()
+        ..mockActiveSession = DutySession(
+          id: 's1',
+          employeeId: 'emp_014',
+          startedAt: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
+        );
+      final tracking = FakeTrackingService()..tracking = true;
+      DutyTimeHelper.debugNow = DateTime.utc(2026, 10, 17, 4, 30);
+      addTearDown(() => DutyTimeHelper.debugNow = null);
 
-      // Tap Log out button
+      await tester.pumpWidget(
+        buildTestWidget(
+          authRepo: authRepo,
+          dutyRepository: duty,
+          tracking: tracking,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 200));
+
       await tester.tap(find.byKey(const Key('btn-logout')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Log out?'), findsOneWidget);
-      expect(find.byKey(const Key('confirm-logout-btn')), findsOneWidget);
-
-      // Tap Confirm Log out
-      await tester.tap(find.byKey(const Key('confirm-logout-btn')));
+      expect(find.byKey(const Key('dialog-end-duty-first')), findsOneWidget);
+      expect(find.byKey(const Key('confirm-logout-btn')), findsNothing);
+      await tester.tap(find.byKey(const Key('btn-end-duty-first-ok')));
       await tester.pumpAndSettle();
 
-      expect(authRepo.signedOut, true);
+      expect(authRepo.signedOut, isFalse);
+      expect(tracking.localDataCleared, isFalse);
+      expect(tracking.tracking, isTrue, reason: 'tracking was not touched');
     });
 
-    testWidgets('tapping back button invokes onBack callback',
-        (tester) async {
+    testWidgets(
+      'points that never reached the office are named before they are lost',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final tracking = FakeTrackingService()..queuedCount = 12;
+        await tester.pumpWidget(buildTestWidget(tracking: tracking));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        await tester.tap(find.byKey(const Key('btn-logout')));
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('12 location points'), findsOneWidget);
+      },
+    );
+
+    testWidgets('tapping back button invokes onBack callback', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
       bool backInvoked = false;
-      await tester.pumpWidget(buildTestWidget(
-        onBack: () => backInvoked = true,
-      ));
+      await tester.pumpWidget(
+        buildTestWidget(onBack: () => backInvoked = true),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 

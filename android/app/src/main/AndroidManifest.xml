@@ -46,12 +46,14 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Geolocator Android Foreground Service for persistent duty tracking -->
+        <!-- Foreground service that keeps duty GPS tracking alive (PRD F3, F4).
+             stopWithTask=false: it keeps running when the app is swiped away.
+             The persistent notification is shown for as long as it runs. -->
         <service
-            android:name="com.baseflow.geolocator.GeolocatorLocationService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="location" />
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="location"
+            android:stopWithTask="false"
+            android:exported="false" />
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

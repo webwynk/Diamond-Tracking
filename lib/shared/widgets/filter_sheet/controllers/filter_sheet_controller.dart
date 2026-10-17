@@ -22,19 +22,7 @@ class FilterSheetNotifier extends Notifier<FilterSheetState> {
     } else {
       updated.add(status);
     }
-    // Calculate dynamic matching results count (simulation: e.g. base 112 for onDuty, +3 for checkNeeded, etc.)
-    var count = 0;
-    if (updated.contains(EmployeeFilterStatus.onDuty)) count += 112;
-    if (updated.contains(EmployeeFilterStatus.checkNeeded)) count += 3;
-    if (updated.contains(EmployeeFilterStatus.offDuty)) count += 31;
-    if (updated.contains(EmployeeFilterStatus.stale)) count += 4;
-    if (updated.contains(EmployeeFilterStatus.blocked)) count += 2;
-    if (updated.isEmpty) count = 143;
-
-    state = state.copyWith(
-      selectedStatuses: updated,
-      matchingResultsCount: count,
-    );
+    state = state.copyWith(selectedStatuses: updated);
   }
 
   void setDutyToday(DutyTodayFilter filter) {
@@ -46,10 +34,7 @@ class FilterSheetNotifier extends Notifier<FilterSheetState> {
   }
 
   void setDatePreset(FilterDatePreset preset) {
-    state = state.copyWith(
-      selectedDateRange: preset,
-      selectedDateText: preset.defaultDateText,
-    );
+    state = state.copyWith(selectedDateRange: preset);
   }
 
   void setSortOption(EmployeeSortOption option) {
@@ -61,9 +46,7 @@ class FilterSheetNotifier extends Notifier<FilterSheetState> {
       selectedStatuses: const <EmployeeFilterStatus>{},
       clearDutyToday: true,
       selectedDateRange: FilterDatePreset.today,
-      selectedDateText: FilterDatePreset.today.defaultDateText,
       selectedSort: EmployeeSortOption.nameAsc,
-      matchingResultsCount: 143,
     );
   }
 
@@ -75,5 +58,5 @@ class FilterSheetNotifier extends Notifier<FilterSheetState> {
 /// Provider for Filter Bottom Sheet state notifier.
 final filterSheetControllerProvider =
     NotifierProvider<FilterSheetNotifier, FilterSheetState>(
-  FilterSheetNotifier.new,
-);
+      FilterSheetNotifier.new,
+    );

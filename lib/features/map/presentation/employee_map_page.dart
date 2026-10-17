@@ -1,6 +1,4 @@
-import 'dart:io' show Platform;
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
@@ -10,7 +8,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/duty_time_helper.dart';
+import '../../../core/utils/map_support.dart';
 import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/app_snackbar.dart';
+import '../../../shared/widgets/app_top_bar.dart';
 import '../../duty/presentation/controllers/duty_controller.dart';
 import '../../duty/presentation/controllers/duty_state.dart';
 import '../../visits/presentation/visit_capture_sheet.dart';
@@ -23,13 +24,11 @@ import '../../visits/presentation/visit_capture_sheet.dart';
 class EmployeeMapPage extends ConsumerStatefulWidget {
   const EmployeeMapPage({
     super.key,
-    this.onBackPressed,
     this.onAddVisitPressed,
     this.initialLatitude = MapConstants.defaultLatitude,
     this.initialLongitude = MapConstants.defaultLongitude,
   });
 
-  final VoidCallback? onBackPressed;
   final VoidCallback? onAddVisitPressed;
   final double initialLatitude;
   final double initialLongitude;
@@ -48,11 +47,17 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
   }
 
   Future<void> _recenterMap() async {
+    final location = ref.read(dutyControllerProvider).lastLocation;
+    if (location == null) {
+      AppSnackbar.show(context, message: 'Waiting for a GPS fix.');
+      return;
+    }
+
     setState(() => _isRecentering = true);
     try {
       await _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(
-          LatLng(widget.initialLatitude, widget.initialLongitude),
+          LatLng(location.latitude, location.longitude),
           15.0,
         ),
       );
@@ -63,6 +68,27 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
         setState(() => _isRecentering = false);
       }
     }
+  }
+
+  /// Opens visit capture with the real session and GPS fix, or explains why it
+  /// cannot: a visit is never recorded with an invented position.
+  void _openVisitCapture(DutyScreenState state) {
+    final session = state.activeSession;
+    final location = state.lastLocation;
+    if (session == null || location == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Start duty and wait for a GPS fix to add a visit.',
+      );
+      return;
+    }
+    VisitCaptureSheet.show(
+      context,
+      dutySessionId: session.id,
+      employeeId: session.employeeId,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    );
   }
 
   void _toggleMapStyle() {
@@ -79,29 +105,25 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppTopBar(
+        style: AppTopBarStyle.brand,
+        title: 'My location',
+        actions: <Widget>[
+          _buildDutyBadge(dutyState),
+          const SizedBox(width: AppSpacing.x3),
+        ],
+      ),
       body: Stack(
         children: <Widget>[
           // 1. Full Bleed Map Layer
-          Positioned.fill(
-            child: _buildMapCanvas(),
-          ),
+          Positioned.fill(child: _buildMapCanvas()),
 
-          // 2. Top Floating Navigation Header & Telemetry Chip
+          // 2. Floating Telemetry Chip
           Positioned(
-            top: 0,
+            top: AppSpacing.x2,
             left: 0,
             right: 0,
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  _buildFloatingHeader(dutyState),
-                  const SizedBox(height: AppSpacing.x2),
-                  _buildTelemetryToast(dutyState),
-                ],
-              ),
-            ),
+            child: Center(child: _buildTelemetryToast(dutyState)),
           ),
 
           // 3. Mid-Screen Controls & Legal Attribution Row
@@ -173,14 +195,7 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
   }
 
   Widget _buildMapCanvas() {
-    // In widget testing or non-mobile platforms without native OpenGL engine,
-    // render an agricultural cartographic vector canvas fallback.
-    final isTestEnvironment = (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) ||
-        (!kIsWeb &&
-            defaultTargetPlatform != TargetPlatform.android &&
-            defaultTargetPlatform != TargetPlatform.iOS);
-
-    if (isTestEnvironment) {
+    if (!MapSupport.isNativeMapAvailable) {
       return _buildVectorFallbackCanvas();
     }
 
@@ -194,7 +209,10 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
       onMapCreated: _onMapCreated,
       myLocationEnabled: true,
       myLocationRenderMode: MyLocationRenderMode.normal,
-      attributionButtonMargins: const Point<num>(-100, -100), // Custom attribution rendered in UI
+      attributionButtonMargins: const Point<num>(
+        -100,
+        -100,
+      ), // Custom attribution rendered in UI
       compassEnabled: false,
     );
   }
@@ -227,78 +245,35 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
     );
   }
 
-  Widget _buildFloatingHeader(DutyScreenState state) {
+  Widget _buildDutyBadge(DutyScreenState state) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
-      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.lgAll,
-        border: Border.all(color: AppColors.neutral200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(12),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: state.isOnDuty ? AppColors.successBg : AppColors.neutral100,
+        borderRadius: AppRadius.fullAll,
+        border: Border.all(
+          color: state.isOnDuty
+              ? AppColors.success.withAlpha(50)
+              : AppColors.neutral300,
+        ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x2),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          // Back button
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.primary600),
-            tooltip: 'Go back',
-            onPressed: widget.onBackPressed ??
-                () => Navigator.of(context).maybePop(),
-          ),
-
-          // Title
-          Text(
-            'My location',
-            style: AppTypography.title.withColor(AppColors.textPrimary),
-          ),
-
-          // Live Duty Status Badge
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            width: 8,
+            height: 8,
             decoration: BoxDecoration(
-              color: state.isOnDuty
-                  ? AppColors.successBg
-                  : AppColors.neutral100,
-              borderRadius: AppRadius.fullAll,
-              border: Border.all(
-                color: state.isOnDuty
-                    ? AppColors.success.withAlpha(50)
-                    : AppColors.neutral300,
-              ),
+              color: state.isOnDuty ? AppColors.success : AppColors.neutral400,
+              shape: BoxShape.circle,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: state.isOnDuty
-                        ? AppColors.success
-                        : AppColors.neutral400,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  state.isOnDuty ? 'On duty' : 'Off duty',
-                  style: AppTypography.label.copyWith(
-                    color: state.isOnDuty
-                        ? AppColors.success
-                        : AppColors.neutral600,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+          ),
+          const SizedBox(width: 6),
+          Text(
+            state.isOnDuty ? 'On duty' : 'Off duty',
+            style: AppTypography.label.copyWith(
+              color: state.isOnDuty ? AppColors.success : AppColors.neutral600,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -334,7 +309,9 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
           ),
           const SizedBox(width: 6),
           Text(
-            'GPS Lock: High (3.2m) • Sinnar Sector',
+            state.lastLocation == null
+                ? 'Waiting for GPS…'
+                : 'GPS accuracy ±${state.lastLocation!.accuracy.round()} m',
             style: AppTypography.caption.withColor(AppColors.textSecondary),
           ),
         ],
@@ -515,16 +492,8 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
               color: AppColors.neutral0,
             ),
             isFullWidth: true,
-            onPressed: widget.onAddVisitPressed ??
-                () {
-                  VisitCaptureSheet.show(
-                    context,
-                    dutySessionId: state.activeSession?.id ?? 'session-active',
-                    employeeId: state.activeSession?.employeeId ?? 'current-employee',
-                    latitude: widget.initialLatitude,
-                    longitude: widget.initialLongitude,
-                  );
-                },
+            onPressed:
+                widget.onAddVisitPressed ?? () => _openVisitCapture(state),
           ),
         ],
       ),

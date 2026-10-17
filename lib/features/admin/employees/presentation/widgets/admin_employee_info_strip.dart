@@ -20,11 +20,7 @@ class AdminEmployeeInfoStrip extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Icon(
-            Icons.info_rounded,
-            size: 20,
-            color: AppColors.info,
-          ),
+          const Icon(Icons.info_rounded, size: 20, color: AppColors.info),
           const SizedBox(width: AppSpacing.x3),
           Expanded(
             child: Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../core/errors/app_exceptions.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_dimens.dart';
 import '../../../../../core/theme/app_typography.dart';
@@ -44,12 +45,14 @@ class AdminBlockEmployeeSheet extends StatefulWidget {
   }
 
   @override
-  State<AdminBlockEmployeeSheet> createState() => _AdminBlockEmployeeSheetState();
+  State<AdminBlockEmployeeSheet> createState() =>
+      _AdminBlockEmployeeSheetState();
 }
 
 class _AdminBlockEmployeeSheetState extends State<AdminBlockEmployeeSheet> {
   late final TextEditingController _reasonController;
   bool _isLoading = false;
+  String? _errorText;
 
   @override
   void initState() {
@@ -70,6 +73,7 @@ class _AdminBlockEmployeeSheetState extends State<AdminBlockEmployeeSheet> {
 
     setState(() {
       _isLoading = true;
+      _errorText = null;
     });
 
     try {
@@ -77,10 +81,13 @@ class _AdminBlockEmployeeSheetState extends State<AdminBlockEmployeeSheet> {
       if (mounted) {
         Navigator.of(context).pop(true);
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _errorText = e is AppException
+              ? e.message
+              : 'Could not block this employee. Please try again.';
         });
       }
     }
@@ -144,18 +151,14 @@ class _AdminBlockEmployeeSheetState extends State<AdminBlockEmployeeSheet> {
                 'Block ${widget.employee.name}?',
                 key: const Key('block-sheet-title'),
                 textAlign: TextAlign.center,
-                style: AppTypography.h3.copyWith(
-                  color: AppColors.neutral900,
-                ),
+                style: AppTypography.h3.copyWith(color: AppColors.neutral900),
               ),
               const SizedBox(height: 2),
               Text(
                 widget.employee.employeeCode,
                 key: const Key('block-sheet-code'),
                 textAlign: TextAlign.center,
-                style: AppTypography.body.copyWith(
-                  color: AppColors.neutral500,
-                ),
+                style: AppTypography.body.copyWith(color: AppColors.neutral500),
               ),
               const SizedBox(height: AppSpacing.x5),
 
@@ -244,6 +247,14 @@ class _AdminBlockEmployeeSheetState extends State<AdminBlockEmployeeSheet> {
                 'This reason is recorded in the audit log.',
                 style: AppTypography.caption,
               ),
+              if (_errorText != null) ...<Widget>[
+                const SizedBox(height: AppSpacing.x3),
+                Text(
+                  _errorText!,
+                  key: const Key('block-sheet-error'),
+                  style: AppTypography.caption.copyWith(color: AppColors.error),
+                ),
+              ],
               const SizedBox(height: AppSpacing.x5),
 
               // Action Buttons
@@ -293,7 +304,9 @@ class _AdminBlockEmployeeSheetState extends State<AdminBlockEmployeeSheet> {
                 width: double.infinity,
                 child: TextButton(
                   key: const Key('btn-block-cancel'),
-                  onPressed: _isLoading ? null : () => Navigator.of(context).pop(false),
+                  onPressed: _isLoading
+                      ? null
+                      : () => Navigator.of(context).pop(false),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.neutral500,
                     shape: RoundedRectangleBorder(
@@ -344,9 +357,7 @@ class _AdminBlockEmployeeSheetState extends State<AdminBlockEmployeeSheet> {
         Expanded(
           child: Text(
             text,
-            style: AppTypography.body.copyWith(
-              color: AppColors.neutral900,
-            ),
+            style: AppTypography.body.copyWith(color: AppColors.neutral900),
           ),
         ),
       ],

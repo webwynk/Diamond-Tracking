@@ -9,10 +9,7 @@ import '../../../../core/theme/app_typography.dart';
 /// Prominently alerts the officer when device location services are disabled,
 /// preventing duty tracking, with a direct action to open device system settings.
 class GpsBlockingBanner extends StatelessWidget {
-  const GpsBlockingBanner({
-    super.key,
-    required this.onOpenSettings,
-  });
+  const GpsBlockingBanner({super.key, required this.onOpenSettings});
 
   final VoidCallback onOpenSettings;
 

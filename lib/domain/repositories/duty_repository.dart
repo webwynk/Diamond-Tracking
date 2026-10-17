@@ -1,5 +1,6 @@
 import '../entities/duty_session.dart';
 import '../entities/location_point.dart';
+import '../entities/point_ingest_result.dart';
 
 /// Repository interface managing duty sessions and GPS telemetry synchronization.
 abstract class DutyRepository {
@@ -29,9 +30,17 @@ abstract class DutyRepository {
     int offset = 0,
   });
 
-  /// Uploads a batch of telemetry GPS points to the server.
-  Future<void> uploadLocationPointsBatch({
+  /// The server's clock (`server_time()`), so the phone can correct for a wrong
+  /// local clock (docs/08 section 4).
+  Future<DateTime> getServerTime();
+
+  /// Sends a batch (at most 200) of GPS points through `ingest_location_points`
+  /// and returns the server's verdict for each point.
+  ///
+  /// Idempotent: a point sent twice is reported as confirmed, never duplicated.
+  /// Throws [NetworkException] when offline, [UnauthorizedRoleException] when
+  /// the session is no longer valid, or [ServerException].
+  Future<PointIngestResult> ingestLocationPoints({
     required List<LocationPoint> points,
   });
 }
-

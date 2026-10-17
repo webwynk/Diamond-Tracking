@@ -109,7 +109,8 @@ class _PinBoxInputState extends State<PinBoxInput> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(widget.length, (index) {
               final isFilled = index < text.length;
-              final isCurrentFocus = isFocused &&
+              final isCurrentFocus =
+                  isFocused &&
                   (index == text.length ||
                       (index == widget.length - 1 &&
                           text.length == widget.length));
@@ -133,36 +134,33 @@ class _PinBoxInputState extends State<PinBoxInput> {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(
-                    color: borderColor,
-                    width: borderWidth,
-                  ),
+                  border: Border.all(color: borderColor, width: borderWidth),
                 ),
                 alignment: Alignment.center,
                 child: isFilled
                     ? (widget.obscureText
-                        ? Container(
-                            width: 10,
-                            height: 10,
-                            decoration: const BoxDecoration(
-                              color: AppColors.textPrimary,
-                              shape: BoxShape.circle,
-                            ),
-                          )
-                        : Text(
-                            text[index],
-                            style: AppTypography.title.copyWith(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ))
+                          ? Container(
+                              width: 10,
+                              height: 10,
+                              decoration: const BoxDecoration(
+                                color: AppColors.textPrimary,
+                                shape: BoxShape.circle,
+                              ),
+                            )
+                          : Text(
+                              text[index],
+                              style: AppTypography.title.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ))
                     : (isCurrentFocus && text.length == index
-                        ? Container(
-                            width: 2,
-                            height: 20,
-                            color: AppColors.primary600,
-                          )
-                        : const SizedBox.shrink()),
+                          ? Container(
+                              width: 2,
+                              height: 20,
+                              color: AppColors.primary600,
+                            )
+                          : const SizedBox.shrink()),
               );
             }),
           ),

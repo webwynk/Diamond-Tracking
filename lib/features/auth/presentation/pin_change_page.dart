@@ -6,6 +6,7 @@ import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../domain/pin_validator.dart';
+import 'auth_navigation.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/auth_state.dart';
 import 'widgets/pin_box_input.dart';
@@ -67,11 +68,15 @@ class _PinChangePageState extends ConsumerState<PinChangePage> {
         .read(authControllerProvider.notifier)
         .completePinChange(newPin: _pin);
 
-    if (success && mounted) {
+    if (!success || !mounted) return;
+
+    final state = ref.read(authControllerProvider);
+    if (state is AuthAuthenticated) {
       AppSnackbar.show(
         context,
         message: 'PIN successfully set. Welcome to Diamond Agritech.',
       );
+      AuthNavigation.goToLanding(Navigator.of(context), state.profile);
     }
   }
 
@@ -84,7 +89,8 @@ class _PinChangePageState extends ConsumerState<PinChangePage> {
     final isNotRepeated = PinValidator.isNotRepeated(_pin);
     final isNotSequential = PinValidator.isNotSequential(_pin);
     final matchesConfirmation = _pin.isNotEmpty && _pin == _confirmPin;
-    final isFormValid = hasSixDigits &&
+    final isFormValid =
+        hasSixDigits &&
         isNotRepeated &&
         isNotSequential &&
         matchesConfirmation &&
@@ -98,33 +104,12 @@ class _PinChangePageState extends ConsumerState<PinChangePage> {
       canPop: false,
       child: Scaffold(
         backgroundColor: AppColors.background,
+        // Mandatory step: no leading button, the back gesture is blocked above.
+        appBar: const AppTopBar(title: 'Create your PIN'),
         body: SafeArea(
           child: Column(
             children: [
-              // 1. Top Bar: Mandatory step, strictly unskippable
-              Container(
-                width: double.infinity,
-                height: AppSizes.controlHeight + 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: AppColors.border,
-                      width: 1.0,
-                    ),
-                  ),
-                ),
-                alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
-                child: Text(
-                  'Create your PIN',
-                  style: AppTypography.h3.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-
-              // 2. Main Scrollable Content
+              // Main Scrollable Content
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(
@@ -286,10 +271,7 @@ class _PinChangePageState extends ConsumerState<PinChangePage> {
     );
   }
 
-  Widget _buildRuleRow({
-    required String label,
-    required bool isSatisfied,
-  }) {
+  Widget _buildRuleRow({required String label, required bool isSatisfied}) {
     return Row(
       children: [
         Icon(
@@ -297,17 +279,13 @@ class _PinChangePageState extends ConsumerState<PinChangePage> {
               ? Icons.check_circle_rounded
               : Icons.radio_button_unchecked_rounded,
           size: 16,
-          color: isSatisfied
-              ? AppColors.success
-              : AppColors.textDisabled,
+          color: isSatisfied ? AppColors.success : AppColors.textDisabled,
         ),
         const SizedBox(width: AppSpacing.x2),
         Text(
           label,
           style: AppTypography.caption.copyWith(
-            color: isSatisfied
-                ? AppColors.success
-                : AppColors.textSecondary,
+            color: isSatisfied ? AppColors.success : AppColors.textSecondary,
             fontWeight: isSatisfied ? FontWeight.w500 : FontWeight.w400,
           ),
         ),

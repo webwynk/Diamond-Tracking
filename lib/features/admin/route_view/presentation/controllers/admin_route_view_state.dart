@@ -1,115 +1,154 @@
 import 'package:flutter/foundation.dart';
 
-/// Type of waypoint marked along the daily route for Screen 23.
-enum AdminWaypointType {
-  start,
-  end,
-  visit,
-  longStop,
-  flaggedAnomaly,
-}
+import '../../../../../core/utils/date_labels.dart';
+import '../../../../../core/utils/duty_time_helper.dart';
+import '../../../../../core/utils/route_geometry.dart';
+import '../../../../../domain/entities/route_day.dart';
 
-/// Individual waypoint item along the daily telemetry route.
-class AdminRouteWaypoint {
-  const AdminRouteWaypoint({
-    required this.id,
-    required this.type,
-    required this.title,
-    required this.subtitle,
-    required this.time,
-    required this.relativeX,
-    required this.relativeY,
-    this.visitNumber,
-    this.dwellMinutes,
-    this.hasGeofence = false,
-  });
+/// Where the load of the selected day stands.
+enum RouteLoad { loading, loaded, failed }
 
-  final String id;
-  final AdminWaypointType type;
-  final String title;
-  final String subtitle;
-  final String time;
-  final double relativeX; // 0.0 to 1.0 within map canvas
-  final double relativeY; // 0.0 to 1.0 within map canvas
-  final int? visitNumber;
-  final int? dwellMinutes;
-  final bool hasGeofence;
-}
-
-/// Daily summary telemetry metrics displayed in the bottom sheet.
-class AdminRouteTelemetry {
-  const AdminRouteTelemetry({
-    required this.distanceKm,
-    required this.dutyHours,
+/// The numbers under the map for one day. All of them come from the server's
+/// session rows (distance, times, counts); none is measured on the phone.
+@immutable
+class RouteSummary {
+  const RouteSummary({
+    required this.sessionCount,
+    required this.dutyDuration,
     required this.visitsCount,
-    required this.flagsCount,
+    required this.flaggedPoints,
+    required this.jumpCount,
     required this.shiftTimeRange,
-    required this.stopsSummary,
-    required this.flagNote,
+    this.distanceKm,
+    this.endNote,
+    this.hasOpenSession = false,
   });
 
-  final String distanceKm;
-  final String dutyHours;
-  final int visitsCount;
-  final int flagsCount;
-  final String shiftTimeRange;
-  final String stopsSummary;
-  final String flagNote;
+  final int sessionCount;
 
-  static const defaultOct11 = AdminRouteTelemetry(
-    distanceKm: '47.3 km',
-    dutyHours: '8h 08m',
-    visitsCount: 5,
-    flagsCount: 1,
-    shiftTimeRange: '8:04 AM – 6:12 PM',
-    stopsSummary: '2 long stops',
-    flagNote: '1 flagged point excluded from distance',
-  );
+  /// Null when the server's figure is not available (an open session whose
+  /// running distance could not be read). Never guessed.
+  final double? distanceKm;
+  final Duration dutyDuration;
+  final int visitsCount;
+
+  /// Mock-flagged and low-accuracy points (left out of the line).
+  final int flaggedPoints;
+
+  /// Impossible jumps the line is broken at.
+  final int jumpCount;
+
+  /// "8:04 AM – 4:30 PM" (IST), or "8:04 AM – now" for an open session.
+  final String shiftTimeRange;
+
+  /// "Duty ended automatically", "Employee was blocked" or "On duty now".
+  final String? endNote;
+  final bool hasOpenSession;
+
+  /// Builds the summary of [day]. Hours of an open session run to the server's
+  /// clock, never the phone's.
+  static RouteSummary from(RouteDay day, RouteAnalysis analysis) {
+    var duration = Duration.zero;
+    double? distance = 0;
+    var visits = 0;
+    for (final session in day.sessions) {
+      duration += session.durationAt(day.serverNow);
+      visits += session.visitsCount;
+      final km = session.distanceKm;
+      distance = (distance == null || km == null) ? null : distance + km;
+    }
+
+    final first = day.sessions.first;
+    final last = day.sessions.last;
+    final range =
+        '${DutyTimeHelper.formatTime(first.startedAt)} – '
+        '${last.endedAt == null ? 'now' : DutyTimeHelper.formatTime(last.endedAt!)}';
+
+    return RouteSummary(
+      sessionCount: day.sessions.length,
+      distanceKm: distance,
+      dutyDuration: duration,
+      visitsCount: visits,
+      flaggedPoints: analysis.flaggedCount,
+      jumpCount: analysis.jumpCount,
+      shiftTimeRange: range,
+      endNote: last.isOpen
+          ? 'On duty now'
+          : last.endedAutomatically
+          ? 'Duty ended automatically'
+          : last.endedByBlock
+          ? 'Employee was blocked'
+          : null,
+      hasOpenSession: day.sessions.any((s) => s.isOpen),
+    );
+  }
 }
 
-/// State model for Screen 23 (Route View — Admin).
+/// State of the admin route view for one employee.
 @immutable
 class AdminRouteViewState {
   const AdminRouteViewState({
-    required this.employeeId,
-    required this.employeeName,
-    required this.selectedDateText,
-    required this.telemetry,
-    required this.waypoints,
-    this.selectedWaypointId,
-    this.isMapSatellite = false,
-    this.showFlagExcludedRoute = true,
+    required this.selectedDate,
+    required this.isExpired,
+    this.load = RouteLoad.loading,
+    this.errorMessage,
+    this.day,
+    this.analysis,
+    this.summary,
+    this.isToday = false,
   });
 
-  final String employeeId;
-  final String employeeName;
-  final String selectedDateText;
-  final AdminRouteTelemetry telemetry;
-  final List<AdminRouteWaypoint> waypoints;
-  final String? selectedWaypointId;
-  final bool isMapSatellite;
-  final bool showFlagExcludedRoute;
+  /// The IST calendar day being shown (time of day is midnight).
+  final DateTime selectedDate;
+
+  /// Older than the 30 days of stored points: the totals are still shown, the
+  /// route is not.
+  final bool isExpired;
+  final RouteLoad load;
+  final String? errorMessage;
+  final RouteDay? day;
+  final RouteAnalysis? analysis;
+
+  /// Null when the employee had no duty that day.
+  final RouteSummary? summary;
+
+  /// The selected day is today on the server's clock.
+  final bool isToday;
+
+  bool get hasNoDuty => load == RouteLoad.loaded && summary == null;
+
+  /// Duty happened but the phone left no usable point (and the route has not
+  /// simply expired).
+  bool get hasNoRoute =>
+      load == RouteLoad.loaded &&
+      summary != null &&
+      !isExpired &&
+      !(analysis?.hasAnythingToDraw ?? false);
+
+  /// "Sat, 11 Oct".
+  String get selectedDateText => DateLabels.shortDate(selectedDate);
 
   AdminRouteViewState copyWith({
-    String? employeeId,
-    String? employeeName,
-    String? selectedDateText,
-    AdminRouteTelemetry? telemetry,
-    List<AdminRouteWaypoint>? waypoints,
-    String? selectedWaypointId,
-    bool? isMapSatellite,
-    bool? showFlagExcludedRoute,
+    DateTime? selectedDate,
+    bool? isExpired,
+    RouteLoad? load,
+    String? errorMessage,
+    bool clearError = false,
+    RouteDay? day,
+    RouteAnalysis? analysis,
+    RouteSummary? summary,
+    bool clearDay = false,
+    bool? isToday,
   }) {
     return AdminRouteViewState(
-      employeeId: employeeId ?? this.employeeId,
-      employeeName: employeeName ?? this.employeeName,
-      selectedDateText: selectedDateText ?? this.selectedDateText,
-      telemetry: telemetry ?? this.telemetry,
-      waypoints: waypoints ?? this.waypoints,
-      selectedWaypointId: selectedWaypointId ?? this.selectedWaypointId,
-      isMapSatellite: isMapSatellite ?? this.isMapSatellite,
-      showFlagExcludedRoute:
-          showFlagExcludedRoute ?? this.showFlagExcludedRoute,
+      selectedDate: selectedDate ?? this.selectedDate,
+      isExpired: isExpired ?? this.isExpired,
+      load: load ?? this.load,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      day: clearDay ? null : (day ?? this.day),
+      analysis: clearDay ? null : (analysis ?? this.analysis),
+      summary: clearDay ? null : (summary ?? this.summary),
+      isToday: isToday ?? this.isToday,
     );
   }
 }

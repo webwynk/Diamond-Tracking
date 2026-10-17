@@ -1,279 +1,376 @@
+import 'package:diamond_tracking/core/errors/app_exceptions.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
+import 'package:diamond_tracking/domain/repositories/live_location_repository.dart';
 import 'package:diamond_tracking/features/admin/map/presentation/admin_live_map_page.dart';
-import 'package:diamond_tracking/features/admin/map/presentation/controllers/admin_live_map_state.dart';
 import 'package:diamond_tracking/features/admin/map/presentation/widgets/admin_map_filter_chips_bar.dart';
 import 'package:diamond_tracking/features/admin/map/presentation/widgets/admin_map_floating_controls.dart';
 import 'package:diamond_tracking/features/admin/map/presentation/widgets/admin_map_search_bar.dart';
-import 'package:diamond_tracking/features/admin/map/presentation/widgets/admin_map_top_bar.dart';
-import 'package:diamond_tracking/features/admin/map/presentation/widgets/admin_map_vector_canvas.dart';
+import 'package:diamond_tracking/features/admin/route_view/presentation/admin_route_view_page.dart';
+import 'package:diamond_tracking/shared/widgets/app_top_bar.dart';
+import 'package:diamond_tracking/shared/widgets/india_map.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/fake_employee_repository.dart';
+import 'support/fake_live_locations.dart';
+import 'support/fake_notification_repository.dart';
+import 'support/fake_route.dart';
+
 void main() {
-  Widget buildTestableAdminLiveMap({
-    VoidCallback? onNavigateToHome,
-    VoidCallback? onNavigateToTeam,
-    VoidCallback? onNavigateToPlaces,
-    VoidCallback? onNavigateToReports,
+  late FakeLiveLocationRepository live;
+  late FakeEmployeeRepository roster;
+  late FakeRouteRepository routes;
+
+  setUp(() {
+    routes = FakeRouteRepository();
+    live = FakeLiveLocationRepository();
+    roster = FakeEmployeeRepository(
+      roster: [
+        rosterEmployee('e-asha', 'Asha Patil', 'DA-101'),
+        rosterEmployee('e-ravi', 'Ravi Kumar', 'DA-102'),
+        rosterEmployee('e-meena', 'Meena Joshi', 'DA-103'),
+      ],
+    );
+  });
+
+  /// One employee in each status: Asha active, Ravi stale, Meena suspect.
+  void threePeople() {
+    live.positions = [
+      livePosition('e-asha'),
+      livePosition('e-ravi', ago: const Duration(minutes: 9)),
+      livePosition('e-meena', isMock: true),
+    ];
+  }
+
+  Future<void> pumpPage(
+    WidgetTester tester, {
     VoidCallback? onNavigateToNotifications,
-    ValueChanged<MapOfficerItem>? onOfficerSelected,
-  }) {
-    return ProviderScope(
-      child: MaterialApp(
-        theme: AppTheme.light,
-        home: AdminLiveMapPage(
-          onNavigateToHome: onNavigateToHome,
-          onNavigateToTeam: onNavigateToTeam,
-          onNavigateToPlaces: onNavigateToPlaces,
-          onNavigateToReports: onNavigateToReports,
-          onNavigateToNotifications: onNavigateToNotifications,
-          onOfficerSelected: onOfficerSelected,
+    bool settle = true,
+  }) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...liveMapOverrides(live, roster),
+          notificationOverride(FakeNotificationRepository()),
+          ...routeOverrides(routes),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: AdminLiveMapPage(
+            onNavigateToNotifications: onNavigateToNotifications,
+          ),
         ),
       ),
     );
+    if (settle) {
+      for (var i = 0; i < 4; i++) {
+        await tester.pump();
+      }
+    }
   }
 
-  group('Screen 15 AdminLiveMapPage Widget Tests', () {
-    testWidgets('renders top header with branding, title, search, and notifications',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  /// The live map owns a timer, so the page is taken down before the test ends
+  /// (the framework checks for running timers before tear-down callbacks).
+  Future<void> closePage(WidgetTester tester) =>
+      tester.pumpWidget(const SizedBox());
 
-      bool notified = false;
-      await tester.pumpWidget(
-        buildTestableAdminLiveMap(
-          onNavigateToNotifications: () => notified = true,
-        ),
+  Future<void> openList(WidgetTester tester) async {
+    await tester.tap(find.byKey(const Key('btn-admin-map-list-view')));
+    await tester.pumpAndSettle();
+  }
+
+  group('Screen 15 AdminLiveMapPage', () {
+    testWidgets('shows the title and opens notifications', (tester) async {
+      var opened = false;
+      await pumpPage(tester, onNavigateToNotifications: () => opened = true);
+
+      expect(find.byType(AppTopBar), findsOneWidget);
+      expect(find.text('Live Map'), findsOneWidget);
+      expect(find.text('Diamond Agritech'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const Key('btn-telemetry-notifications-action')),
       );
       await tester.pump();
-
-      expect(find.byType(AdminMapTopBar), findsOneWidget);
-      expect(find.text('DIAMOND AGRITECH'), findsOneWidget);
-      expect(find.text('Live Map Telemetry'), findsOneWidget);
-
-      // Tap notifications action
-      await tester.tap(find.byKey(const Key('btn-telemetry-notifications-action')));
-      await tester.pump();
-      expect(notified, isTrue);
+      expect(opened, isTrue);
+      await closePage(tester);
     });
 
-    testWidgets('renders floating search bar and all 6 status filter chips with counts',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets(
+      'draws the map, search bar, chips with real counts, and tools',
+      (tester) async {
+        threePeople();
+        await pumpPage(tester);
 
-      await tester.pumpWidget(buildTestableAdminLiveMap());
-      await tester.pump();
+        expect(find.byType(IndiaMap), findsOneWidget);
+        expect(find.byType(AdminMapSearchBar), findsOneWidget);
+        expect(find.byType(AdminMapFloatingControls), findsOneWidget);
+        expect(find.byType(AdminMapFilterChipsBar), findsOneWidget);
+        expect(find.text('All 3'), findsOneWidget);
+        expect(find.text('On duty 1'), findsOneWidget);
+        expect(find.text('Stale 1'), findsOneWidget);
+        expect(find.text('Check 1'), findsOneWidget);
+        // Off-duty and blocked people have no position, so no such chips.
+        expect(find.textContaining('Off '), findsNothing);
+        expect(find.textContaining('Blocked'), findsNothing);
+        // No satellite toggle on a street-only map.
+        expect(find.byKey(const Key('btn-admin-map-layers')), findsNothing);
+        await closePage(tester);
+      },
+    );
 
-      expect(find.byType(AdminMapSearchBar), findsOneWidget);
-      expect(find.text('Search name or ID'), findsOneWidget);
-      expect(find.text('2'), findsOneWidget); // Filter tune badge
+    testWidgets('shows a loading indicator, not an empty map, while loading', (
+      tester,
+    ) async {
+      await pumpPage(tester, settle: false);
 
-      // 6 Status Filter Chips
-      expect(find.byType(AdminMapFilterChipsBar), findsOneWidget);
-      expect(find.text('All 143'), findsOneWidget);
-      expect(find.text('On duty 112'), findsOneWidget);
-      expect(find.text('Stale 4'), findsOneWidget);
-      expect(find.text('Check 3'), findsOneWidget);
-      expect(find.text('Off 31'), findsOneWidget);
-      expect(find.text('Blocked 2'), findsOneWidget);
+      expect(find.byKey(const Key('live-map-loading')), findsOneWidget);
+      expect(find.text('No one is on duty'), findsNothing);
+
+      for (var i = 0; i < 4; i++) {
+        await tester.pump();
+      }
+      expect(find.byKey(const Key('live-map-loading')), findsNothing);
+      await closePage(tester);
     });
 
-    testWidgets('renders cluster bubbles and individual markers including SOS alert',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('says plainly when nobody is on duty', (tester) async {
+      await pumpPage(tester);
 
-      await tester.pumpWidget(buildTestableAdminLiveMap());
-      await tester.pump();
-
-      expect(find.byType(AdminMapVectorCanvas), findsOneWidget);
-
-      // 4 Cluster Bubbles: 34, 21, 12, 6
-      expect(find.text('34'), findsOneWidget);
-      expect(find.text('21'), findsOneWidget);
-      expect(find.text('12'), findsOneWidget);
-      expect(find.text('6'), findsOneWidget);
-
-      // SOS Critical Officer
-      expect(find.text('SOS • R. SHINDE'), findsOneWidget);
-      expect(find.byKey(const Key('marker-officer-officer-sos-1')), findsOneWidget);
+      expect(find.text('No one is on duty'), findsOneWidget);
+      expect(find.text('All 0'), findsOneWidget);
+      await closePage(tester);
     });
 
-    testWidgets('selecting status filter chip filters officers and clusters',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('a failed load is an error with Retry, then recovers', (
+      tester,
+    ) async {
+      live.error = const NetworkException();
+      await pumpPage(tester);
 
-      await tester.pumpWidget(buildTestableAdminLiveMap());
-      await tester.pump();
+      expect(find.text("Couldn't load the live map"), findsOneWidget);
+      expect(find.text('No one is on duty'), findsNothing);
 
-      // Tap Check 3 filter chip
-      final checkChip = find.text('Check 3');
-      await tester.ensureVisible(checkChip);
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(checkChip);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      live
+        ..error = null
+        ..positions = [livePosition('e-asha')];
+      await tester.tap(find.text('Retry'));
+      for (var i = 0; i < 4; i++) {
+        await tester.pump();
+      }
 
-      // Clusters should be hidden in Check filter mode
-      expect(find.text('34'), findsNothing);
-      expect(find.text('21'), findsNothing);
-
-      // SOS marker remains visible
-      expect(find.text('SOS • R. SHINDE'), findsOneWidget);
-
-      // Tap All 143 filter chip to restore
-      final allChip = find.text('All 143');
-      await tester.ensureVisible(allChip);
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(allChip);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('34'), findsOneWidget);
+      expect(find.text("Couldn't load the live map"), findsNothing);
+      expect(find.text('All 1'), findsOneWidget);
+      await closePage(tester);
     });
 
-    testWidgets('typing in search bar filters officers and hides clusters',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('the connection badge tells live from offline', (tester) async {
+      threePeople();
+      await pumpPage(tester);
+      expect(find.text('Connecting…'), findsOneWidget);
 
-      await tester.pumpWidget(buildTestableAdminLiveMap());
+      live.emit(const LiveConnectionChanged(connected: true));
       await tester.pump();
+      expect(find.text('Live'), findsOneWidget);
 
-      // Enter search term "Vijay"
-      await tester.enterText(
-        find.byKey(const Key('input-admin-map-search')),
-        'Vijay',
-      );
+      live.emit(const LiveConnectionChanged(connected: false));
       await tester.pump();
-
-      // Clusters should be hidden while searching
-      expect(find.text('34'), findsNothing);
-
-      // Clear search
-      await tester.tap(find.byIcon(Icons.close_rounded));
-      await tester.pump();
-      expect(find.text('34'), findsOneWidget);
-    });
-
-    testWidgets('tapping officer marker presents preview card with details and triggers callback',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      MapOfficerItem? selectedOfficer;
-      await tester.pumpWidget(
-        buildTestableAdminLiveMap(
-          onOfficerSelected: (officer) => selectedOfficer = officer,
-        ),
-      );
-      await tester.pump();
-
-      // Tap SOS officer marker
-      await tester.tap(find.byKey(const Key('marker-officer-officer-sos-1')));
-      await tester.pump();
-
-      // Preview card details
-      expect(find.text('R. Shinde'), findsOneWidget);
-      expect(find.text('DA-003 · Dindori Road Border'), findsOneWidget);
-      expect(find.text('14%'), findsOneWidget);
-      expect(find.text('View Detail'), findsOneWidget);
-      expect(selectedOfficer?.id, 'officer-sos-1');
-
-      // Tap View Detail button
-      await tester.tap(find.byKey(const Key('btn-view-officer-detail')));
-      await tester.pump();
-    });
-
-    testWidgets('tapping cluster bubble displays deployment feedback snackbar',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(buildTestableAdminLiveMap());
-      await tester.pump();
-
-      // Tap Niphad Cluster (34)
-      await tester.tap(find.text('34'));
-      await tester.pump();
-
       expect(
-        find.text('Niphad Onion & Grape Zone: 34 officers deployed in cluster.'),
+        find.text('Offline · showing last known positions'),
         findsOneWidget,
       );
+      await closePage(tester);
     });
 
-    testWidgets('floating map controls re-center, toggle layer, and toggle list view',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('a position that arrives appears without any reload', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+      expect(find.text('All 0'), findsOneWidget);
 
-      bool teamNavigated = false;
-      await tester.pumpWidget(
-        buildTestableAdminLiveMap(
-          onNavigateToTeam: () => teamNavigated = true,
-        ),
+      live.emit(LivePositionChanged(livePosition('e-asha')));
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('All 1'), findsOneWidget);
+      expect(find.text('No one is on duty'), findsNothing);
+      await closePage(tester);
+    });
+  });
+
+  group('list alternative and the employee card', () {
+    testWidgets(
+      'lists everyone on duty with a status label, not colour alone',
+      (tester) async {
+        threePeople();
+        await pumpPage(tester);
+        await openList(tester);
+
+        expect(find.text('On duty now (3)'), findsOneWidget);
+        expect(find.text('Asha Patil'), findsOneWidget);
+        expect(find.text('Ravi Kumar'), findsOneWidget);
+        expect(find.text('Meena Joshi'), findsOneWidget);
+        expect(find.text('DA-101 · Just now'), findsOneWidget);
+        expect(find.text('DA-102 · 9 min ago'), findsOneWidget);
+        expect(find.text('On duty'), findsOneWidget);
+        expect(find.text('No update 5 min'), findsOneWidget);
+        expect(find.text('Check needed'), findsOneWidget);
+        await closePage(tester);
+      },
+    );
+
+    testWidgets('picking a person opens their card; Close hides it', (
+      tester,
+    ) async {
+      threePeople();
+      await pumpPage(tester);
+      expect(find.byKey(const Key('live-officer-card')), findsNothing);
+
+      await openList(tester);
+      await tester.tap(find.byKey(const Key('live-officer-row-e-ravi')));
+      await tester.pumpAndSettle();
+
+      final card = find.byKey(const Key('live-officer-card'));
+      expect(card, findsOneWidget);
+      expect(
+        find.descendant(of: card, matching: find.text('Ravi Kumar')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: card, matching: find.text('DA-102')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: card, matching: find.text('No update 5 min')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: card, matching: find.text('9 min ago')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: card, matching: find.text('80%')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: card, matching: find.text('±6 m')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('btn-live-officer-close')));
+      await tester.pump();
+      expect(find.byKey(const Key('live-officer-card')), findsNothing);
+      await closePage(tester);
+    });
+
+    testWidgets('View route opens the route of that employee', (tester) async {
+      threePeople();
+      await pumpPage(tester);
+      await openList(tester);
+      await tester.tap(find.byKey(const Key('live-officer-row-e-ravi')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('btn-live-officer-route')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AdminRouteViewPage), findsOneWidget);
+      expect(find.textContaining('Ravi Kumar'), findsWidgets);
+      expect(routes.calls.single.employeeId, 'e-ravi');
+      await closePage(tester);
+    });
+
+    testWidgets('the card closes by itself when that person goes off duty', (
+      tester,
+    ) async {
+      threePeople();
+      await pumpPage(tester);
+      await openList(tester);
+      await tester.tap(find.byKey(const Key('live-officer-row-e-asha')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('live-officer-card')), findsOneWidget);
+
+      live.emit(const LivePositionRemoved('e-asha'));
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.byKey(const Key('live-officer-card')), findsNothing);
+      expect(find.text('All 2'), findsOneWidget);
+      await closePage(tester);
+    });
+
+    testWidgets('a chip narrows the list; search narrows it further', (
+      tester,
+    ) async {
+      threePeople();
+      await pumpPage(tester);
+
+      await tester.tap(find.byKey(const Key('chip-admin-map-stale')));
+      await tester.pump();
+      await openList(tester);
+      expect(find.text('On duty now (1)'), findsOneWidget);
+      expect(find.text('Ravi Kumar'), findsOneWidget);
+      expect(find.text('Asha Patil'), findsNothing);
+      await tester.tap(find.byIcon(Icons.close_rounded).last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('chip-admin-map-all')));
+      await tester.enterText(
+        find.byKey(const Key('input-admin-map-search')),
+        'da-103',
       );
       await tester.pump();
+      await openList(tester);
+      expect(find.text('On duty now (1)'), findsOneWidget);
+      expect(find.text('Meena Joshi'), findsOneWidget);
+      await closePage(tester);
+    });
 
-      expect(find.byType(AdminMapFloatingControls), findsOneWidget);
-      expect(find.text('Live'), findsOneWidget);
-      expect(find.text('Mapbox © OpenStreetMap'), findsOneWidget);
+    testWidgets('filtering everyone out says so and Clear filters restores', (
+      tester,
+    ) async {
+      threePeople();
+      await pumpPage(tester);
 
-      // Tap Layers Toggle
-      await tester.tap(find.byKey(const Key('btn-admin-map-layers')));
+      await tester.enterText(
+        find.byKey(const Key('input-admin-map-search')),
+        'zzz',
+      );
       await tester.pump();
-      expect(find.text('Switched to Satellite Imagery.'), findsOneWidget);
+      expect(find.text('No results for these filters'), findsOneWidget);
+      expect(find.text('No one is on duty'), findsNothing);
 
-      // Tap Recenter GPS
+      await tester.tap(find.text('Clear filters'));
+      await tester.pump();
+      expect(find.text('No results for these filters'), findsNothing);
+      expect(find.text('All 3'), findsOneWidget);
+      await closePage(tester);
+    });
+
+    testWidgets('the list explains itself when nobody is on duty', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+      await openList(tester);
+
+      expect(find.text('On duty now (0)'), findsOneWidget);
+      expect(find.text('No one is on duty'), findsWidgets);
+      await closePage(tester);
+    });
+
+    testWidgets('the zoom tools do nothing harmful without a native map', (
+      tester,
+    ) async {
+      threePeople();
+      await pumpPage(tester);
+
       await tester.tap(find.byKey(const Key('btn-admin-map-recenter')));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('Map bounds re-centered to Nashik Basin.'), findsOneWidget);
-
-      // Tap List-view alternative
-      await tester.tap(find.byKey(const Key('btn-admin-map-list-view')));
-      await tester.pump();
-      expect(teamNavigated, isTrue);
-    });
-
-    testWidgets('bottom navigation has Map active and responds to Home tap',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      bool homeNavigated = false;
-      await tester.pumpWidget(
-        buildTestableAdminLiveMap(
-          onNavigateToHome: () => homeNavigated = true,
-        ),
-      );
-      await tester.pump();
-
-      // Tap Home in bottom nav
-      await tester.tap(find.text('Home'));
-      await tester.pump();
-      expect(homeNavigated, isTrue);
+      expect(find.byKey(const Key('btn-admin-map-recenter')), findsOneWidget);
+      await closePage(tester);
     });
   });
 }

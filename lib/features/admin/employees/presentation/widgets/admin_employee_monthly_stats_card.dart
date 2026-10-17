@@ -3,28 +3,35 @@ import 'package:flutter/material.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_dimens.dart';
 import '../../../../../core/theme/app_typography.dart';
+import '../../../../../core/utils/date_labels.dart';
 
 /// Screen 18 "THIS MONTH" Telemetry Card: Month dropdown, 2x2 metric grid, and diagnostic footnotes.
 class AdminEmployeeMonthlyStatsCard extends StatelessWidget {
   const AdminEmployeeMonthlyStatsCard({
     super.key,
-    this.monthName = 'October',
-    this.daysWorked = 12,
-    this.hoursWorked = '96h 40m',
-    this.distanceKm = '578.3 km',
-    this.visitsCount = 54,
-    this.autoEndedDays = 1,
+    this.monthName,
+    this.daysWorked = 0,
+    this.hoursWorked = '0h 00m',
+    this.distanceKm = '0.0 km',
+    this.visitsCount = 0,
+    this.autoEndedDays = 0,
     this.locationFlags = 0,
+    this.isAvailable = true,
     this.onMonthSelect,
   });
 
-  final String monthName;
+  /// Month shown on the chip. Defaults to the current month.
+  final String? monthName;
   final int daysWorked;
   final String hoursWorked;
   final String distanceKm;
   final int visitsCount;
   final int autoEndedDays;
   final int locationFlags;
+
+  /// False while the month is loading or could not be loaded: the figures show
+  /// a dash instead of a made-up zero.
+  final bool isAvailable;
   final VoidCallback? onMonthSelect;
 
   @override
@@ -62,16 +69,13 @@ class AdminEmployeeMonthlyStatsCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(AppRadius.sm),
-                    border: Border.all(
-                      color: AppColors.neutral300,
-                      width: 1.0,
-                    ),
+                    border: Border.all(color: AppColors.neutral300, width: 1.0),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        monthName,
+                        monthName ?? DateLabels.monthName(DateTime.now()),
                         style: AppTypography.label.copyWith(
                           color: AppColors.neutral600,
                           fontSize: 13,
@@ -100,7 +104,7 @@ class AdminEmployeeMonthlyStatsCard extends StatelessWidget {
                   Expanded(
                     child: _buildMetricBlock(
                       key: const Key('metric-days-worked'),
-                      value: '$daysWorked',
+                      value: isAvailable ? '$daysWorked' : '–',
                       label: 'Days worked',
                     ),
                   ),
@@ -108,7 +112,7 @@ class AdminEmployeeMonthlyStatsCard extends StatelessWidget {
                   Expanded(
                     child: _buildMetricBlock(
                       key: const Key('metric-hours-worked'),
-                      value: hoursWorked,
+                      value: isAvailable ? hoursWorked : '–',
                       label: 'Hours',
                     ),
                   ),
@@ -120,7 +124,7 @@ class AdminEmployeeMonthlyStatsCard extends StatelessWidget {
                   Expanded(
                     child: _buildMetricBlock(
                       key: const Key('metric-distance-km'),
-                      value: distanceKm,
+                      value: isAvailable ? distanceKm : '–',
                       label: 'Distance',
                     ),
                   ),
@@ -128,7 +132,7 @@ class AdminEmployeeMonthlyStatsCard extends StatelessWidget {
                   Expanded(
                     child: _buildMetricBlock(
                       key: const Key('metric-visits-count'),
-                      value: '$visitsCount',
+                      value: isAvailable ? '$visitsCount' : '–',
                       label: 'Visits',
                     ),
                   ),
@@ -164,7 +168,9 @@ class AdminEmployeeMonthlyStatsCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      '$autoEndedDays day auto-ended',
+                      isAvailable
+                          ? '$autoEndedDays ${autoEndedDays == 1 ? 'day' : 'days'} auto-ended'
+                          : 'auto-ended days: –',
                       style: AppTypography.caption.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -186,7 +192,9 @@ class AdminEmployeeMonthlyStatsCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      '$locationFlags location flags',
+                      isAvailable
+                          ? '$locationFlags location ${locationFlags == 1 ? 'flag' : 'flags'}'
+                          : 'location flags: –',
                       style: AppTypography.caption.copyWith(
                         color: AppColors.textSecondary,
                       ),

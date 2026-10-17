@@ -99,11 +99,7 @@ class _FilterStatusChip extends StatelessWidget {
             ),
             if (isSelected) ...<Widget>[
               const SizedBox(width: 4),
-              const Icon(
-                Icons.check,
-                size: 16,
-                color: AppColors.primary600,
-              ),
+              const Icon(Icons.check, size: 16, color: AppColors.primary600),
             ],
           ],
         ),

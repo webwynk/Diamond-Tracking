@@ -3,352 +3,220 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
-import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/app_empty_state.dart';
+import '../../../../shared/widgets/app_error_view.dart';
+import '../../../../shared/widgets/app_top_bar.dart';
 import 'controllers/admin_route_view_controller.dart';
 import 'controllers/admin_route_view_state.dart';
 import 'widgets/admin_route_date_pill.dart';
-import 'widgets/admin_route_floating_app_bar.dart';
 import 'widgets/admin_route_map_view.dart';
 import 'widgets/admin_route_summary_sheet.dart';
 
 /// Screen 23 — Route View (Admin).
 ///
-/// An authoritative static picture of one field employee's entire day drawn
-/// on a cartographic road map with verified telemetry totals.
+/// One employee's day as a static picture (docs/07 section 4, PRD F8): the
+/// stored route drawn as a highlighted line on the real map, with start and end
+/// (or current position) and the flagged points on their own, and the totals
+/// underneath. No playback, no scrubber, no speed control, no animation.
 ///
-/// Per explicit PRD requirements:
-/// - Static route view, NOT a video player (zero playback controls, zero scrubbers, zero speed chips).
-/// - Upper 62%: Light-styled road map with 4px #016893 route hero polyline,
-///   32px start flag (#16A34A), 32px end square (#1E293B), 5 visit pins (1-5),
-///   2 long stops (#F59E0B dashed), 1 red anomaly marker (#DC2626) with dashed red segment,
-///   and a 500m geofence circle around Visit 3.
-/// - Floating top app bar: white card inset 16 dp, #016893 back chevron,
-///   "Route" title + "Suresh Patel · Sat, 11 Oct", and share icon.
-/// - Centered date selector pill: "< Sat, 11 Oct >".
-/// - Lower 38%: White sheet with drag handle, 4 stat blocks (Distance, Duty hours,
-///   Visits, Flag), inline meta (shift time, 2 long stops), red alert strip,
-///   and full-width "View visits" outlined button.
-class AdminRouteViewPage extends ConsumerWidget {
+/// Totals come from the server's session rows; the drawn line is simplified for
+/// display only. A day older than 30 days has no route but still has its
+/// totals. Every state is explicit: loading, failed, no duty, no usable point,
+/// expired.
+class AdminRouteViewPage extends ConsumerStatefulWidget {
   const AdminRouteViewPage({
     super.key,
-    this.employeeId = 'emp-1',
+    required this.employeeId,
+    required this.employeeName,
     this.dayId,
     this.onBack,
   });
 
   final String employeeId;
+  final String employeeName;
+
+  /// A day to open on, as `yyyy-MM-dd` (IST). Anything else opens on today.
   final String? dayId;
   final VoidCallback? onBack;
 
-  void _showFlagDetailsDialog(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-        title: Row(
-          children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              color: AppColors.error,
-              size: 24,
-            ),
-            const SizedBox(width: AppSpacing.x2),
-            Expanded(
-              child: Text(
-                'Flagged Telemetry Anomaly',
-                style: AppTypography.title.copyWith(color: AppColors.neutral900),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Time: 4:40 PM · GPS Jump / Mock Provider',
-              style: AppTypography.label.copyWith(
-                color: AppColors.error,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.x2),
-            Text(
-              'Location coordinate leaped 8.4 km in 2 seconds with 0 m accuracy variance. Point excluded from payable distance calculation pursuant to telemetry verification policy.',
-              style: AppTypography.body.copyWith(
-                color: AppColors.neutral700,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.x3),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.x3),
-              decoration: BoxDecoration(
-                color: AppColors.neutral100,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.security_rounded,
-                    size: 16,
-                    color: AppColors.neutral600,
-                  ),
-                  const SizedBox(width: AppSpacing.x2),
-                  Expanded(
-                    child: Text(
-                      'Flag ID: FLG-20261011-0440 · Audit Verified',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.neutral600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
+  @override
+  ConsumerState<AdminRouteViewPage> createState() => _AdminRouteViewPageState();
+}
 
-  void _showVisitsBottomSheet(
-    BuildContext context,
-    List<AdminRouteWaypoint> waypoints,
-  ) {
-    final visitWaypoints = waypoints
-        .where((w) => w.type == AdminWaypointType.visit)
-        .toList();
+class _AdminRouteViewPageState extends ConsumerState<AdminRouteViewPage> {
+  final GlobalKey<AdminRouteMapViewState> _mapKey =
+      GlobalKey<AdminRouteMapViewState>();
 
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
-      ),
-      builder: (sheetCtx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.x4,
-            12,
-            AppSpacing.x4,
-            AppSpacing.x4,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 32,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.neutral300,
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.x3),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Recorded Visits (5)',
-                    style: AppTypography.title.copyWith(
-                      color: AppColors.neutral900,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    'Sat, 11 Oct',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.neutral500,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.x3),
-              ...visitWaypoints.map((visit) {
-                return Container(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.x2),
-                  padding: const EdgeInsets.all(AppSpacing.x3),
-                  decoration: BoxDecoration(
-                    color: AppColors.neutral50,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: AppColors.neutral200, width: 1),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary600,
-                          shape: BoxShape.circle,
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '${visit.visitNumber ?? 1}',
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.neutral0,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.x3),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              visit.title,
-                              style: AppTypography.label.copyWith(
-                                color: AppColors.neutral900,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              visit.subtitle,
-                              style: AppTypography.caption.copyWith(
-                                color: AppColors.neutral500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        visit.time,
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.neutral600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
-      ),
-    );
+  late final RouteViewArgs _args = RouteViewArgs(
+    employeeId: widget.employeeId,
+    initialDate: _parseDay(widget.dayId),
+  );
+
+  static final RegExp _dayPattern = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+
+  static DateTime? _parseDay(String? dayId) {
+    if (dayId == null || !_dayPattern.hasMatch(dayId)) return null;
+    final parsed = DateTime.tryParse(dayId);
+    if (parsed == null) return null;
+    return DateTime(parsed.year, parsed.month, parsed.day);
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(adminRouteViewControllerProvider);
-    final notifier = ref.read(adminRouteViewControllerProvider.notifier);
+  Widget build(BuildContext context) {
+    final state = ref.watch(adminRouteViewControllerProvider(_args));
+    final notifier = ref.read(adminRouteViewControllerProvider(_args).notifier);
+    final summary = state.summary;
+    final drawn = state.load == RouteLoad.loaded && !state.isExpired;
+    final showCurrent = state.isToday && (summary?.hasOpenSession ?? false);
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
-        children: <Widget>[
-          // Main Body Column: Upper 62% Map + Lower 38% Telemetry Sheet
-          Column(
-            children: <Widget>[
-              // Upper 62% Route Map View
-              Expanded(
-                flex: 62,
-                child: AdminRouteMapView(
-                  waypoints: state.waypoints,
-                  isSatellite: state.isMapSatellite,
-                  showFlagExcludedRoute: state.showFlagExcludedRoute,
-                  selectedWaypointId: state.selectedWaypointId,
-                  onWaypointTapped: (waypoint) {
-                    notifier.selectWaypoint(waypoint.id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '${waypoint.title} (${waypoint.time})',
-                        ),
-                        duration: const Duration(seconds: 1),
-                      ),
-                    );
-                  },
-                  onFitRoute: () {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Route centered to full 47.3 km corridor.',
-                        ),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
-                  },
-                  onToggleLayers: () {
-                    notifier.toggleSatellite();
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          state.isMapSatellite
-                              ? 'Default topographic basemap enabled.'
-                              : 'Satellite imagery basemap enabled.',
-                        ),
-                        duration: const Duration(seconds: 1),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              // Lower 38% Telemetry Audit Bottom Sheet
-              AdminRouteSummarySheet(
-                telemetry: state.telemetry,
-                onViewFlagDetails: () => _showFlagDetailsDialog(context, ref),
-                onViewVisitsList: () => _showVisitsBottomSheet(
-                  context,
-                  state.waypoints,
-                ),
-              ),
-            ],
+      appBar: AppTopBar(
+        leading: AppTopBarLeading.back,
+        leadingKey: const Key('btn-route-back'),
+        onLeadingPressed: widget.onBack,
+        title: 'Route',
+        subtitle: '${widget.employeeName} · ${state.selectedDateText}',
+        actions: <Widget>[
+          IconButton(
+            key: const Key('btn-route-refresh'),
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Reload this day',
+            onPressed: notifier.reload,
           ),
-
-          // Floating Top Controls (App Bar + Centered Date Pill)
-          SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+        ],
+      ),
+      body: Column(
+        children: <Widget>[
+          Expanded(
+            child: Stack(
               children: <Widget>[
-                const SizedBox(height: 8),
+                Positioned.fill(
+                  child: AdminRouteMapView(
+                    key: _mapKey,
+                    analysis: drawn ? state.analysis : null,
+                    showCurrent: showCurrent,
+                  ),
+                ),
 
-                // 1. Floating Inset App Bar
-                AdminRouteFloatingAppBar(
-                  title: 'Route',
-                  subtitle: '${state.employeeName} · ${state.selectedDateText}',
-                  onBack: onBack ?? () => Navigator.of(context).maybePop(),
-                  onShare: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Sharing ${state.employeeName}\'s route for ${state.selectedDateText}...',
+                // Honest states over the map.
+                if (state.load == RouteLoad.loading)
+                  const Positioned.fill(
+                    child: ColoredBox(
+                      color: Color(0x66FFFFFF),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          key: Key('route-loading'),
                         ),
-                        duration: const Duration(seconds: 2),
                       ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 8),
+                    ),
+                  ),
+                if (state.load == RouteLoad.failed)
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: AppColors.background,
+                      child: AppErrorView(
+                        key: const Key('route-error'),
+                        title: "Couldn't load the route",
+                        message: state.errorMessage ?? '',
+                        onRetry: notifier.reload,
+                      ),
+                    ),
+                  ),
+                if (state.hasNoDuty)
+                  _overlay(
+                    AppEmptyState.noRoute(dateLabel: state.selectedDateText),
+                  ),
+                if (state.load == RouteLoad.loaded &&
+                    state.isExpired &&
+                    summary != null)
+                  _overlay(AppEmptyState.routeExpired()),
+                if (state.hasNoRoute)
+                  _overlay(
+                    const AppEmptyState(
+                      icon: Icons.location_off_outlined,
+                      title: 'No usable location',
+                      description:
+                          'Duty was recorded, but the phone sent no location '
+                          'that can be drawn.',
+                    ),
+                  ),
+                if (state.day?.truncated ?? false)
+                  Positioned(
+                    left: AppSpacing.x4,
+                    right: AppSpacing.x4,
+                    bottom: AppSpacing.x3,
+                    child: Container(
+                      key: const Key('route-truncated'),
+                      padding: const EdgeInsets.all(AppSpacing.x2),
+                      decoration: BoxDecoration(
+                        color: AppColors.warningBg,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: const Text(
+                        'This day has more points than can be shown. The '
+                        'route is drawn from the first part of the day.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
 
-                // 2. Horizontally Centered Date Selector Pill
-                AdminRouteDatePill(
-                  selectedDateText: state.selectedDateText,
-                  onPreviousDate: notifier.previousDate,
-                  onNextDate: notifier.nextDate,
+                // Date selector floating over the map.
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.x2),
+                    child: AdminRouteDatePill(
+                      selectedDateText: state.selectedDateText,
+                      onPreviousDate: notifier.previousDate,
+                      onNextDate: notifier.nextDate,
+                    ),
+                  ),
                 ),
+
+                // Fit the whole route again, on request.
+                if (drawn && (state.analysis?.hasAnythingToDraw ?? false))
+                  Positioned(
+                    right: AppSpacing.x4,
+                    top: AppSpacing.x2 + 48,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.neutral200),
+                      ),
+                      child: IconButton(
+                        key: const Key('btn-route-fit'),
+                        icon: const Icon(
+                          Icons.fit_screen_rounded,
+                          color: AppColors.primary600,
+                        ),
+                        tooltip: 'Show the whole route',
+                        onPressed: () => _mapKey.currentState?.fit(),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
+
+          if (summary != null)
+            AdminRouteSummarySheet(
+              summary: summary,
+              showLegend: drawn && (state.analysis?.hasAnythingToDraw ?? false),
+              showCurrent: showCurrent,
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _overlay(Widget child) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Align(alignment: const Alignment(0, -0.2), child: child),
       ),
     );
   }

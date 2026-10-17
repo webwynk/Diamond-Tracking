@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../domain/entities/user_profile.dart';
-import '../../admin/dashboard/presentation/admin_dashboard_page.dart';
-import '../../map/presentation/employee_map_page.dart';
+import 'auth_navigation.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/auth_state.dart';
 import 'employee_login_page.dart';
@@ -52,15 +50,7 @@ class _SplashPageState extends ConsumerState<SplashPage> {
           MaterialPageRoute(builder: (_) => const PinChangePage()),
         );
       } else if (next is AuthAuthenticated) {
-        if (next.profile.role == UserRole.admin) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
-          );
-        } else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const EmployeeMapPage()),
-          );
-        }
+        AuthNavigation.goToLanding(Navigator.of(context), next.profile);
       }
     });
 
@@ -76,13 +66,12 @@ class _SplashPageState extends ConsumerState<SplashPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Geometric Diamond Logo (88x88 dp)
-                  SizedBox(
+                  // Official Brand Logo (88x88 dp)
+                  Image.asset(
+                    'assets/image/white-logo.png',
                     width: 88,
                     height: 88,
-                    child: CustomPaint(
-                      painter: _DiamondLogoPainter(),
-                    ),
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 20),
                   Text(
@@ -121,52 +110,4 @@ class _SplashPageState extends ConsumerState<SplashPage> {
       ),
     );
   }
-}
-
-/// Custom painter rendering the geometric Diamond Agritech mark matching Screen 01 reference.
-class _DiamondLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    // Outer diamond
-    final outerPaint = Paint()
-      ..color = AppColors.neutral0
-      ..strokeWidth = 3.0
-      ..style = PaintingStyle.stroke;
-
-    final outerPath = Path()
-      ..moveTo(w / 2, 5)
-      ..lineTo(w - 5, h / 2)
-      ..lineTo(w / 2, h - 5)
-      ..lineTo(5, h / 2)
-      ..close();
-    canvas.drawPath(outerPath, outerPaint);
-
-    // Inner diamond (35% opacity)
-    final innerPaint = Paint()
-      ..color = AppColors.neutral0.withValues(alpha: 0.35)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
-    final innerPath = Path()
-      ..moveTo(w / 2, 22)
-      ..lineTo(w - 22, h / 2)
-      ..lineTo(w / 2, h - 22)
-      ..lineTo(22, h / 2)
-      ..close();
-    canvas.drawPath(innerPath, innerPaint);
-
-    // Cross lines (20% opacity)
-    final crossPaint = Paint()
-      ..color = AppColors.neutral0.withValues(alpha: 0.2)
-      ..strokeWidth = 1.0;
-
-    canvas.drawLine(Offset(w / 2, 5), Offset(w / 2, h - 5), crossPaint);
-    canvas.drawLine(Offset(5, h / 2), Offset(w - 5, h / 2), crossPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -66,8 +66,9 @@ class FilterDateRangeSection extends StatelessWidget {
                         color: isSelected
                             ? AppColors.surface
                             : AppColors.neutral600,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
                       ),
                     ),
                   ),

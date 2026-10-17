@@ -4,65 +4,151 @@ import 'package:diamond_tracking/features/admin/employees/presentation/controlle
 import 'package:diamond_tracking/features/admin/employees/presentation/controllers/admin_employee_list_controller.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/controllers/admin_employee_list_state.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/widgets/admin_employee_details_card.dart';
-import 'package:diamond_tracking/features/admin/employees/presentation/widgets/admin_employee_form_top_bar.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/widgets/admin_employee_info_strip.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/widgets/admin_employee_login_card.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/widgets/admin_employee_role_card.dart';
-import 'package:diamond_tracking/features/admin/employees/presentation/widgets/admin_employee_telemetry_preview_card.dart';
+import 'package:diamond_tracking/features/auth/domain/pin_validator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/fake_employee_repository.dart';
+
 Widget _createTestableWidget(Widget child) {
   return ProviderScope(
-    child: MaterialApp(
-      home: child,
-    ),
+    overrides: [
+      fakeEmployeeRepositoryOverride(
+        FakeEmployeeRepository(createDelay: const Duration(milliseconds: 400)),
+      ),
+    ],
+    child: MaterialApp(home: child),
   );
+}
+
+Future<void> _fillForm(WidgetTester tester) async {
+  await tester.enterText(
+    find.byKey(const Key('admin-employee-name-field')),
+    'Kiran Deshmukh',
+  );
+  await tester.enterText(
+    find.byKey(const Key('admin-employee-phone-field')),
+    '+91 98220 11334',
+  );
+  await tester.enterText(
+    find.byKey(const Key('admin-employee-email-field')),
+    'kiran.d@diamondagritech.in',
+  );
+  await tester.enterText(
+    find.byKey(const Key('admin-employee-id-field')),
+    'DA-144',
+  );
+  await tester.pump();
 }
 
 void main() {
   group('AdminEmployeeFormNotifier Unit Tests', () {
-    test('initializes with default values from HTML design reference', () {
-      final container = ProviderContainer();
+    test('starts blank: no sample name, phone, email, code or PIN', () {
+      final container = ProviderContainer(
+        overrides: [fakeEmployeeRepositoryOverride()],
+      );
       addTearDown(container.dispose);
 
       final state = container.read(adminEmployeeFormControllerProvider);
-      expect(state.fullName, 'Kiran Deshmukh');
-      expect(state.phoneNumber, '+91 98220 11334');
-      expect(state.email, 'kiran.d@diamondagritech.in');
-      expect(state.employeeCode, 'DA-144');
-      expect(state.initialPin, '849201');
+      expect(state.fullName, isEmpty);
+      expect(state.phoneNumber, isEmpty);
+      expect(state.email, isEmpty);
+      expect(state.employeeCode, isEmpty);
+      expect(state.initialPin, isEmpty);
       expect(state.role, UserRole.employee);
-      expect(state.isValid, isTrue);
+      expect(state.isValid, isFalse);
+    });
+
+    test('initForm for a new employee generates a rule-abiding PIN only', () {
+      final container = ProviderContainer(
+        overrides: [fakeEmployeeRepositoryOverride()],
+      );
+      addTearDown(container.dispose);
+
+      container.read(adminEmployeeFormControllerProvider.notifier).initForm();
+      final state = container.read(adminEmployeeFormControllerProvider);
+
+      expect(state.fullName, isEmpty);
+      expect(state.employeeCode, isEmpty);
+      expect(state.initialPin, isNot('849201'));
+      expect(PinValidator.hasSixDigits(state.initialPin), isTrue);
+      expect(PinValidator.isNotRepeated(state.initialPin), isTrue);
+      expect(PinValidator.isNotSequential(state.initialPin), isTrue);
+      // Still invalid until the admin fills the person's details.
+      expect(state.isValid, isFalse);
+    });
+
+    test('generated PINs never break the PIN rules', () {
+      final container = ProviderContainer(
+        overrides: [fakeEmployeeRepositoryOverride()],
+      );
+      addTearDown(container.dispose);
+      final notifier = container.read(
+        adminEmployeeFormControllerProvider.notifier,
+      );
+
+      for (var i = 0; i < 500; i++) {
+        notifier.regeneratePin();
+        final pin = container
+            .read(adminEmployeeFormControllerProvider)
+            .initialPin;
+        expect(PinValidator.hasSixDigits(pin), isTrue, reason: pin);
+        expect(PinValidator.isNotRepeated(pin), isTrue, reason: pin);
+        expect(PinValidator.isNotSequential(pin), isTrue, reason: pin);
+      }
     });
 
     test('regeneratePin creates a new 6-digit numeric string', () {
-      final container = ProviderContainer();
+      final container = ProviderContainer(
+        overrides: [fakeEmployeeRepositoryOverride()],
+      );
       addTearDown(container.dispose);
 
-      container.read(adminEmployeeFormControllerProvider.notifier).regeneratePin();
+      container
+          .read(adminEmployeeFormControllerProvider.notifier)
+          .regeneratePin();
 
-      final updatedPin = container.read(adminEmployeeFormControllerProvider).initialPin;
+      final updatedPin = container
+          .read(adminEmployeeFormControllerProvider)
+          .initialPin;
       expect(updatedPin.length, 6);
       expect(int.tryParse(updatedPin), isNotNull);
-      expect(container.read(adminEmployeeFormControllerProvider).isPinValid, isTrue);
+      expect(
+        container.read(adminEmployeeFormControllerProvider).isPinValid,
+        isTrue,
+      );
     });
 
     test('toggling role updates state', () {
-      final container = ProviderContainer();
+      final container = ProviderContainer(
+        overrides: [fakeEmployeeRepositoryOverride()],
+      );
       addTearDown(container.dispose);
 
-      final notifier = container.read(adminEmployeeFormControllerProvider.notifier);
+      final notifier = container.read(
+        adminEmployeeFormControllerProvider.notifier,
+      );
       notifier.setRole(UserRole.admin);
-      expect(container.read(adminEmployeeFormControllerProvider).role, UserRole.admin);
+      expect(
+        container.read(adminEmployeeFormControllerProvider).role,
+        UserRole.admin,
+      );
 
       notifier.setRole(UserRole.employee);
-      expect(container.read(adminEmployeeFormControllerProvider).role, UserRole.employee);
+      expect(
+        container.read(adminEmployeeFormControllerProvider).role,
+        UserRole.employee,
+      );
     });
 
     test('initForm with existing employee sets edit mode', () {
-      final container = ProviderContainer();
+      final container = ProviderContainer(
+        overrides: [fakeEmployeeRepositoryOverride()],
+      );
       addTearDown(container.dispose);
 
       const existing = AdminEmployeeItem(
@@ -75,7 +161,9 @@ void main() {
         role: UserRole.employee,
       );
 
-      container.read(adminEmployeeFormControllerProvider.notifier).initForm(employee: existing);
+      container
+          .read(adminEmployeeFormControllerProvider.notifier)
+          .initForm(employee: existing);
       final state = container.read(adminEmployeeFormControllerProvider);
 
       expect(state.isEditMode, isTrue);
@@ -85,66 +173,110 @@ void main() {
       expect(state.phoneNumber, '+91 98201 44556');
     });
 
-    test('submit adds employee to list controller and updates success state', () async {
-      final container = ProviderContainer();
+    test(
+      'submit adds employee to list controller and updates success state',
+      () async {
+        final container = ProviderContainer(
+          overrides: [fakeEmployeeRepositoryOverride()],
+        );
+        addTearDown(container.dispose);
+
+        final form =
+            container.read(adminEmployeeFormControllerProvider.notifier)
+              ..initForm()
+              ..setFullName('Kiran Deshmukh')
+              ..setPhoneNumber('+91 98220 11334')
+              ..setEmail('kiran.d@diamondagritech.in')
+              ..setEmployeeCode('da-144');
+
+        final initialCount = container
+            .read(adminEmployeeListControllerProvider)
+            .employees
+            .length;
+
+        final success = await form.submit();
+
+        expect(success, isTrue);
+        expect(
+          container.read(adminEmployeeFormControllerProvider).isSuccess,
+          isTrue,
+        );
+        expect(
+          container.read(adminEmployeeListControllerProvider).employees.length,
+          initialCount + 1,
+        );
+      },
+    );
+
+    test('submit refuses an incomplete form', () async {
+      final container = ProviderContainer(
+        overrides: [fakeEmployeeRepositoryOverride()],
+      );
       addTearDown(container.dispose);
 
-      final initialCount =
-          container.read(adminEmployeeListControllerProvider).employees.length;
+      final form = container.read(adminEmployeeFormControllerProvider.notifier)
+        ..initForm();
 
-      final success =
-          await container.read(adminEmployeeFormControllerProvider.notifier).submit();
-
-      expect(success, isTrue);
-      expect(container.read(adminEmployeeFormControllerProvider).isSuccess, isTrue);
+      expect(await form.submit(), isFalse);
       expect(
-        container.read(adminEmployeeListControllerProvider).employees.length,
-        initialCount + 1,
+        container.read(adminEmployeeListControllerProvider).employees,
+        isEmpty,
       );
     });
   });
 
-  group('Screen 19 AdminEmployeeFormTopBar Widget Tests', () {
-    testWidgets('renders title and triggers close and save callbacks', (tester) async {
-      bool closed = false;
-      bool saved = false;
+  group('Screen 19 form header Widget Tests', () {
+    testWidgets('close button pops the form route', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.5;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(
         _createTestableWidget(
-          AdminEmployeeFormTopBar(
-            isEditMode: false,
-            isValid: true,
-            isSaving: false,
-            onClose: () => closed = true,
-            onSave: () => saved = true,
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AdminEmployeeFormPage(),
+                ),
+              ),
+              child: const Text('open form'),
+            ),
           ),
         ),
       );
-
-      expect(find.text('Add employee'), findsOneWidget);
-      expect(find.text('Save'), findsOneWidget);
+      await tester.tap(find.text('open form'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AdminEmployeeFormPage), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('admin-employee-form-close-btn')));
-      expect(closed, isTrue);
-
-      await tester.tap(find.byKey(const Key('admin-employee-form-header-save-btn')));
-      expect(saved, isTrue);
+      await tester.pumpAndSettle();
+      expect(find.byType(AdminEmployeeFormPage), findsNothing);
     });
 
-    testWidgets('renders Edit employee title when in edit mode', (tester) async {
-      await tester.pumpWidget(
-        _createTestableWidget(
-          AdminEmployeeFormTopBar(
-            isEditMode: true,
-            isValid: true,
-            isSaving: false,
-            onClose: () {},
-            onSave: () {},
-          ),
-        ),
-      );
+    testWidgets('header Save submits the form when it is valid', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.5;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-      expect(find.text('Edit employee'), findsOneWidget);
+      await tester.pumpWidget(
+        _createTestableWidget(const AdminEmployeeFormPage()),
+      );
+      await tester.pumpAndSettle();
+      await _fillForm(tester);
+
+      await tester.tap(
+        find.byKey(const Key('admin-employee-form-header-save-btn')),
+      );
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pumpAndSettle();
     });
   });
 
@@ -152,7 +284,9 @@ void main() {
     testWidgets('renders all fields, icons, and helper texts', (tester) async {
       final nameCtrl = TextEditingController(text: 'Kiran Deshmukh');
       final phoneCtrl = TextEditingController(text: '+91 98220 11334');
-      final emailCtrl = TextEditingController(text: 'kiran.d@diamondagritech.in');
+      final emailCtrl = TextEditingController(
+        text: 'kiran.d@diamondagritech.in',
+      );
 
       await tester.pumpWidget(
         _createTestableWidget(
@@ -173,51 +307,71 @@ void main() {
       expect(find.text('Full name'), findsOneWidget);
       expect(find.text('Phone number'), findsOneWidget);
       expect(find.text('Email'), findsOneWidget);
-      expect(find.text('Used for SMS dispatch and field verification'), findsOneWidget);
+      expect(
+        find.text('Used for SMS dispatch and field verification'),
+        findsOneWidget,
+      );
       expect(find.text('Official company domain required'), findsOneWidget);
 
-      expect(find.byKey(const Key('admin-employee-name-field')), findsOneWidget);
-      expect(find.byKey(const Key('admin-employee-phone-field')), findsOneWidget);
-      expect(find.byKey(const Key('admin-employee-email-field')), findsOneWidget);
+      expect(
+        find.byKey(const Key('admin-employee-name-field')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('admin-employee-phone-field')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('admin-employee-email-field')),
+        findsOneWidget,
+      );
     });
   });
 
   group('Screen 19 AdminEmployeeLoginCard Widget Tests', () {
-    testWidgets('renders Employee ID with Available chip and PIN with Regen button', (tester) async {
-      final idCtrl = TextEditingController(text: 'DA-144');
-      final pinCtrl = TextEditingController(text: '849201');
-      bool regenTapped = false;
+    testWidgets(
+      'renders Employee ID with Available chip and PIN with Regen button',
+      (tester) async {
+        final idCtrl = TextEditingController(text: 'DA-144');
+        final pinCtrl = TextEditingController(text: '849201');
+        bool regenTapped = false;
 
-      await tester.pumpWidget(
-        _createTestableWidget(
-          Scaffold(
-            body: AdminEmployeeLoginCard(
-              employeeIdController: idCtrl,
-              pinController: pinCtrl,
-              isEmployeeCodeAvailable: true,
-              onEmployeeIdChanged: (_) {},
-              onPinChanged: (_) {},
-              onRegeneratePin: () => regenTapped = true,
+        await tester.pumpWidget(
+          _createTestableWidget(
+            Scaffold(
+              body: AdminEmployeeLoginCard(
+                employeeIdController: idCtrl,
+                pinController: pinCtrl,
+                isEmployeeCodeAvailable: true,
+                onEmployeeIdChanged: (_) {},
+                onPinChanged: (_) {},
+                onRegeneratePin: () => regenTapped = true,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('LOGIN'), findsOneWidget);
-      expect(find.text('Employee ID'), findsOneWidget);
-      expect(find.text('Available'), findsOneWidget);
-      expect(find.text('Cannot be changed later.'), findsOneWidget);
-      expect(find.text('Initial PIN'), findsOneWidget);
-      expect(find.text('Regen'), findsOneWidget);
-      expect(find.text('The employee must change this at first login.'), findsOneWidget);
+        expect(find.text('LOGIN'), findsOneWidget);
+        expect(find.text('Employee ID'), findsOneWidget);
+        expect(find.text('Available'), findsOneWidget);
+        expect(find.text('Cannot be changed later.'), findsOneWidget);
+        expect(find.text('Initial PIN'), findsOneWidget);
+        expect(find.text('Regen'), findsOneWidget);
+        expect(
+          find.text('The employee must change this at first login.'),
+          findsOneWidget,
+        );
 
-      await tester.tap(find.byKey(const Key('admin-employee-pin-regen-btn')));
-      expect(regenTapped, isTrue);
-    });
+        await tester.tap(find.byKey(const Key('admin-employee-pin-regen-btn')));
+        expect(regenTapped, isTrue);
+      },
+    );
   });
 
   group('Screen 19 AdminEmployeeRoleCard Widget Tests', () {
-    testWidgets('renders Employee and Admin role tiles and toggles selection', (tester) async {
+    testWidgets('renders Employee and Admin role tiles and toggles selection', (
+      tester,
+    ) async {
       UserRole currentRole = UserRole.employee;
 
       await tester.pumpWidget(
@@ -226,7 +380,8 @@ void main() {
             builder: (ctx, setState) => Scaffold(
               body: AdminEmployeeRoleCard(
                 selectedRole: currentRole,
-                onRoleChanged: (newRole) => setState(() => currentRole = newRole),
+                onRoleChanged: (newRole) =>
+                    setState(() => currentRole = newRole),
               ),
             ),
           ),
@@ -248,17 +403,10 @@ void main() {
   });
 
   group('Screen 19 Informational Strips Widget Tests', () {
-    testWidgets('renders notice strip and telemetry preview card', (tester) async {
+    testWidgets('renders the first-login notice strip only', (tester) async {
       await tester.pumpWidget(
         _createTestableWidget(
-          const Scaffold(
-            body: Column(
-              children: [
-                AdminEmployeeInfoStrip(),
-                AdminEmployeeTelemetryPreviewCard(),
-              ],
-            ),
-          ),
+          const Scaffold(body: Column(children: [AdminEmployeeInfoStrip()])),
         ),
       );
 
@@ -268,23 +416,22 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('Auto-Provision GPS Sync'), findsOneWidget);
-      expect(find.text('15-SECOND HEARTBEAT ACTIVE'), findsOneWidget);
-      expect(find.text('READY'), findsOneWidget);
+      expect(find.text('Auto-Provision GPS Sync'), findsNothing);
+      expect(find.text('READY'), findsNothing);
     });
   });
 
   group('Screen 19 AdminEmployeeFormPage Full Screen Tests', () {
-    testWidgets('renders full form page and submits successfully', (tester) async {
+    testWidgets('renders full form page and submits successfully', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.5;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(
-        _createTestableWidget(
-          const AdminEmployeeFormPage(),
-        ),
+        _createTestableWidget(const AdminEmployeeFormPage()),
       );
       await tester.pump();
       await tester.pumpAndSettle();
@@ -292,8 +439,20 @@ void main() {
       expect(find.text('Add employee'), findsOneWidget);
       expect(find.text('Create employee'), findsOneWidget);
 
+      // Blank form: nothing invented, so the submit button is disabled.
+      expect(find.text('Kiran Deshmukh'), findsNothing);
+      expect(find.text('849201'), findsNothing);
+      final blankSubmit = tester.widget<ElevatedButton>(
+        find.byKey(const Key('admin-employee-form-submit-btn')),
+      );
+      expect(blankSubmit.onPressed, isNull);
+
+      await _fillForm(tester);
+
       // Verify submit button is enabled with valid initial data
-      final submitBtnFinder = find.byKey(const Key('admin-employee-form-submit-btn'));
+      final submitBtnFinder = find.byKey(
+        const Key('admin-employee-form-submit-btn'),
+      );
       expect(submitBtnFinder, findsOneWidget);
 
       await tester.tap(submitBtnFinder);
@@ -307,7 +466,9 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('renders edit mode when initialized with existing employee', (tester) async {
+    testWidgets('renders edit mode when initialized with existing employee', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.5;
       addTearDown(tester.view.resetPhysicalSize);
@@ -322,9 +483,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        _createTestableWidget(
-          const AdminEmployeeFormPage(employee: employee),
-        ),
+        _createTestableWidget(const AdminEmployeeFormPage(employee: employee)),
       );
       await tester.pump();
       await tester.pumpAndSettle();

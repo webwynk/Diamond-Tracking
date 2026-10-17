@@ -3,12 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../core/utils/duty_time_helper.dart';
 
 /// Status of a duty session matching the server schema.
-enum DutySessionStatus {
-  open,
-  completed,
-  autoCurfew,
-  blocked,
-}
+enum DutySessionStatus { open, completed, autoCurfew, blocked }
 
 /// Represents an employee's duty shift record.
 ///

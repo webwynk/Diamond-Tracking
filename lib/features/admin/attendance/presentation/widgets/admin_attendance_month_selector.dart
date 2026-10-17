@@ -11,13 +11,11 @@ class AdminAttendanceMonthSelector extends StatelessWidget {
     required this.selectedMonth,
     required this.onPreviousMonth,
     required this.onNextMonth,
-    this.onMonthTap,
   });
 
   final String selectedMonth;
   final VoidCallback onPreviousMonth;
   final VoidCallback onNextMonth;
-  final VoidCallback? onMonthTap;
 
   @override
   Widget build(BuildContext context) {
@@ -46,35 +44,25 @@ class AdminAttendanceMonthSelector extends StatelessWidget {
           ),
 
           // Current Month Center Display
-          InkWell(
-            onTap: onMonthTap,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  const Icon(
-                    Icons.calendar_month_rounded,
-                    color: AppColors.primary600,
-                    size: 18,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                const Icon(
+                  Icons.calendar_month_rounded,
+                  color: AppColors.primary600,
+                  size: 18,
+                ),
+                const SizedBox(width: AppSpacing.x2),
+                Text(
+                  selectedMonth,
+                  style: AppTypography.title.copyWith(
+                    color: AppColors.neutral900,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(width: AppSpacing.x2),
-                  Text(
-                    selectedMonth,
-                    style: AppTypography.title.copyWith(
-                      color: AppColors.neutral900,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.x1),
-                  const Icon(
-                    Icons.arrow_drop_down_rounded,
-                    color: AppColors.neutral500,
-                    size: 20,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
 

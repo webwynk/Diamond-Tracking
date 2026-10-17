@@ -7,11 +7,7 @@ import '../controllers/duty_history_state.dart';
 
 /// Single duty day card adhering strictly to Screen 12 design specifications.
 class DutyHistoryCard extends StatelessWidget {
-  const DutyHistoryCard({
-    super.key,
-    required this.item,
-    this.onTap,
-  });
+  const DutyHistoryCard({super.key, required this.item, this.onTap});
 
   final DutyHistoryItem item;
   final VoidCallback? onTap;
@@ -31,10 +27,7 @@ class DutyHistoryCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: isNoDuty ? AppColors.neutral50 : AppColors.surface,
             borderRadius: AppRadius.lgAll,
-            border: Border.all(
-              color: AppColors.neutral200,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.neutral200, width: 1),
             boxShadow: isNoDuty
                 ? null
                 : [

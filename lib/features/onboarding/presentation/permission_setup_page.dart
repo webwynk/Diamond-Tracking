@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/app_top_bar.dart';
 import 'controllers/permission_controller.dart';
 
 /// Screen 05: Permission and Battery Optimization Setup.
@@ -13,11 +14,7 @@ import 'controllers/permission_controller.dart';
 /// location "Allow all the time", and battery saver exemption) are granted
 /// before the employee can begin duty tracking.
 class PermissionSetupPage extends ConsumerStatefulWidget {
-  const PermissionSetupPage({
-    super.key,
-    this.onCompleted,
-    this.onBackPressed,
-  });
+  const PermissionSetupPage({super.key, this.onCompleted, this.onBackPressed});
 
   /// Optional callback invoked when all prerequisites are satisfied and
   /// the employee taps "Continue".
@@ -117,48 +114,27 @@ class _PermissionSetupPageState extends ConsumerState<PermissionSetupPage>
     // Step 3: Battery saver exemption
     final isStep1Active = !state.isLocationGranted;
     final isStep2Active = state.isLocationGranted && !state.isBackgroundGranted;
-    final isStep3Active = state.isLocationGranted &&
+    final isStep3Active =
+        state.isLocationGranted &&
         state.isBackgroundGranted &&
         !state.isBatteryOptimizationIgnored;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: false,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          tooltip: 'Go back',
-          onPressed: widget.onBackPressed ?? () => Navigator.of(context).maybePop(),
-        ),
-        title: Text(
-          'Before You Start',
-          style: AppTypography.h3.withColor(AppColors.textPrimary),
-        ),
+      appBar: AppTopBar(
+        leading: AppTopBarLeading.back,
+        onLeadingPressed: widget.onBackPressed,
+        title: 'Before You Start',
         actions: const <Widget>[
           Padding(
-            padding: EdgeInsets.only(right: AppSpacing.x4),
+            padding: EdgeInsets.only(right: AppSpacing.x3),
             child: CircleAvatar(
               radius: 16,
               backgroundColor: AppColors.primary600,
-              child: Icon(
-                Icons.person,
-                size: 18,
-                color: AppColors.neutral0,
-              ),
+              child: Icon(Icons.person, size: 18, color: AppColors.neutral0),
             ),
           ),
         ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(
-            height: 1,
-            thickness: 1,
-            color: AppColors.neutral200,
-          ),
-        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -265,7 +241,9 @@ class _PermissionSetupPageState extends ConsumerState<PermissionSetupPage>
                     Expanded(
                       child: Text(
                         'On Xiaomi, Oppo, Vivo and Realme phones this step is essential, or your duty record may have gaps.',
-                        style: AppTypography.body.withColor(AppColors.textPrimary),
+                        style: AppTypography.body.withColor(
+                          AppColors.textPrimary,
+                        ),
                       ),
                     ),
                   ],
@@ -279,7 +257,8 @@ class _PermissionSetupPageState extends ConsumerState<PermissionSetupPage>
                 label: 'Continue',
                 isFullWidth: true,
                 onPressed: state.allRequirementsSatisfied
-                    ? (widget.onCompleted ?? () => Navigator.of(context).maybePop(true))
+                    ? (widget.onCompleted ??
+                          () => Navigator.of(context).maybePop(true))
                     : null,
                 disabledReason: state.allRequirementsSatisfied
                     ? null
@@ -340,11 +319,7 @@ class _PermissionSetupPageState extends ConsumerState<PermissionSetupPage>
               color: iconBgColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: iconColor,
-            ),
+            child: Icon(icon, size: 20, color: iconColor),
           ),
           const SizedBox(width: AppSpacing.x3),
 
@@ -369,11 +344,7 @@ class _PermissionSetupPageState extends ConsumerState<PermissionSetupPage>
 
           // Trailing action or checkmark
           if (isDone)
-            const Icon(
-              Icons.check_circle,
-              size: 24,
-              color: AppColors.success,
-            )
+            const Icon(Icons.check_circle, size: 24, color: AppColors.success)
           else if (isOutlinedAction)
             OutlinedButton(
               onPressed: onActionPressed,
@@ -381,10 +352,7 @@ class _PermissionSetupPageState extends ConsumerState<PermissionSetupPage>
                 minimumSize: const Size(68, 36),
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
                 foregroundColor: AppColors.primary600,
-                side: const BorderSide(
-                  color: AppColors.primary600,
-                  width: 1.5,
-                ),
+                side: const BorderSide(color: AppColors.primary600, width: 1.5),
                 shape: const RoundedRectangleBorder(
                   borderRadius: AppRadius.mdAll,
                 ),

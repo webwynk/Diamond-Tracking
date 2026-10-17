@@ -4,59 +4,86 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/app_empty_state.dart';
+import '../../../../shared/widgets/app_error_view.dart';
+import '../../../../shared/widgets/app_skeletons.dart';
+import '../../../../shared/widgets/app_top_bar.dart';
 import '../../../../shared/widgets/filter_sheet/controllers/filter_sheet_state.dart';
 import '../../../../shared/widgets/filter_sheet/filter_bottom_sheet.dart';
-import '../../dashboard/presentation/widgets/admin_bottom_navigation.dart';
 import 'admin_employee_detail_page.dart';
 import 'admin_employee_form_page.dart';
 import 'controllers/admin_employee_list_controller.dart';
 import 'controllers/admin_employee_list_state.dart';
 import 'widgets/admin_employee_card.dart';
 import 'widgets/admin_employee_search_filter_bar.dart';
-import 'widgets/admin_employee_top_bar.dart';
 
 /// Screen 17 — Employee List (Admin / Team).
 ///
-/// Searchable, filterable, and paginated roster of all 143 agricultural field staff:
+/// Searchable, filterable, and paginated roster of all field staff:
 /// - Pinned search and horizontal chip filtering (Active, On duty, Off duty, Blocked, Flags)
 /// - Removable "Active only" modifier strip with "Clear all" action
 /// - 80 dp responsive employee cards with monogram avatars, identity, and status pills
 /// - 56 dp circular Floating Action Button for employee onboarding
-/// - Persistent Admin Bottom Navigation Bar with "Team" active
-class AdminEmployeeListPage extends ConsumerWidget {
+class AdminEmployeeListPage extends ConsumerStatefulWidget {
   const AdminEmployeeListPage({
     super.key,
     this.onEmployeeSelected,
     this.onCreateEmployee,
-    this.onNavigateToHome,
-    this.onNavigateToMap,
-    this.onNavigateToPlaces,
-    this.onNavigateToReports,
   });
 
   final ValueChanged<AdminEmployeeItem>? onEmployeeSelected;
   final VoidCallback? onCreateEmployee;
-  final VoidCallback? onNavigateToHome;
-  final VoidCallback? onNavigateToMap;
-  final VoidCallback? onNavigateToPlaces;
-  final VoidCallback? onNavigateToReports;
 
-  Future<void> _showFilterTuneModal(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<AdminEmployeeListPage> createState() =>
+      _AdminEmployeeListPageState();
+}
+
+class _AdminEmployeeListPageState extends ConsumerState<AdminEmployeeListPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Providers must not be modified while the tree is building.
+    Future<void>.microtask(
+      () => ref
+          .read(adminEmployeeListControllerProvider.notifier)
+          .loadEmployees(),
+    );
+  }
+
+  void _openCreateForm(BuildContext context) {
+    final override = widget.onCreateEmployee;
+    if (override != null) {
+      override();
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const AdminEmployeeFormPage()),
+    );
+  }
+
+  Future<void> _showFilterTuneModal(BuildContext context) async {
     final result = await FilterBottomSheet.show(context);
     if (result != null) {
       if (result.selectedStatuses.contains(EmployeeFilterStatus.onDuty)) {
         ref
             .read(adminEmployeeListControllerProvider.notifier)
             .setFilter(AdminEmployeeFilter.onDuty);
-      } else if (result.selectedStatuses.contains(EmployeeFilterStatus.offDuty)) {
+      } else if (result.selectedStatuses.contains(
+        EmployeeFilterStatus.offDuty,
+      )) {
         ref
             .read(adminEmployeeListControllerProvider.notifier)
             .setFilter(AdminEmployeeFilter.offDuty);
-      } else if (result.selectedStatuses.contains(EmployeeFilterStatus.blocked)) {
+      } else if (result.selectedStatuses.contains(
+        EmployeeFilterStatus.blocked,
+      )) {
         ref
             .read(adminEmployeeListControllerProvider.notifier)
             .setFilter(AdminEmployeeFilter.blocked);
-      } else if (result.selectedStatuses.contains(EmployeeFilterStatus.checkNeeded)) {
+      } else if (result.selectedStatuses.contains(
+        EmployeeFilterStatus.checkNeeded,
+      )) {
         ref
             .read(adminEmployeeListControllerProvider.notifier)
             .setFilter(AdminEmployeeFilter.hasFlags);
@@ -64,17 +91,54 @@ class AdminEmployeeListPage extends ConsumerWidget {
     }
   }
 
+  /// What the Team tab shows while there is nothing to list: a skeleton while
+  /// loading, an error with Retry when the load failed (never "no employees"),
+  /// and the real empty state only after a successful load.
+  Widget _buildEmptyBody(
+    AdminEmployeeListState listState,
+    AdminEmployeeListNotifier listNotifier,
+  ) {
+    final error = listState.errorMessage;
+    if (error != null) {
+      return AppErrorView(
+        key: const Key('view-employee-list-error'),
+        title: "Couldn't load the team",
+        message: error,
+        onRetry: () => listNotifier.loadEmployees(force: true),
+      );
+    }
+    if (!listState.hasLoaded) {
+      return const AppListSkeleton();
+    }
+    return Center(
+      child: AppEmptyState.noEmployees(
+        onAddEmployee: () => _openCreateForm(context),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final listState = ref.watch(adminEmployeeListControllerProvider);
     final listNotifier = ref.read(adminEmployeeListControllerProvider.notifier);
     final filteredList = listState.filteredEmployees;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AdminEmployeeTopBar(
-        badgeCount: listState.filterTuneBadgeCount,
-        onFilterTunePressed: () => _showFilterTuneModal(context, ref),
+      appBar: AppTopBar(
+        style: AppTopBarStyle.brand,
+        title: 'Team',
+        actions: <Widget>[
+          AppTopBarIconButton(
+            key: const Key('btn-employee-filter-tune'),
+            icon: Icons.tune_rounded,
+            tooltip: 'Filter team',
+            badgeCount: listState.filterTuneBadgeCount,
+            badgeColor: AppColors.neutral0,
+            badgeTextColor: AppColors.primary600,
+            onPressed: () => _showFilterTuneModal(context),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -99,7 +163,9 @@ class AdminEmployeeListPage extends ConsumerWidget {
 
           // 2. Scrollable Roster List
           Expanded(
-            child: filteredList.isEmpty
+            child: listState.employees.isEmpty
+                ? _buildEmptyBody(listState, listNotifier)
+                : filteredList.isEmpty
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(AppSpacing.x6),
@@ -132,35 +198,40 @@ class AdminEmployeeListPage extends ConsumerWidget {
                       ),
                     ),
                   )
-                : ListView.separated(
-                    key: const Key('list-employee-roster'),
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.x4,
-                      AppSpacing.x1,
-                      AppSpacing.x4,
-                      88, // Clearance for FAB and bottom navigation
-                    ),
-                    itemCount: filteredList.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final employee = filteredList[index];
-                      return AdminEmployeeCard(
-                        employee: employee,
-                        onTap: () {
-                          if (onEmployeeSelected != null) {
-                            onEmployeeSelected!(employee);
-                          } else {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => AdminEmployeeDetailPage(
-                                  employee: employee,
+                : RefreshIndicator(
+                    onRefresh: () => listNotifier.loadEmployees(force: true),
+                    child: ListView.separated(
+                      key: const Key('list-employee-roster'),
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.x4,
+                        AppSpacing.x1,
+                        AppSpacing.x4,
+                        88, // Clearance for the floating action button
+                      ),
+                      itemCount: filteredList.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final employee = filteredList[index];
+                        return AdminEmployeeCard(
+                          employee: employee,
+                          onTap: () {
+                            final onSelected = widget.onEmployeeSelected;
+                            if (onSelected != null) {
+                              onSelected(employee);
+                            } else {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => AdminEmployeeDetailPage(
+                                    employee: employee,
+                                  ),
                                 ),
-                              ),
-                            );
-                          }
-                        },
-                      );
-                    },
+                              );
+                            }
+                          },
+                        );
+                      },
+                    ),
                   ),
           ),
         ],
@@ -168,42 +239,12 @@ class AdminEmployeeListPage extends ConsumerWidget {
       // 3. Floating Action Button (56dp circular, #016893, white plus icon)
       floatingActionButton: FloatingActionButton(
         key: const Key('fab-add-employee'),
-        onPressed: onCreateEmployee ??
-            () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const AdminEmployeeFormPage(),
-                ),
-              );
-            },
+        onPressed: () => _openCreateForm(context),
         backgroundColor: AppColors.primary600,
         foregroundColor: Colors.white,
         elevation: 4,
         shape: const CircleBorder(),
         child: const Icon(Icons.add_rounded, size: 28),
-      ),
-      // 4. Admin Bottom Navigation Bar with "Team" active (Index 2)
-      bottomNavigationBar: AdminBottomNavigationBar(
-        currentIndex: 2,
-        onTap: (index) {
-          switch (index) {
-            case 0:
-              onNavigateToHome?.call();
-              break;
-            case 1:
-              onNavigateToMap?.call();
-              break;
-            case 2:
-              // Already on Team
-              break;
-            case 3:
-              onNavigateToPlaces?.call();
-              break;
-            case 4:
-              onNavigateToReports?.call();
-              break;
-          }
-        },
       ),
     );
   }

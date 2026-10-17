@@ -11,13 +11,18 @@ import 'duty_history_state.dart';
 /// Provider for [DutyHistoryNotifier].
 final dutyHistoryControllerProvider =
     NotifierProvider<DutyHistoryNotifier, DutyHistoryState>(
-  DutyHistoryNotifier.new,
-);
+      DutyHistoryNotifier.new,
+    );
 
 /// Controller governing employee duty history queries, period summaries,
 /// and filter state for Screen 12.
+///
+/// Everything shown comes from the employee's own recorded sessions. When there
+/// are none the screen is empty, and when loading fails it says so: it never
+/// substitutes sample records.
 class DutyHistoryNotifier extends Notifier<DutyHistoryState> {
   late final DutyRepository _dutyRepository;
+  List<DutySession> _sessions = const <DutySession>[];
 
   @override
   DutyHistoryState build() {
@@ -26,186 +31,91 @@ class DutyHistoryNotifier extends Notifier<DutyHistoryState> {
     // Initial load
     Future.microtask(loadHistory);
 
-    return const DutyHistoryState(isLoading: true);
-  }
-
-  /// Fetches history for the authenticated employee or populates seed reference data.
-  Future<void> loadHistory() async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
-
-    try {
-      String employeeId = 'emp_demo_1';
-      try {
-        final authState = ref.read(authControllerProvider);
-        if (authState is AuthAuthenticated) {
-          employeeId = authState.profile.id;
-        }
-      } catch (_) {
-        employeeId = 'emp_demo_1';
-      }
-
-      final sessions = await _dutyRepository.getDutyHistory(
-        employeeId: employeeId,
-      );
-
-      if (sessions.isNotEmpty) {
-        final items = _mapSessionsToItems(sessions);
-        final summary = _computeSummary(sessions);
-        state = state.copyWith(
-          isLoading: false,
-          items: items,
-          summary: summary,
-          hasMore: sessions.length >= 30,
-        );
-      } else {
-        // Fallback to official reference data from design specification
-        _loadDefaultSeedData();
-      }
-    } catch (e) {
-      // Graceful fallback for offline / preview
-      _loadDefaultSeedData();
-    }
-  }
-
-  /// Switches active filter tab and recalculates visible list and summary.
-  void setFilter(DutyHistoryFilter filter) {
-    if (state.filter == filter) return;
-
-    if (filter == DutyHistoryFilter.lastMonth) {
-      // Last month reference view
-      final lastMonthItems = <DutyHistoryItem>[
-        DutyHistoryItem(
-          id: 'hist_lm_1',
-          date: DateTime(2026, 9, 30),
-          dateTitle: 'Wed, 30 Sep',
-          chipType: DutyHistoryChipType.none,
-          dutyTimeStr: '8:10 AM–5:40 PM',
-          durationStr: '9h 30m',
-          distanceStr: '42.1 km',
-          visitsStr: '4 visits',
-        ),
-        DutyHistoryItem(
-          id: 'hist_lm_2',
-          date: DateTime(2026, 9, 29),
-          dateTitle: 'Tue, 29 Sep',
-          chipType: DutyHistoryChipType.autoEnded,
-          dutyTimeStr: '8:00 AM–11:00 PM',
-          durationStr: '15h 00m',
-          distanceStr: '62.4 km',
-          visitsStr: '7 visits',
-        ),
-      ];
-
-      state = state.copyWith(
-        filter: filter,
-        items: lastMonthItems,
-        summary: const DutyHistorySummary(
-          periodLabel: 'SEPTEMBER 2026',
-          totalDays: 24,
-          totalHours: '192h 40m',
-          totalKm: 1140.2,
-          totalVisits: 102,
-        ),
-      );
-    } else if (filter == DutyHistoryFilter.autoEnded) {
-      // Filter only auto-ended shifts
-      final allItems = _getAllOctoberItems();
-      final autoEndedItems = allItems
-          .where((item) => item.chipType == DutyHistoryChipType.autoEnded)
-          .toList();
-
-      state = state.copyWith(
-        filter: filter,
-        items: autoEndedItems,
-        summary: const DutyHistorySummary(
-          periodLabel: 'AUTO-ENDED SHIFTS',
-          totalDays: 1,
-          totalHours: '15h 00m',
-          totalKm: 54.2,
-          totalVisits: 6,
-        ),
-      );
-    } else {
-      // This month or Custom
-      _loadDefaultSeedData(filter: filter);
-    }
-  }
-
-  void _loadDefaultSeedData({DutyHistoryFilter filter = DutyHistoryFilter.thisMonth}) {
-    final items = _getAllOctoberItems();
-    state = state.copyWith(
-      isLoading: false,
-      filter: filter,
-      summary: const DutyHistorySummary(
-        periodLabel: 'OCTOBER 2026',
-        totalDays: 11,
-        totalHours: '89h 12m',
-        totalKm: 534.8,
-        totalVisits: 48,
+    return DutyHistoryState(
+      isLoading: true,
+      summary: DutyHistorySummary(
+        periodLabel: DutyTimeHelper.formatMonthAndYear(DateTime.now()),
       ),
-      items: items,
-      hasMore: false,
     );
   }
 
-  List<DutyHistoryItem> _getAllOctoberItems() {
-    return <DutyHistoryItem>[
-      // Row 1: Sat, 11 Oct (Normal day, no chip)
-      DutyHistoryItem(
-        id: 'hist_1',
-        date: DateTime(2026, 10, 11),
-        dateTitle: 'Sat, 11 Oct',
-        chipType: DutyHistoryChipType.none,
-        dutyTimeStr: '8:02 AM–6:30 PM',
-        durationStr: '8h 28m',
-        distanceStr: '47.3 km',
-        visitsStr: '5 visits',
-      ),
-      // Row 2: Fri, 10 Oct (Auto-ended chip)
-      DutyHistoryItem(
-        id: 'hist_2',
-        date: DateTime(2026, 10, 10),
-        dateTitle: 'Fri, 10 Oct',
-        chipType: DutyHistoryChipType.autoEnded,
-        dutyTimeStr: '8:00 AM–11:00 PM',
-        durationStr: '15h 00m',
-        distanceStr: '54.2 km',
-        visitsStr: '6 visits',
-      ),
-      // Row 3: Thu, 09 Oct (2 flags chip)
-      DutyHistoryItem(
-        id: 'hist_3',
-        date: DateTime(2026, 10, 9),
-        dateTitle: 'Thu, 09 Oct',
-        chipType: DutyHistoryChipType.flagged,
-        flagCount: 2,
-        dutyTimeStr: '8:15 AM–5:45 PM',
-        durationStr: '9h 30m',
-        distanceStr: '39.8 km',
-        visitsStr: '4 visits',
-      ),
-      // Row 4: Wed, 08 Oct (Greyed row, No duty chip, dashes)
-      DutyHistoryItem(
-        id: 'hist_4',
-        date: DateTime(2026, 10, 8),
-        dateTitle: 'Wed, 08 Oct',
-        chipType: DutyHistoryChipType.noDuty,
-        dutyTimeStr: '—',
-        durationStr: '—',
-        distanceStr: '—',
-        visitsStr: '—',
-      ),
-    ];
+  /// Fetches the signed-in employee's recorded sessions.
+  Future<void> loadHistory() async {
+    state = state.copyWith(isLoading: true);
+
+    final authState = ref.read(authControllerProvider);
+    if (authState is! AuthAuthenticated) {
+      _sessions = const <DutySession>[];
+      _publish(state.filter);
+      return;
+    }
+
+    try {
+      _sessions = await _dutyRepository.getDutyHistory(
+        employeeId: authState.profile.id,
+      );
+      _publish(state.filter);
+    } catch (_) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Could not load your duty history.',
+      );
+    }
   }
+
+  /// Switches the active filter tab and recalculates the visible list and
+  /// summary from the loaded sessions.
+  void setFilter(DutyHistoryFilter filter) {
+    if (state.filter == filter) return;
+    _publish(filter);
+  }
+
+  /// Applies [filter] to the loaded sessions and publishes list and summary.
+  void _publish(DutyHistoryFilter filter) {
+    final now = DateTime.now();
+    final thisMonth = DateTime(now.year, now.month);
+    final lastMonth = DateTime(now.year, now.month - 1);
+
+    bool inMonth(DutySession s, DateTime month) {
+      final ist = DutyTimeHelper.toIst(s.startedAt);
+      return ist.year == month.year && ist.month == month.month;
+    }
+
+    final (List<DutySession> selected, String label) = switch (filter) {
+      DutyHistoryFilter.thisMonth => (
+        _sessions.where((s) => inMonth(s, thisMonth)).toList(),
+        DutyTimeHelper.formatMonthAndYear(thisMonth),
+      ),
+      DutyHistoryFilter.lastMonth => (
+        _sessions.where((s) => inMonth(s, lastMonth)).toList(),
+        DutyTimeHelper.formatMonthAndYear(lastMonth),
+      ),
+      DutyHistoryFilter.autoEnded => (
+        _sessions.where(_isAutoEnded).toList(),
+        'AUTO-ENDED SHIFTS',
+      ),
+      DutyHistoryFilter.custom => (_sessions, 'ALL SHIFTS'),
+    };
+
+    state = state.copyWith(
+      isLoading: false,
+      filter: filter,
+      items: _mapSessionsToItems(selected),
+      summary: _computeSummary(selected, label),
+    );
+  }
+
+  bool _isAutoEnded(DutySession session) =>
+      session.endReason == 'auto_curfew' ||
+      session.status == DutySessionStatus.autoCurfew;
 
   List<DutyHistoryItem> _mapSessionsToItems(List<DutySession> sessions) {
     return sessions.map((session) {
-      final chipType = session.endReason == 'auto_curfew' ||
-              session.status == DutySessionStatus.autoCurfew
+      final chipType = _isAutoEnded(session)
           ? DutyHistoryChipType.autoEnded
           : (session.mockPointsCount > 0
-              ? DutyHistoryChipType.flagged
-              : DutyHistoryChipType.none);
+                ? DutyHistoryChipType.flagged
+                : DutyHistoryChipType.none);
 
       return DutyHistoryItem(
         id: session.id,
@@ -225,9 +135,12 @@ class DutyHistoryNotifier extends Notifier<DutyHistoryState> {
     }).toList();
   }
 
-  DutyHistorySummary _computeSummary(List<DutySession> sessions) {
+  DutyHistorySummary _computeSummary(
+    List<DutySession> sessions,
+    String periodLabel,
+  ) {
     if (sessions.isEmpty) {
-      return const DutyHistorySummary();
+      return DutyHistorySummary(periodLabel: periodLabel);
     }
 
     final totalDays = sessions.length;
@@ -243,7 +156,6 @@ class DutyHistoryNotifier extends Notifier<DutyHistoryState> {
 
     final hours = totalMinutes ~/ 60;
     final minutes = totalMinutes % 60;
-    final periodLabel = DutyTimeHelper.formatMonthAndYear(sessions.first.startedAt);
 
     return DutyHistorySummary(
       periodLabel: periodLabel,

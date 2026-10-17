@@ -1,72 +1,49 @@
 import 'package:flutter/foundation.dart';
 
-/// Status classification of an officer on the administrative map.
-enum AdminOfficerStatus {
-  onDuty,
-  stale,
-  needsCheck,
-  offDuty,
-  blocked,
+import '../../../../../domain/entities/live_position.dart';
+
+/// Filter mode for the live map. Only people on duty have a position, so there
+/// is no off-duty or blocked filter: those people are not on the map (the Team
+/// list shows them).
+enum AdminMapFilter { all, onDuty, stale, needsCheck }
+
+/// State of the live feed itself, shown to the admin so a silent outage never
+/// looks like "nobody is working".
+enum LiveConnection {
+  /// Opening the connection.
+  connecting,
+
+  /// Receiving changes as they happen.
+  live,
+
+  /// The connection is down. The positions shown are the last known ones and
+  /// the app is trying to reconnect.
+  offline,
 }
 
-/// Filter mode for the live telemetry map.
-enum AdminMapFilter {
-  all,
-  onDuty,
-  stale,
-  needsCheck,
-  offDuty,
-  blocked,
-}
-
-/// Domain entity representing a field officer rendered on the telemetry canvas.
+/// An employee who is on duty, with the position the map draws.
 @immutable
-class MapOfficerItem {
-  const MapOfficerItem({
+class LiveOfficer {
+  const LiveOfficer({
     required this.id,
     required this.name,
     required this.employeeCode,
-    required this.relativeX,
-    required this.relativeY,
+    required this.phoneNumber,
+    required this.position,
     required this.status,
-    required this.locationName,
-    required this.lastUpdated,
-    this.batteryPercent = 88,
-    this.isSos = false,
-    this.sosTag,
-    this.phoneNumber = '+91 98201 44556',
-    this.dutyDuration = '7h 24m',
-    this.dutyStartTime = '8:04 AM',
-    this.distanceTodayKm = '38.6 km',
-    this.visitsToday = 3,
-    this.accuracyMeters = 6,
-    this.speedKmh = 42,
-    this.proximityText = 'Near Shivpuri Farm · 180 m away',
-    this.geofenceText = 'GEOFENCE ACTIVE · 4.8 KM²',
-    this.sectorText = 'SECTOR 04',
+    required this.lastSeen,
   });
 
+  /// The employee's profile id.
   final String id;
   final String name;
   final String employeeCode;
-  final double relativeX;
-  final double relativeY;
-  final AdminOfficerStatus status;
-  final String locationName;
-  final String lastUpdated;
-  final int batteryPercent;
-  final bool isSos;
-  final String? sosTag;
   final String phoneNumber;
-  final String dutyDuration;
-  final String dutyStartTime;
-  final String distanceTodayKm;
-  final int visitsToday;
-  final int accuracyMeters;
-  final int speedKmh;
-  final String proximityText;
-  final String geofenceText;
-  final String sectorText;
+  final LivePosition position;
+  final LiveStatus status;
+
+  /// Plain-words age of the last position, for example "3 min ago".
+  final String lastSeen;
 
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -76,205 +53,101 @@ class MapOfficerItem {
     }
     return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
   }
-
-  String get calloutTag {
-    if (sosTag != null) return sosTag!;
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
-      return '${parts[0].toUpperCase()} ${parts[1][0].toUpperCase()}.';
-    }
-    return name.toUpperCase();
-  }
-
-  MapOfficerItem copyWith({
-    String? id,
-    String? name,
-    String? employeeCode,
-    double? relativeX,
-    double? relativeY,
-    AdminOfficerStatus? status,
-    String? locationName,
-    String? lastUpdated,
-    int? batteryPercent,
-    bool? isSos,
-    String? sosTag,
-    String? phoneNumber,
-    String? dutyDuration,
-    String? dutyStartTime,
-    String? distanceTodayKm,
-    int? visitsToday,
-    int? accuracyMeters,
-    int? speedKmh,
-    String? proximityText,
-    String? geofenceText,
-    String? sectorText,
-  }) {
-    return MapOfficerItem(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      employeeCode: employeeCode ?? this.employeeCode,
-      relativeX: relativeX ?? this.relativeX,
-      relativeY: relativeY ?? this.relativeY,
-      status: status ?? this.status,
-      locationName: locationName ?? this.locationName,
-      lastUpdated: lastUpdated ?? this.lastUpdated,
-      batteryPercent: batteryPercent ?? this.batteryPercent,
-      isSos: isSos ?? this.isSos,
-      sosTag: sosTag ?? this.sosTag,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-      dutyDuration: dutyDuration ?? this.dutyDuration,
-      dutyStartTime: dutyStartTime ?? this.dutyStartTime,
-      distanceTodayKm: distanceTodayKm ?? this.distanceTodayKm,
-      visitsToday: visitsToday ?? this.visitsToday,
-      accuracyMeters: accuracyMeters ?? this.accuracyMeters,
-      speedKmh: speedKmh ?? this.speedKmh,
-      proximityText: proximityText ?? this.proximityText,
-      geofenceText: geofenceText ?? this.geofenceText,
-      sectorText: sectorText ?? this.sectorText,
-    );
-  }
 }
 
-/// Domain entity representing an aggregated regional cluster bubble.
-@immutable
-class MapClusterItem {
-  const MapClusterItem({
-    required this.id,
-    required this.title,
-    required this.count,
-    required this.relativeX,
-    required this.relativeY,
-    required this.dominantStatus,
-  });
-
-  final String id;
-  final String title;
-  final int count;
-  final double relativeX;
-  final double relativeY;
-  final AdminOfficerStatus dominantStatus;
-}
-
-/// State representation for Screen 15 Admin Live Map.
+/// State of the admin live map.
 @immutable
 class AdminLiveMapState {
   const AdminLiveMapState({
     this.selectedFilter = AdminMapFilter.all,
     this.searchQuery = '',
-    this.activeFilterBadgeCount = 2,
-    this.selectedOfficer,
-    this.selectedCluster,
-    this.officers = const [],
-    this.clusters = const [],
-    this.isSatelliteLayer = false,
-    this.isLoading = false,
+    this.selectedId,
+    this.officers = const <LiveOfficer>[],
+    this.offDutyCount,
+    this.connection = LiveConnection.connecting,
+    this.isLoading = true,
+    this.errorMessage,
   });
 
   final AdminMapFilter selectedFilter;
   final String searchQuery;
-  final int activeFilterBadgeCount;
-  final MapOfficerItem? selectedOfficer;
-  final MapClusterItem? selectedCluster;
-  final List<MapOfficerItem> officers;
-  final List<MapClusterItem> clusters;
-  final bool isSatelliteLayer;
+
+  /// The employee whose card is open, if any.
+  final String? selectedId;
+
+  /// Everyone on duty, ordered by name.
+  final List<LiveOfficer> officers;
+
+  /// Active employees who are not on duty right now (blocked ones excluded).
+  /// Null until the roster has loaded: unknown is never shown as zero.
+  final int? offDutyCount;
+  final LiveConnection connection;
+
+  /// True until the first load finishes (or fails).
   final bool isLoading;
 
-  int get totalOfficersCount => 143;
-  int get onDutyCount => 112;
-  int get staleCount => 4;
-  int get needsCheckCount => 3;
-  int get offDutyCount => 31;
-  int get blockedCount => 2;
+  /// Why the first load failed. Null once loaded.
+  final String? errorMessage;
 
-  List<MapOfficerItem> get filteredOfficers {
-    return officers.where((officer) {
-      // 1. Status Filter
-      if (selectedFilter == AdminMapFilter.onDuty &&
-          officer.status != AdminOfficerStatus.onDuty) {
-        return false;
-      }
-      if (selectedFilter == AdminMapFilter.stale &&
-          officer.status != AdminOfficerStatus.stale) {
-        return false;
-      }
-      if (selectedFilter == AdminMapFilter.needsCheck &&
-          officer.status != AdminOfficerStatus.needsCheck) {
-        return false;
-      }
-      if (selectedFilter == AdminMapFilter.offDuty &&
-          officer.status != AdminOfficerStatus.offDuty) {
-        return false;
-      }
-      if (selectedFilter == AdminMapFilter.blocked &&
-          officer.status != AdminOfficerStatus.blocked) {
-        return false;
-      }
+  int get totalCount => officers.length;
+  int get onDutyCount => _count(LiveStatus.active);
+  int get staleCount => _count(LiveStatus.stale);
+  int get needsCheckCount => _count(LiveStatus.suspect);
 
-      // 2. Search Query Filter
-      if (searchQuery.trim().isNotEmpty) {
-        final query = searchQuery.trim().toLowerCase();
-        final matchesName = officer.name.toLowerCase().contains(query);
-        final matchesCode = officer.employeeCode.toLowerCase().contains(query);
-        final matchesLoc = officer.locationName.toLowerCase().contains(query);
-        return matchesName || matchesCode || matchesLoc;
-      }
+  int _count(LiveStatus status) =>
+      officers.where((o) => o.status == status).length;
 
-      return true;
-    }).toList();
+  /// The open card's employee, or null when none is open or that employee has
+  /// since gone off duty.
+  LiveOfficer? get selectedOfficer {
+    final id = selectedId;
+    if (id == null) return null;
+    for (final officer in officers) {
+      if (officer.id == id) return officer;
+    }
+    return null;
   }
 
-  List<MapClusterItem> get filteredClusters {
-    if (searchQuery.trim().isNotEmpty) {
-      // Hide clusters when searching for a specific individual
-      return const [];
-    }
-    return clusters.where((cluster) {
-      if (selectedFilter == AdminMapFilter.all) return true;
-      if (selectedFilter == AdminMapFilter.onDuty &&
-          cluster.dominantStatus == AdminOfficerStatus.onDuty) {
-        return true;
-      }
-      if (selectedFilter == AdminMapFilter.stale &&
-          cluster.dominantStatus == AdminOfficerStatus.stale) {
-        return true;
-      }
-      if (selectedFilter == AdminMapFilter.blocked &&
-          cluster.dominantStatus == AdminOfficerStatus.blocked) {
-        return true;
-      }
-      return false;
+  bool get hasActiveFilter =>
+      selectedFilter != AdminMapFilter.all || searchQuery.trim().isNotEmpty;
+
+  List<LiveOfficer> get filteredOfficers {
+    final query = searchQuery.trim().toLowerCase();
+    return officers.where((officer) {
+      final statusOk = switch (selectedFilter) {
+        AdminMapFilter.all => true,
+        AdminMapFilter.onDuty => officer.status == LiveStatus.active,
+        AdminMapFilter.stale => officer.status == LiveStatus.stale,
+        AdminMapFilter.needsCheck => officer.status == LiveStatus.suspect,
+      };
+      if (!statusOk) return false;
+      if (query.isEmpty) return true;
+      return officer.name.toLowerCase().contains(query) ||
+          officer.employeeCode.toLowerCase().contains(query);
     }).toList();
   }
 
   AdminLiveMapState copyWith({
     AdminMapFilter? selectedFilter,
     String? searchQuery,
-    int? activeFilterBadgeCount,
-    MapOfficerItem? selectedOfficer,
-    bool clearSelectedOfficer = false,
-    MapClusterItem? selectedCluster,
-    bool clearSelectedCluster = false,
-    List<MapOfficerItem>? officers,
-    List<MapClusterItem>? clusters,
-    bool? isSatelliteLayer,
+    String? selectedId,
+    bool clearSelected = false,
+    List<LiveOfficer>? officers,
+    int? offDutyCount,
+    LiveConnection? connection,
     bool? isLoading,
+    String? errorMessage,
+    bool clearError = false,
   }) {
     return AdminLiveMapState(
       selectedFilter: selectedFilter ?? this.selectedFilter,
       searchQuery: searchQuery ?? this.searchQuery,
-      activeFilterBadgeCount:
-          activeFilterBadgeCount ?? this.activeFilterBadgeCount,
-      selectedOfficer: clearSelectedOfficer
-          ? null
-          : (selectedOfficer ?? this.selectedOfficer),
-      selectedCluster: clearSelectedCluster
-          ? null
-          : (selectedCluster ?? this.selectedCluster),
+      selectedId: clearSelected ? null : (selectedId ?? this.selectedId),
       officers: officers ?? this.officers,
-      clusters: clusters ?? this.clusters,
-      isSatelliteLayer: isSatelliteLayer ?? this.isSatelliteLayer,
+      offDutyCount: offDutyCount ?? this.offDutyCount,
+      connection: connection ?? this.connection,
       isLoading: isLoading ?? this.isLoading,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
 }

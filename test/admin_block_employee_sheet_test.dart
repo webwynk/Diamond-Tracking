@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:diamond_tracking/core/errors/app_exceptions.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/admin_employee_detail_page.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/controllers/admin_employee_list_controller.dart';
@@ -8,6 +9,9 @@ import 'package:diamond_tracking/features/admin/employees/presentation/widgets/a
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/employee_fixtures.dart';
+import 'support/fake_employee_repository.dart';
 
 void main() {
   const testEmployee = AdminEmployeeItem(
@@ -40,7 +44,9 @@ void main() {
   }
 
   group('Screen 20 AdminBlockEmployeeSheet Widget & Visual Tests', () {
-    testWidgets('renders all visual elements matching HTML design reference', (tester) async {
+    testWidgets('renders all visual elements matching HTML design reference', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -75,7 +81,10 @@ void main() {
       expect(find.text('Reason (required)'), findsOneWidget);
       expect(find.byKey(const Key('input-block-reason')), findsOneWidget);
       expect(find.text('Why is this employee being blocked?'), findsOneWidget);
-      expect(find.text('This reason is recorded in the audit log.'), findsOneWidget);
+      expect(
+        find.text('This reason is recorded in the audit log.'),
+        findsOneWidget,
+      );
 
       // Action Buttons
       expect(find.byKey(const Key('btn-block-submit')), findsOneWidget);
@@ -84,7 +93,9 @@ void main() {
       expect(find.text('Cancel'), findsOneWidget);
     });
 
-    testWidgets('block button is disabled when reason is empty or whitespace', (tester) async {
+    testWidgets('block button is disabled when reason is empty or whitespace', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -116,66 +127,78 @@ void main() {
       expect(blockCalled, isFalse);
 
       // Entering only whitespace keeps it disabled
-      await tester.enterText(find.byKey(const Key('input-block-reason')), '   \n  ');
+      await tester.enterText(
+        find.byKey(const Key('input-block-reason')),
+        '   \n  ',
+      );
       await tester.pump();
 
-      final Opacity opacityAfterWhitespace = tester.widget(find.byType(Opacity));
+      final Opacity opacityAfterWhitespace = tester.widget(
+        find.byType(Opacity),
+      );
       expect(opacityAfterWhitespace.opacity, 0.4);
       await tester.tap(find.byKey(const Key('btn-block-submit')));
       await tester.pump();
       expect(blockCalled, isFalse);
     });
 
-    testWidgets('typing a valid reason enables the block button and triggers callback',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets(
+      'typing a valid reason enables the block button and triggers callback',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-      String? capturedReason;
-      final completer = Completer<void>();
+        String? capturedReason;
+        final completer = Completer<void>();
 
-      await tester.pumpWidget(
-        buildTestableWidget(
-          AdminBlockEmployeeSheet(
-            employee: testEmployee,
-            onConfirmBlock: (reason) async {
-              capturedReason = reason;
-              await completer.future;
-            },
+        await tester.pumpWidget(
+          buildTestableWidget(
+            AdminBlockEmployeeSheet(
+              employee: testEmployee,
+              onConfirmBlock: (reason) async {
+                capturedReason = reason;
+                await completer.future;
+              },
+            ),
           ),
-        ),
-      );
-      await tester.pump();
+        );
+        await tester.pump();
 
-      // Enter valid reason
-      await tester.enterText(
-        find.byKey(const Key('input-block-reason')),
-        'Unapproved absence and repeated mock-location flag',
-      );
-      await tester.pump();
+        // Enter valid reason
+        await tester.enterText(
+          find.byKey(const Key('input-block-reason')),
+          'Unapproved absence and repeated mock-location flag',
+        );
+        await tester.pump();
 
-      // Button is now enabled with full opacity
-      final Opacity enabledOpacity = tester.widget(find.byType(Opacity));
-      expect(enabledOpacity.opacity, 1.0);
+        // Button is now enabled with full opacity
+        final Opacity enabledOpacity = tester.widget(find.byType(Opacity));
+        expect(enabledOpacity.opacity, 1.0);
 
-      // Tap submit button
-      await tester.tap(find.byKey(const Key('btn-block-submit')));
-      await tester.pump();
+        // Tap submit button
+        await tester.tap(find.byKey(const Key('btn-block-submit')));
+        await tester.pump();
 
-      // Captured reason matches entered string
-      expect(capturedReason, 'Unapproved absence and repeated mock-location flag');
+        // Captured reason matches entered string
+        expect(
+          capturedReason,
+          'Unapproved absence and repeated mock-location flag',
+        );
 
-      // Shows loading progress indicator
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        // Shows loading progress indicator
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-      // Complete async operation
-      completer.complete();
-      await tester.pumpAndSettle();
-    });
+        // Complete async operation
+        completer.complete();
+        await tester.pumpAndSettle();
+      },
+    );
 
-    testWidgets('cancel button invokes pop without triggering block callback', (tester) async {
+    testWidgets('cancel button invokes pop without triggering block callback', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -221,92 +244,175 @@ void main() {
       expect(find.byType(AdminBlockEmployeeSheet), findsNothing);
     });
 
-    testWidgets('AdminEmployeeListNotifier.blockEmployee mutates roster state to blocked',
-        (tester) async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    testWidgets(
+      'AdminEmployeeListNotifier.blockEmployee mutates roster state to blocked',
+      (tester) async {
+        final container = ProviderContainer(
+          overrides: [
+            fixtureEmployeeListOverride,
+            fakeEmployeeRepositoryOverride(),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      final notifier = container.read(adminEmployeeListControllerProvider.notifier);
-      final initialEmployees = container.read(adminEmployeeListControllerProvider).employees;
+        final notifier = container.read(
+          adminEmployeeListControllerProvider.notifier,
+        );
+        final initialEmployees = container
+            .read(adminEmployeeListControllerProvider)
+            .employees;
 
-      // Suresh Patel initial state
-      final initialSuresh = initialEmployees.firstWhere((e) => e.id == 'emp-1');
-      expect(initialSuresh.status, AdminEmployeeStatus.onDuty);
-      expect(initialSuresh.isActive, isTrue);
+        // Suresh Patel initial state
+        final initialSuresh = initialEmployees.firstWhere(
+          (e) => e.id == 'emp-1',
+        );
+        expect(initialSuresh.status, AdminEmployeeStatus.onDuty);
+        expect(initialSuresh.isActive, isTrue);
 
-      // Block employee
-      notifier.blockEmployee(
-        employeeId: 'emp-1',
-        reason: 'Policy breach',
-      );
+        // Block employee
+        await notifier.blockEmployee(
+          employeeId: 'emp-1',
+          reason: 'Policy breach',
+        );
 
-      final updatedEmployees = container.read(adminEmployeeListControllerProvider).employees;
-      final blockedSuresh = updatedEmployees.firstWhere((e) => e.id == 'emp-1');
+        final updatedEmployees = container
+            .read(adminEmployeeListControllerProvider)
+            .employees;
+        final blockedSuresh = updatedEmployees.firstWhere(
+          (e) => e.id == 'emp-1',
+        );
 
-      expect(blockedSuresh.status, AdminEmployeeStatus.blocked);
-      expect(blockedSuresh.isActive, isFalse);
-      expect(blockedSuresh.dutyStartTime, isNull);
-      expect(blockedSuresh.hasFlags, isFalse);
-      expect(blockedSuresh.locationName, 'Blocked (Policy breach)');
-    });
+        expect(blockedSuresh.status, AdminEmployeeStatus.blocked);
+        expect(blockedSuresh.isActive, isFalse);
+        expect(blockedSuresh.dutyStartTime, isNull);
+        expect(blockedSuresh.hasFlags, isFalse);
+        expect(blockedSuresh.locationName, 'Blocked (Policy breach)');
+      },
+    );
 
-    testWidgets('AdminEmployeeDetailPage danger button opens AdminBlockEmployeeSheet',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets(
+      'AdminEmployeeDetailPage danger button opens AdminBlockEmployeeSheet',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+        final container = ProviderContainer(
+          overrides: [
+            fixtureEmployeeListOverride,
+            fakeEmployeeRepositoryOverride(),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      await tester.pumpWidget(
-        buildTestableWidget(
-          const AdminEmployeeDetailPage(employee: testEmployee),
-          container: container,
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          buildTestableWidget(
+            const AdminEmployeeDetailPage(employee: testEmployee),
+            container: container,
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      // Scroll to danger action button
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('btn-employee-block-action')),
-        500,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
+        // Scroll to danger action button
+        await tester.scrollUntilVisible(
+          find.byKey(const Key('btn-employee-block-action')),
+          500,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('btn-employee-block-action')), findsOneWidget);
+        expect(
+          find.byKey(const Key('btn-employee-block-action')),
+          findsOneWidget,
+        );
 
-      // Tap block button to open Screen 20 bottom sheet
-      await tester.tap(find.byKey(const Key('btn-employee-block-action')));
-      await tester.pumpAndSettle();
+        // Tap block button to open Screen 20 bottom sheet
+        await tester.tap(find.byKey(const Key('btn-employee-block-action')));
+        await tester.pumpAndSettle();
 
-      // Screen 20 modal sheet is now displayed
-      expect(find.byType(AdminBlockEmployeeSheet), findsOneWidget);
-      expect(find.text('Block Suresh Patel?'), findsOneWidget);
+        // Screen 20 modal sheet is now displayed
+        expect(find.byType(AdminBlockEmployeeSheet), findsOneWidget);
+        expect(find.text('Block Suresh Patel?'), findsOneWidget);
 
-      // Enter reason and submit
-      await tester.enterText(
-        find.byKey(const Key('input-block-reason')),
-        'Suspected fraudulent duty log',
-      );
-      await tester.pump();
+        // Enter reason and submit
+        await tester.enterText(
+          find.byKey(const Key('input-block-reason')),
+          'Suspected fraudulent duty log',
+        );
+        await tester.pump();
 
-      await tester.tap(find.byKey(const Key('btn-block-submit')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('btn-block-submit')));
+        await tester.pumpAndSettle();
 
-      // Sheet is closed
-      expect(find.byType(AdminBlockEmployeeSheet), findsNothing);
+        // Sheet is closed
+        expect(find.byType(AdminBlockEmployeeSheet), findsNothing);
 
-      // SnackBar confirmation is shown
-      expect(find.text('Suresh Patel has been blocked.'), findsOneWidget);
+        // SnackBar confirmation is shown
+        expect(find.text('Suresh Patel has been blocked.'), findsOneWidget);
 
-      // State was updated in list provider
-      final employees = container.read(adminEmployeeListControllerProvider).employees;
-      final blockedEmp = employees.firstWhere((e) => e.id == 'emp-1');
-      expect(blockedEmp.status, AdminEmployeeStatus.blocked);
-      expect(blockedEmp.isActive, isFalse);
-    });
+        // State was updated in list provider
+        final employees = container
+            .read(adminEmployeeListControllerProvider)
+            .employees;
+        final blockedEmp = employees.firstWhere((e) => e.id == 'emp-1');
+        expect(blockedEmp.status, AdminEmployeeStatus.blocked);
+        expect(blockedEmp.isActive, isFalse);
+      },
+    );
+
+    testWidgets(
+      'a block the server refuses keeps the sheet open and the employee unblocked',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final container = ProviderContainer(
+          overrides: [
+            fixtureEmployeeListOverride,
+            fakeEmployeeRepositoryOverride(
+              FakeEmployeeRepository(error: const NetworkException()),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            const AdminEmployeeDetailPage(employee: testEmployee),
+            container: container,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(
+          find.byKey(const Key('btn-employee-block-action')),
+          500,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.tap(find.byKey(const Key('btn-employee-block-action')));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(
+          find.byKey(const Key('input-block-reason')),
+          'Policy breach',
+        );
+        await tester.pump();
+        await tester.tap(find.byKey(const Key('btn-block-submit')));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AdminBlockEmployeeSheet), findsOneWidget);
+        expect(find.byKey(const Key('block-sheet-error')), findsOneWidget);
+        expect(find.text('Suresh Patel has been blocked.'), findsNothing);
+
+        final suresh = container
+            .read(adminEmployeeListControllerProvider)
+            .employees
+            .firstWhere((e) => e.id == 'emp-1');
+        expect(suresh.status, AdminEmployeeStatus.onDuty);
+        expect(suresh.isActive, isTrue);
+      },
+    );
   });
 }

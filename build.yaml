@@ -1,0 +1,8 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          # Keep milliseconds: points are ordered and de-duplicated by time, and
+          # the default (whole seconds) would blur two points in one second.
+          store_date_time_values_as_text: true

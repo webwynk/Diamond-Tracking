@@ -22,7 +22,9 @@ enum UserStatus {
   final String value;
 
   static UserStatus fromString(String val) {
-    return val.toLowerCase() == 'blocked' ? UserStatus.blocked : UserStatus.active;
+    return val.toLowerCase() == 'blocked'
+        ? UserStatus.blocked
+        : UserStatus.active;
   }
 }
 
@@ -41,6 +43,7 @@ class UserProfile {
     this.employeeCode,
     this.phone,
     this.email,
+    this.contactEmail,
     this.deviceId,
     this.lockedUntil,
     this.blockedAt,
@@ -61,6 +64,7 @@ class UserProfile {
       employeeCode: json['employee_code'] as String?,
       phone: json['phone'] as String?,
       email: json['email'] as String?,
+      contactEmail: json['contact_email'] as String?,
       deviceId: json['device_id'] as String?,
       lockedUntil: json['locked_until'] != null
           ? DateTime.tryParse(json['locked_until'] as String)
@@ -84,6 +88,7 @@ class UserProfile {
   final String? employeeCode;
   final String? phone;
   final String? email;
+  final String? contactEmail;
   final String? deviceId;
   final DateTime? lockedUntil;
   final DateTime? blockedAt;
@@ -114,6 +119,7 @@ class UserProfile {
       'employee_code': employeeCode,
       'phone': phone,
       'email': email,
+      'contact_email': contactEmail,
       'device_id': deviceId,
       'locked_until': lockedUntil?.toIso8601String(),
       'blocked_at': blockedAt?.toIso8601String(),
@@ -134,6 +140,7 @@ class UserProfile {
     String? employeeCode,
     String? phone,
     String? email,
+    String? contactEmail,
     String? deviceId,
     DateTime? lockedUntil,
     DateTime? blockedAt,
@@ -152,6 +159,7 @@ class UserProfile {
       employeeCode: employeeCode ?? this.employeeCode,
       phone: phone ?? this.phone,
       email: email ?? this.email,
+      contactEmail: contactEmail ?? this.contactEmail,
       deviceId: deviceId ?? this.deviceId,
       lockedUntil: lockedUntil ?? this.lockedUntil,
       blockedAt: blockedAt ?? this.blockedAt,

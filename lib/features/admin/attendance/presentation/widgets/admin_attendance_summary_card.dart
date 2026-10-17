@@ -7,14 +7,9 @@ import '../controllers/admin_attendance_state.dart';
 
 /// Monthly telemetry audit card with 2x3 metric grid for Screen 22.
 class AdminAttendanceSummaryCard extends StatelessWidget {
-  const AdminAttendanceSummaryCard({
-    super.key,
-    required this.metrics,
-    this.cycleText = 'Settlement cycle #26-10',
-  });
+  const AdminAttendanceSummaryCard({super.key, required this.metrics});
 
   final AdminMonthlyMetrics metrics;
-  final String cycleText;
 
   @override
   Widget build(BuildContext context) {
@@ -59,13 +54,6 @@ class AdminAttendanceSummaryCard extends StatelessWidget {
                       ),
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.x2),
-              Text(
-                cycleText,
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.neutral500,
                 ),
               ),
             ],
@@ -169,20 +157,14 @@ class AdminAttendanceSummaryCard extends StatelessWidget {
                 ),
               ),
               if (trailingIcon != null)
-                Icon(
-                  trailingIcon,
-                  size: 16,
-                  color: iconColor,
-                ),
+                Icon(trailingIcon, size: 16, color: iconColor),
             ],
           ),
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.caption.copyWith(
-              color: AppColors.neutral500,
-            ),
+            style: AppTypography.caption.copyWith(color: AppColors.neutral500),
           ),
         ],
       ),

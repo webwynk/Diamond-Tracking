@@ -7,11 +7,7 @@ import '../controllers/admin_attendance_state.dart';
 
 /// Single day attendance log card for Screen 22.
 class AdminAttendanceDailyCard extends StatelessWidget {
-  const AdminAttendanceDailyCard({
-    super.key,
-    required this.item,
-    this.onTap,
-  });
+  const AdminAttendanceDailyCard({super.key, required this.item, this.onTap});
 
   final AdminDailyAttendanceItem item;
   final VoidCallback? onTap;
@@ -38,10 +34,7 @@ class AdminAttendanceDailyCard extends StatelessWidget {
                 left: 0,
                 top: 0,
                 bottom: 0,
-                child: Container(
-                  width: 4,
-                  color: AppColors.warning,
-                ),
+                child: Container(width: 4, color: AppColors.warning),
               ),
             Material(
               color: Colors.transparent,
@@ -52,210 +45,238 @@ class AdminAttendanceDailyCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadius.md),
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.x4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                // 1. Date Block (44x44 dp)
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.neutral50,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                    border: Border.all(color: AppColors.neutral200, width: 1),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: <Widget>[
-                      Text(
-                        item.dayNumber,
-                        style: AppTypography.title.copyWith(
-                          color: AppColors.neutral900,
-                          fontWeight: FontWeight.w700,
-                          height: 1.0,
+                      // 1. Date Block (44x44 dp)
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppColors.neutral50,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          border: Border.all(
+                            color: AppColors.neutral200,
+                            width: 1,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.dayOfWeek,
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.neutral500,
-                          height: 1.0,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.x4),
-
-                // 2. Middle Content (Sessions + Stats)
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      if (item.isMultiSession) ...[
-                        // Multi-session layout
-                        Row(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: <Widget>[
-                            Flexible(
-                              child: Text(
-                                item.sessions.first.timeRange,
-                                style: AppTypography.body.copyWith(
-                                  color: AppColors.neutral900,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            Text(
+                              item.dayNumber,
+                              style: AppTypography.title.copyWith(
+                                color: AppColors.neutral900,
+                                fontWeight: FontWeight.w700,
+                                height: 1.0,
                               ),
                             ),
-                            const SizedBox(width: AppSpacing.x1 + 2),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.infoBg,
-                                borderRadius: BorderRadius.circular(AppRadius.sm),
-                              ),
-                              child: Text(
-                                '2 SESSIONS',
-                                style: AppTypography.overline.copyWith(
-                                  color: AppColors.info,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            const SizedBox(height: 2),
+                            Text(
+                              item.dayOfWeek,
+                              style: AppTypography.caption.copyWith(
+                                color: AppColors.neutral500,
+                                height: 1.0,
                               ),
                             ),
                           ],
                         ),
-                        if (item.sessions.length > 1) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            item.sessions[1].timeRange,
-                            style: AppTypography.body.copyWith(
-                              color: AppColors.neutral900,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ] else ...[
-                        // Single session layout
-                        Row(
+                      ),
+                      const SizedBox(width: AppSpacing.x4),
+
+                      // 2. Middle Content (Sessions + Stats)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
-                            Flexible(
-                              child: Text(
-                                item.sessions.isNotEmpty
-                                    ? item.sessions.first.timeRange
-                                    : '',
-                                style: AppTypography.body.copyWith(
-                                  color: AppColors.neutral900,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.x2),
-                            if (item.isAutoEnded) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.warningBg,
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.sm),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    Container(
-                                      width: 6,
-                                      height: 6,
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.warning,
-                                        shape: BoxShape.circle,
+                            if (item.isMultiSession) ...[
+                              // Multi-session layout
+                              Row(
+                                children: <Widget>[
+                                  Flexible(
+                                    child: Text(
+                                      item.sessions.first.timeRange,
+                                      style: AppTypography.body.copyWith(
+                                        color: AppColors.neutral900,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'AUTO-ENDED',
+                                  ),
+                                  const SizedBox(width: AppSpacing.x1 + 2),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.infoBg,
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadius.sm,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '${item.sessions.length} SESSIONS',
                                       style: AppTypography.overline.copyWith(
-                                        color: AppColors.warningText,
+                                        color: AppColors.info,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
+                              for (final session in item.sessions.skip(1)) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  session.timeRange,
+                                  style: AppTypography.body.copyWith(
+                                    color: AppColors.neutral900,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ] else ...[
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.success,
-                                  shape: BoxShape.circle,
+                              // Single session layout
+                              Row(
+                                children: <Widget>[
+                                  Flexible(
+                                    child: Text(
+                                      item.sessions.isNotEmpty
+                                          ? item.sessions.first.timeRange
+                                          : '',
+                                      style: AppTypography.body.copyWith(
+                                        color: AppColors.neutral900,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.x2),
+                                  if (item.isAutoEnded) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warningBg,
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadius.sm,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: <Widget>[
+                                          Container(
+                                            width: 6,
+                                            height: 6,
+                                            decoration: const BoxDecoration(
+                                              color: AppColors.warning,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'AUTO-ENDED',
+                                            style: AppTypography.overline
+                                                .copyWith(
+                                                  color: AppColors.warningText,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ] else if (item.isInProgress) ...[
+                                    Container(
+                                      key: const Key('attendance-in-progress'),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.infoBg,
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadius.sm,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'IN PROGRESS',
+                                        style: AppTypography.overline.copyWith(
+                                          color: AppColors.info,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.success,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+
+                            // Stats Row
+                            const SizedBox(height: 4),
+                            Text(
+                              item.statsText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.caption.copyWith(
+                                color: AppColors.neutral500,
+                              ),
+                            ),
+
+                            // Optional Alert Note
+                            if (item.alertNote != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                item.alertNote!,
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.warningText,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
                           ],
                         ),
-                      ],
-
-                      // Stats Row
-                      const SizedBox(height: 4),
-                      Text(
-                        item.statsText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.neutral500,
-                        ),
                       ),
+                      const SizedBox(width: AppSpacing.x2),
 
-                      // Optional Alert Note
-                      if (item.alertNote != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          item.alertNote!,
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.warningText,
-                            fontWeight: FontWeight.w500,
+                      // 3. Right Trailing (Warning Icon + Chevron)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          if (item.isAutoEnded)
+                            const Padding(
+                              padding: EdgeInsets.only(right: 4),
+                              child: Icon(
+                                Icons.warning_amber_rounded,
+                                color: AppColors.warning,
+                                size: 18,
+                              ),
+                            ),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppColors.neutral300,
+                            size: 22,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.x2),
-
-                // 3. Right Trailing (Warning Icon + Chevron)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    if (item.isAutoEnded)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 4),
-                        child: Icon(
-                          Icons.warning_amber_rounded,
-                          color: AppColors.warning,
-                          size: 18,
-                        ),
-                      ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppColors.neutral300,
-                      size: 22,
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
-    ],
-  ),
-),
-);
+    );
   }
 
   Widget _buildAbsentCard() {

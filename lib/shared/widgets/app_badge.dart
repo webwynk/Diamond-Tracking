@@ -17,10 +17,12 @@ class AppBadge extends StatelessWidget {
 
   factory AppBadge.count(
     int count, {
+    Key? key,
     Color backgroundColor = AppColors.primary600,
     Color textColor = AppColors.neutral0,
   }) {
     return AppBadge(
+      key: key,
       label: count > 99 ? '99+' : count.toString(),
       backgroundColor: backgroundColor,
       textColor: textColor,

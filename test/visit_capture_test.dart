@@ -1,6 +1,8 @@
 import 'package:diamond_tracking/core/services/camera_service.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/data/repositories/local_visit_repository.dart';
+import 'package:diamond_tracking/domain/entities/duty_session.dart';
+import 'package:diamond_tracking/domain/entities/location_point.dart';
 import 'package:diamond_tracking/domain/entities/visit_record.dart';
 import 'package:diamond_tracking/features/duty/presentation/controllers/duty_controller.dart';
 import 'package:diamond_tracking/features/duty/presentation/controllers/duty_state.dart';
@@ -224,8 +226,9 @@ void main() {
   });
 
   group('Screen 10 VisitCaptureSheet Widget Tests', () {
-    testWidgets('renders all visual elements matching HTML design reference',
-        (tester) async {
+    testWidgets('renders all visual elements matching HTML design reference', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -249,6 +252,7 @@ void main() {
                 employeeId: 'emp-014',
                 latitude: 19.9975,
                 longitude: 73.7898,
+                distanceMeters: 500,
               ),
             ),
           ),
@@ -280,8 +284,9 @@ void main() {
       expect(find.byKey(const Key('skip-photo-btn')), findsOneWidget);
     });
 
-    testWidgets('typing note updates character counter and controller state',
-        (tester) async {
+    testWidgets('typing note updates character counter and controller state', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -303,6 +308,8 @@ void main() {
                 placeName: 'Shivpuri Farm',
                 dutySessionId: 'sess-100',
                 employeeId: 'emp-014',
+                latitude: 19.9975,
+                longitude: 73.7898,
               ),
             ),
           ),
@@ -319,8 +326,9 @@ void main() {
       expect(find.text('24/200'), findsOneWidget);
     });
 
-    testWidgets('skip photo flow shows reason dialog and confirms skip',
-        (tester) async {
+    testWidgets('skip photo flow shows reason dialog and confirms skip', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -342,6 +350,8 @@ void main() {
                 placeName: 'Shivpuri Farm',
                 dutySessionId: 'sess-100',
                 employeeId: 'emp-014',
+                latitude: 19.9975,
+                longitude: 73.7898,
               ),
             ),
           ),
@@ -356,7 +366,10 @@ void main() {
 
       // Verify skip photo dialog appears with reasons
       expect(find.text('Skip photo'), findsWidgets);
-      expect(find.textContaining('BR-12 requires a mandatory reason'), findsOneWidget);
+      expect(
+        find.textContaining('BR-12 requires a mandatory reason'),
+        findsOneWidget,
+      );
       expect(find.text('Camera hardware malfunction'), findsOneWidget);
 
       // Confirm skip
@@ -368,8 +381,9 @@ void main() {
       expect(find.text('Camera hardware malfunction'), findsOneWidget);
     });
 
-    testWidgets('tapping Save visit records visit and closes sheet',
-        (tester) async {
+    testWidgets('tapping Save visit records visit and closes sheet', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -392,6 +406,8 @@ void main() {
                 placeName: 'Shivpuri Farm',
                 dutySessionId: 'sess-100',
                 employeeId: 'emp-014',
+                latitude: 19.9975,
+                longitude: 73.7898,
                 onSaved: () {
                   savedCallbackTriggered = true;
                 },
@@ -414,52 +430,161 @@ void main() {
   });
 
   group('Map to VisitCaptureSheet Flow Test', () {
-    testWidgets('tapping Add Visit button on EmployeeMapPage opens VisitCaptureSheet',
-        (tester) async {
+    Widget mapWith(DutyScreenState dutyState) {
+      return ProviderScope(
+        overrides: [
+          dutyControllerProvider.overrideWith(
+            () => TestDutyNotifier(dutyState),
+          ),
+          cameraServiceProvider.overrideWithValue(MockCameraService()),
+          visitRepositoryProvider.overrideWithValue(LocalVisitRepository()),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: const EmployeeMapPage(),
+        ),
+      );
+    }
+
+    void tall(WidgetTester tester) {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
+    }
 
-      const dutyState = DutyScreenState(
+    testWidgets('Add visit opens the sheet with the real session and GPS fix', (
+      tester,
+    ) async {
+      tall(tester);
+
+      final dutyState = DutyScreenState(
         status: DutyStatus.onDuty,
-        elapsedDuration: Duration(hours: 3),
+        elapsedDuration: const Duration(hours: 3),
         distanceKm: 12.4,
         visitsCount: 1,
-      );
-
-      final mockCamera = MockCameraService();
-      final mockRepo = LocalVisitRepository();
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            dutyControllerProvider.overrideWith(
-              () => TestDutyNotifier(dutyState),
-            ),
-            cameraServiceProvider.overrideWithValue(mockCamera),
-            visitRepositoryProvider.overrideWithValue(mockRepo),
-          ],
-          child: MaterialApp(
-            theme: AppTheme.light,
-            home: const EmployeeMapPage(),
-          ),
+        activeSession: DutySession(
+          id: 'sess-live',
+          employeeId: 'emp-live',
+          startedAt: DateTime(2026, 10, 16, 8),
+        ),
+        lastLocation: LocationPoint(
+          id: 'p1',
+          sessionId: 'sess-live',
+          latitude: 20.1234,
+          longitude: 73.5678,
+          accuracy: 7,
+          recordedAt: DateTime(2026, 10, 16, 9),
         ),
       );
 
+      await tester.pumpWidget(mapWith(dutyState));
       await tester.pumpAndSettle();
 
-      // Find the Add visit button in the bottom sheet of the map page
-      final addVisitBtn = find.byKey(const Key('btn-add-visit'));
-      expect(addVisitBtn, findsOneWidget);
+      expect(find.text('GPS accuracy ±7 m'), findsOneWidget);
 
-      await tester.tap(addVisitBtn);
+      await tester.tap(find.byKey(const Key('btn-add-visit')));
       await tester.pumpAndSettle();
 
-      // Bottom sheet modal is opened: check for title and input
       expect(find.byKey(const Key('close-visit-sheet-btn')), findsOneWidget);
-      expect(find.text('Shivpuri Farm'), findsOneWidget);
       expect(find.byKey(const Key('visit-notes-input')), findsOneWidget);
+      // No invented place, coordinates or note
+      expect(find.text('Shivpuri Farm'), findsNothing);
+      expect(find.text('Field location'), findsOneWidget);
+      expect(find.textContaining('20.1234'), findsWidgets);
+      expect(
+        find.text('Met owner, discussed kharif seed order.'),
+        findsNothing,
+      );
+    });
+
+    testWidgets(
+      'Add visit without an active session or GPS fix explains and opens nothing',
+      (tester) async {
+        tall(tester);
+
+        await tester.pumpWidget(
+          mapWith(const DutyScreenState(status: DutyStatus.onDuty)),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Waiting for GPS…'), findsOneWidget);
+        expect(find.textContaining('Sinnar'), findsNothing);
+
+        await tester.tap(find.byKey(const Key('btn-add-visit')));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('close-visit-sheet-btn')), findsNothing);
+        expect(
+          find.text('Start duty and wait for a GPS fix to add a visit.'),
+          findsOneWidget,
+        );
+      },
+    );
+  });
+
+  group('VisitCaptureNotifier without invented defaults', () {
+    test('starts blank: no place, note, time or position', () {
+      final container = ProviderContainer(
+        overrides: [
+          cameraServiceProvider.overrideWithValue(MockCameraService()),
+          visitRepositoryProvider.overrideWithValue(LocalVisitRepository()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final state = container.read(visitCaptureControllerProvider);
+      expect(state.placeName, isEmpty);
+      expect(state.note, isEmpty);
+      expect(state.arrivalTime, isEmpty);
+      expect(state.geotagCoordinates, isEmpty);
+      expect(state.latitude, isNull);
+      expect(state.longitude, isNull);
+    });
+
+    test('a visit cannot be saved without a GPS position', () async {
+      final repo = LocalVisitRepository();
+      final container = ProviderContainer(
+        overrides: [
+          cameraServiceProvider.overrideWithValue(MockCameraService()),
+          visitRepositoryProvider.overrideWithValue(repo),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final saved = await container
+          .read(visitCaptureControllerProvider.notifier)
+          .saveVisit(dutySessionId: 's1', employeeId: 'e1');
+
+      expect(saved, isFalse);
+      expect(
+        container.read(visitCaptureControllerProvider).errorMessage,
+        contains('No GPS position'),
+      );
+      expect(await repo.getVisitsForSession('s1'), isEmpty);
+    });
+
+    test('initVisit without a place records it as a field location', () async {
+      final repo = LocalVisitRepository();
+      final container = ProviderContainer(
+        overrides: [
+          cameraServiceProvider.overrideWithValue(MockCameraService()),
+          visitRepositoryProvider.overrideWithValue(repo),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(visitCaptureControllerProvider.notifier)
+        ..initVisit(latitude: 20.5, longitude: 73.25);
+      expect(
+        await notifier.saveVisit(dutySessionId: 's2', employeeId: 'e2'),
+        isTrue,
+      );
+
+      final stored = await repo.getVisitsForSession('s2');
+      expect(stored.single.placeName, 'Field location');
+      expect(stored.single.latitude, 20.5);
+      expect(stored.single.notes, isNull);
     });
   });
 }

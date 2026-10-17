@@ -1,14 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 /// Place category types for filtering and classification in Screen 24.
-enum AdminPlaceCategory {
-  all,
-  farms,
-  dealers,
-  offices,
-  warehouses,
-  inactive,
-}
+enum AdminPlaceCategory { all, farms, dealers, offices, warehouses, inactive }
 
 /// Individual place / geofenced facility item in Screen 24.
 class AdminPlaceItem {
@@ -20,9 +13,9 @@ class AdminPlaceItem {
     required this.radiusMeters,
     required this.location,
     required this.visitsThisMonth,
+    required this.latitude,
+    required this.longitude,
     this.isActive = true,
-    this.latitude = 19.9975,
-    this.longitude = 73.7898,
   });
 
   final String id;
@@ -47,13 +40,13 @@ class AdminPlacesState {
     required this.places,
     this.selectedCategory = AdminPlaceCategory.all,
     this.searchQuery = '',
-    this.activePlacesCount = 38,
   });
 
   final List<AdminPlaceItem> places;
   final AdminPlaceCategory selectedCategory;
   final String searchQuery;
-  final int activePlacesCount;
+
+  int get activePlacesCount => places.where((p) => p.isActive).length;
 
   List<AdminPlaceItem> get filteredPlaces {
     return places.where((place) {
@@ -88,13 +81,11 @@ class AdminPlacesState {
     List<AdminPlaceItem>? places,
     AdminPlaceCategory? selectedCategory,
     String? searchQuery,
-    int? activePlacesCount,
   }) {
     return AdminPlacesState(
       places: places ?? this.places,
       selectedCategory: selectedCategory ?? this.selectedCategory,
       searchQuery: searchQuery ?? this.searchQuery,
-      activePlacesCount: activePlacesCount ?? this.activePlacesCount,
     );
   }
 }

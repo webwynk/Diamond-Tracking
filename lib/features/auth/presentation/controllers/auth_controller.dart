@@ -11,8 +11,9 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 /// Global provider for managing and observing user authentication state.
-final authControllerProvider =
-    NotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);
+final authControllerProvider = NotifierProvider<AuthNotifier, AuthState>(
+  AuthNotifier.new,
+);
 
 /// Notifier responsible for all authentication mutations and session lifecycle.
 class AuthNotifier extends Notifier<AuthState> {
@@ -98,9 +99,7 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   /// Submits the new 6-digit PIN on Screen 04.
-  Future<bool> completePinChange({
-    required String newPin,
-  }) async {
+  Future<bool> completePinChange({required String newPin}) async {
     final current = state;
     state = const AuthLoading(message: 'Updating PIN...');
     try {
@@ -109,7 +108,9 @@ class AuthNotifier extends Notifier<AuthState> {
       if (profile != null) {
         state = AuthAuthenticated(profile.copyWith(mustChangePin: false));
       } else if (current is AuthMustChangePin) {
-        state = AuthAuthenticated(current.profile.copyWith(mustChangePin: false));
+        state = AuthAuthenticated(
+          current.profile.copyWith(mustChangePin: false),
+        );
       } else {
         state = const AuthUnauthenticated();
       }

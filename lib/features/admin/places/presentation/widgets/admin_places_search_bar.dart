@@ -41,15 +41,17 @@ class AdminPlacesSearchBar extends StatelessWidget {
               key: const Key('input-places-search'),
               controller: controller,
               onChanged: onChanged,
-              style: AppTypography.body.copyWith(
-                color: AppColors.neutral900,
-              ),
+              style: AppTypography.body.copyWith(color: AppColors.neutral900),
               decoration: InputDecoration(
                 hintText: 'Search places (name, taluka, radius)...',
                 hintStyle: AppTypography.body.copyWith(
                   color: AppColors.neutral400,
                 ),
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
               ),

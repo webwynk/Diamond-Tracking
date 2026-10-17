@@ -1,330 +1,430 @@
+import 'package:diamond_tracking/core/errors/app_exceptions.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/features/admin/attendance/presentation/admin_attendance_page.dart';
-import 'package:diamond_tracking/features/admin/attendance/presentation/controllers/admin_attendance_controller.dart';
-import 'package:diamond_tracking/features/admin/attendance/presentation/controllers/admin_attendance_state.dart';
 import 'package:diamond_tracking/features/admin/attendance/presentation/widgets/admin_attendance_daily_card.dart';
-import 'package:diamond_tracking/features/admin/attendance/presentation/widgets/admin_attendance_discrepancy_banner.dart';
 import 'package:diamond_tracking/features/admin/attendance/presentation/widgets/admin_attendance_filter_chips.dart';
-import 'package:diamond_tracking/features/admin/attendance/presentation/widgets/admin_attendance_meta_header.dart';
-import 'package:diamond_tracking/features/admin/attendance/presentation/widgets/admin_attendance_month_selector.dart';
-import 'package:diamond_tracking/features/admin/attendance/presentation/widgets/admin_attendance_settle_bar.dart';
 import 'package:diamond_tracking/features/admin/attendance/presentation/widgets/admin_attendance_summary_card.dart';
-import 'package:diamond_tracking/features/admin/attendance/presentation/widgets/admin_attendance_top_bar.dart';
-import 'package:diamond_tracking/features/admin/employees/presentation/admin_employee_detail_page.dart';
-import 'package:diamond_tracking/features/admin/employees/presentation/controllers/admin_employee_list_state.dart';
-import 'package:diamond_tracking/features/admin/employees/presentation/widgets/admin_employee_recent_duty_card.dart';
+import 'package:diamond_tracking/shared/widgets/app_top_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-void main() {
-  const sureshPatel = AdminEmployeeItem(
-    id: 'emp-1',
-    name: 'Suresh Patel',
-    employeeCode: 'DA-022',
-    phoneNumber: '+91 98201 44556',
-    status: AdminEmployeeStatus.onDuty,
-    dutyStartTime: '8:04 AM',
-    distanceTodayKm: '38.6 km',
-    locationName: 'Shivpuri Agricultural Cluster',
-  );
+import 'support/fake_attendance.dart';
 
-  Widget buildTestableWidget(Widget child, {ProviderContainer? container}) {
-    if (container != null) {
-      return UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          theme: AppTheme.light,
-          home: child,
-        ),
-      );
-    }
-    return ProviderScope(
-      child: MaterialApp(
-        theme: AppTheme.light,
-        home: child,
-      ),
+void main() {
+  late FakeAttendanceRepository repository;
+  final october = istMonthStartUtc(2026, 10);
+
+  setUp(() {
+    repository = FakeAttendanceRepository(
+      employeeCreatedAt: DateTime.utc(2026, 9, 1, 3),
     );
+  });
+
+  /// Worked on the 5th (normal), 6th (ended at 23:00, 2 flags), 9th (two
+  /// sessions) and today the 17th (still running).
+  void aMonth() {
+    repository.months[october] = [
+      attendanceSession(
+        'a',
+        year: 2026,
+        month: 10,
+        day: 5,
+        minutes: 446,
+        km: 12.345,
+        visits: 2,
+      ),
+      attendanceSession(
+        'b',
+        year: 2026,
+        month: 10,
+        day: 6,
+        startHour: 20,
+        startMinute: 0,
+        minutes: 180,
+        status: 'auto_curfew',
+        km: 5,
+        visits: 1,
+        flagged: 2,
+      ),
+      attendanceSession(
+        'c',
+        year: 2026,
+        month: 10,
+        day: 9,
+        startHour: 8,
+        startMinute: 0,
+        minutes: 120,
+        km: 3,
+        visits: 1,
+      ),
+      attendanceSession(
+        'd',
+        year: 2026,
+        month: 10,
+        day: 9,
+        startHour: 14,
+        startMinute: 30,
+        minutes: 60,
+        km: 4,
+        visits: 0,
+      ),
+      attendanceSession(
+        'e',
+        year: 2026,
+        month: 10,
+        day: 17,
+        open: true,
+        km: 1.5,
+        visits: 0,
+      ),
+    ];
   }
 
-  group('Screen 22 AdminAttendancePage Visual & Structural Tests', () {
-    testWidgets('renders all visual elements matching HTML design reference', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  Future<void> pumpPage(
+    WidgetTester tester, {
+    ValueChanged<String>? onViewRouteDay,
+    VoidCallback? onBack,
+    bool settle = true,
+  }) async {
+    tester.view.physicalSize = const Size(1080, 3200);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(
-        buildTestableWidget(const AdminAttendancePage()),
-      );
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: attendanceOverrides(repository),
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: AdminAttendancePage(
+            employeeId: 'e1',
+            employeeName: 'Asha Patil',
+            employeeCode: 'DA-101',
+            onBack: onBack,
+            onViewRouteDay: onViewRouteDay,
+          ),
+        ),
+      ),
+    );
+    if (settle) await settleFrames(tester);
+  }
 
-      // Top Bar
-      expect(find.byType(AdminAttendanceTopBar), findsOneWidget);
+  group('the screen', () {
+    testWidgets('shows the employee, the month and the shared top bar', (
+      tester,
+    ) async {
+      aMonth();
+      await pumpPage(tester);
+
+      expect(find.byType(AppTopBar), findsOneWidget);
       expect(find.text('Attendance & History'), findsOneWidget);
-      expect(find.byKey(const Key('btn-attendance-back')), findsOneWidget);
-      expect(find.byKey(const Key('btn-attendance-export')), findsOneWidget);
-
-      // Meta Sub-header
-      expect(find.byType(AdminAttendanceMetaHeader), findsOneWidget);
-      expect(find.text('SP'), findsOneWidget);
-      expect(find.text('Suresh Patel'), findsOneWidget);
-      expect(find.text('DA-022'), findsOneWidget);
-      expect(find.text('Agronomist · Nashik Central Beat'), findsOneWidget);
-      expect(find.text('Active Payroll'), findsOneWidget);
-
-      // Month Switcher
-      expect(find.byType(AdminAttendanceMonthSelector), findsOneWidget);
+      expect(find.text('Asha Patil · DA-101'), findsOneWidget);
       expect(find.text('October 2026'), findsOneWidget);
-      expect(find.byKey(const Key('btn-prev-month')), findsOneWidget);
-      expect(find.byKey(const Key('btn-next-month')), findsOneWidget);
+      expect(find.text('AP'), findsOneWidget);
+    });
 
-      // Telemetry Summary Card (2x3 Grid)
+    testWidgets('back goes back', (tester) async {
+      var backed = false;
+      await pumpPage(tester, onBack: () => backed = true);
+
+      await tester.tap(find.byKey(const Key('btn-attendance-back')));
+
+      expect(backed, isTrue);
+    });
+
+    testWidgets(
+      'has no payroll approval or payable-hours override (payroll is a non-goal)',
+      (tester) async {
+        aMonth();
+        await pumpPage(tester);
+
+        expect(find.textContaining('Approve'), findsNothing);
+        expect(find.textContaining('Adjust'), findsNothing);
+        expect(find.textContaining('ayable'), findsNothing);
+        expect(find.textContaining('ayroll'), findsNothing);
+        expect(find.byKey(const Key('btn-attendance-approve')), findsNothing);
+      },
+    );
+  });
+
+  group('the totals', () {
+    testWidgets('are the months rows added up', (tester) async {
+      aMonth();
+      await pumpPage(tester);
+
       expect(find.byType(AdminAttendanceSummaryCard), findsOneWidget);
-      expect(find.text('MONTHLY TELEMETRY AUDIT'), findsOneWidget);
-      expect(find.text('Days worked'), findsOneWidget);
-      expect(find.text('12'), findsOneWidget);
+      // 5th 7h26 + 6th 3h + 9th 3h + 17th 1h56 so far = 15h 22m
+      expect(find.text('4'), findsWidgets, reason: 'days worked');
+      expect(find.text('15h 22m'), findsOneWidget);
       expect(find.text('Total hours'), findsOneWidget);
-      expect(find.text('96h 40m'), findsWidgets);
-      expect(find.text('Distance'), findsOneWidget);
-      expect(find.text('578.3 km'), findsOneWidget);
-      expect(find.text('Visits'), findsOneWidget);
-      expect(find.text('54'), findsOneWidget);
+      expect(find.text('Days worked'), findsOneWidget);
       expect(find.text('Auto-ended'), findsWidgets);
-      expect(find.text('1'), findsWidgets);
-      expect(find.text('Flags'), findsOneWidget);
-      expect(find.text('0'), findsWidgets);
-
-      // Discrepancy Banner
-      expect(find.byType(AdminAttendanceDiscrepancyBanner), findsOneWidget);
-      expect(
-        find.text('1 audit alert requires supervisor approval before payout'),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('btn-discrepancy-review')), findsOneWidget);
-
-      // Filter Chips
-      expect(find.byType(AdminAttendanceFilterChips), findsOneWidget);
-      expect(find.byKey(const Key('attendance-filter-all')), findsOneWidget);
-      expect(find.byKey(const Key('attendance-filter-auto-ended')), findsOneWidget);
-      expect(find.byKey(const Key('attendance-filter-flags')), findsOneWidget);
-      expect(find.byKey(const Key('attendance-filter-absent')), findsOneWidget);
-
-      // Daily Attendance Cards
-      expect(find.byType(AdminAttendanceDailyCard), findsNWidgets(5));
-      expect(find.text('11'), findsOneWidget);
-      expect(find.text('Sat'), findsOneWidget);
-      expect(find.text('8:04 AM – 6:12 PM'), findsOneWidget);
-      expect(find.text('8h 08m · 47.3 km · 5 visits'), findsOneWidget);
-
-      expect(find.text('10'), findsOneWidget);
-      expect(find.text('Fri'), findsOneWidget);
-      expect(find.text('AUTO-ENDED'), findsOneWidget);
-      expect(find.text('Exceeded shift threshold (14h cap applied)'), findsOneWidget);
-
-      expect(find.text('09'), findsOneWidget);
-      expect(find.text('Thu'), findsOneWidget);
-      expect(find.text('2 SESSIONS'), findsOneWidget);
-      expect(find.text('8:02 AM – 1:10 PM'), findsOneWidget);
-      expect(find.text('2:30 PM – 6:40 PM'), findsOneWidget);
-
-      expect(find.text('08'), findsOneWidget);
-      expect(find.text('Wed'), findsOneWidget);
-      expect(find.text('No duty recorded'), findsOneWidget);
-      expect(find.text('OFF'), findsOneWidget);
-
-      expect(find.text('07'), findsOneWidget);
-      expect(find.text('Tue'), findsOneWidget);
-      expect(find.text('8:15 AM – 5:45 PM'), findsOneWidget);
-
-      // Sticky Bottom Settlement Bar
-      expect(find.byType(AdminAttendanceSettleBar), findsOneWidget);
-      expect(find.text('PAYABLE HOURS'), findsOneWidget);
-      expect(find.text('(₹14,500 Base)'), findsOneWidget);
-      expect(find.byKey(const Key('btn-attendance-adjust')), findsOneWidget);
-      expect(find.byKey(const Key('btn-attendance-approve')), findsOneWidget);
     });
 
-    testWidgets('month selector navigates between months', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
-      await tester.pumpWidget(
-        buildTestableWidget(
-          const AdminAttendancePage(),
-          container: container,
+    testWidgets('a distance the server could not give shows a dash', (
+      tester,
+    ) async {
+      repository.months[october] = [
+        attendanceSession(
+          'e',
+          year: 2026,
+          month: 10,
+          day: 17,
+          open: true,
+          km: null,
         ),
-      );
-      await tester.pumpAndSettle();
+      ];
+      await pumpPage(tester);
 
-      expect(find.text('October 2026'), findsOneWidget);
-
-      // Tap previous month
-      await tester.tap(find.byKey(const Key('btn-prev-month')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('September 2026'), findsOneWidget);
-      expect(container.read(adminAttendanceControllerProvider).selectedMonth, 'September 2026');
-
-      // Tap next month
-      await tester.tap(find.byKey(const Key('btn-next-month')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('October 2026'), findsOneWidget);
-      expect(container.read(adminAttendanceControllerProvider).selectedMonth, 'October 2026');
-    });
-
-    testWidgets('filter chips filter daily attendance logs accurately', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        buildTestableWidget(const AdminAttendancePage()),
-      );
-      await tester.pumpAndSettle();
-
-      // Tap "Auto-ended" filter chip
-      await tester.tap(find.byKey(const Key('attendance-filter-auto-ended')));
-      await tester.pumpAndSettle();
-
-      // Only Day 10 is visible
-      expect(find.byType(AdminAttendanceDailyCard), findsOneWidget);
-      expect(find.text('10'), findsOneWidget);
-      expect(find.text('AUTO-ENDED'), findsOneWidget);
-      expect(find.text('11'), findsNothing);
-      expect(find.text('08'), findsNothing);
-
-      // Scroll to & Tap "Absent" filter chip
-      await tester.ensureVisible(find.byKey(const Key('attendance-filter-absent')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('attendance-filter-absent')));
-      await tester.pumpAndSettle();
-
-      // Only Day 08 is visible
-      expect(find.byType(AdminAttendanceDailyCard), findsOneWidget);
-      expect(find.text('08'), findsOneWidget);
-      expect(find.text('No duty recorded'), findsOneWidget);
-      expect(find.text('10'), findsNothing);
-
-      // Scroll to & Tap "All days" filter chip
-      await tester.ensureVisible(find.byKey(const Key('attendance-filter-all')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('attendance-filter-all')));
-      await tester.pumpAndSettle();
-
-      // All 5 days visible again
-      expect(find.byType(AdminAttendanceDailyCard), findsNWidgets(5));
-    });
-
-    testWidgets('tapping Review on discrepancy banner filters to auto-ended session',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
-      await tester.pumpWidget(
-        buildTestableWidget(
-          const AdminAttendancePage(),
-          container: container,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Tap Review
-      await tester.tap(find.byKey(const Key('btn-discrepancy-review')));
-      await tester.pumpAndSettle();
-
-      expect(
-        container.read(adminAttendanceControllerProvider).selectedFilter,
-        AdminAttendanceFilter.autoEnded,
-      );
-      expect(find.byType(AdminAttendanceDailyCard), findsOneWidget);
-      expect(find.text('10'), findsOneWidget);
-    });
-
-    testWidgets('payroll settle actions: adjust hours and approve month', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
-      await tester.pumpWidget(
-        buildTestableWidget(
-          const AdminAttendancePage(),
-          container: container,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Tap "Adjust" button
-      await tester.tap(find.byKey(const Key('btn-attendance-adjust')));
-      await tester.pumpAndSettle();
-
-      // Dialog opens
-      expect(find.text('Adjust Payable Hours'), findsOneWidget);
-      await tester.tap(find.text('Save Override'));
-      await tester.pumpAndSettle();
-
-      // Clear SnackBar so it does not obscure the bottom settle bar
-      ScaffoldMessenger.of(tester.element(find.byType(AdminAttendancePage))).clearSnackBars();
-      await tester.pumpAndSettle();
-
-      // Tap "Approve Month"
-      await tester.tap(find.byKey(const Key('btn-attendance-approve')));
-      await tester.pumpAndSettle();
-
-      // Month approved: button changes to Approved and discrepancy banner hides
-      expect(container.read(adminAttendanceControllerProvider).isMonthApproved, isTrue);
-      expect(find.text('Approved'), findsOneWidget);
-      expect(find.byType(AdminAttendanceDiscrepancyBanner), findsNothing);
-      expect(
-        find.text('October 2026 attendance approved for payroll settlement.'),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('AdminEmployeeDetailPage View all opens AdminAttendancePage', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        buildTestableWidget(
-          const AdminEmployeeDetailPage(employee: sureshPatel),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Scroll to Recent Duty Card
-      await tester.scrollUntilVisible(
-        find.byType(AdminEmployeeRecentDutyCard),
-        500,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-
-      // Tap "View all"
-      await tester.tap(find.text('View all'));
-      await tester.pumpAndSettle();
-
-      // AdminAttendancePage is displayed
-      expect(find.byType(AdminAttendancePage), findsOneWidget);
-      expect(find.text('Attendance & History'), findsOneWidget);
+      expect(find.text('—'), findsOneWidget);
     });
   });
+
+  group('the days', () {
+    testWidgets('each day says what it was', (tester) async {
+      aMonth();
+      await pumpPage(tester);
+
+      expect(find.byType(AdminAttendanceDailyCard), findsNWidgets(17));
+      // A normal day:
+      expect(find.text('8:04 AM – 3:30 PM'), findsOneWidget);
+      expect(find.text('7h 26m · 12.3 km · 2 visits'), findsOneWidget);
+      // Ended at 23:00:
+      expect(find.text('AUTO-ENDED'), findsOneWidget);
+      expect(
+        find.text('Duty ended automatically · 2 flagged points'),
+        findsOneWidget,
+      );
+      // Two sessions:
+      expect(find.text('2 SESSIONS'), findsOneWidget);
+      expect(find.text('8:00 AM – 10:00 AM'), findsOneWidget);
+      expect(find.text('2:30 PM – 3:30 PM'), findsOneWidget);
+      // Still running:
+      expect(find.byKey(const Key('attendance-in-progress')), findsOneWidget);
+      expect(find.text('IN PROGRESS'), findsOneWidget);
+      expect(find.text('1h 56m so far · 1.5 km · 0 visits'), findsOneWidget);
+    });
+
+    testWidgets('absent days are dimmed and say so', (tester) async {
+      aMonth();
+      await pumpPage(tester);
+
+      expect(find.text('No duty recorded'), findsWidgets);
+      expect(find.text('OFF'), findsWidgets);
+      expect(
+        find.byKey(const Key('attendance-card-2026-10-07')),
+        findsNothing,
+        reason: 'an absent day is not a button',
+      );
+    });
+
+    testWidgets('tapping a day with duty opens that days route, by date', (
+      tester,
+    ) async {
+      aMonth();
+      String? opened;
+      await pumpPage(tester, onViewRouteDay: (day) => opened = day);
+
+      final card = find.byKey(const Key('attendance-card-2026-10-05'));
+      await tester.ensureVisible(card);
+      await tester.pump();
+      await tester.tap(card);
+
+      expect(opened, '2026-10-05');
+    });
+
+    testWidgets('tapping an absent day does nothing', (tester) async {
+      aMonth();
+      String? opened;
+      await pumpPage(tester, onViewRouteDay: (day) => opened = day);
+
+      final absent = find.text('Wednesday, 7 October 2026');
+      await tester.ensureVisible(absent);
+      await tester.pump();
+      await tester.tap(absent);
+
+      expect(opened, isNull);
+    });
+  });
+
+  group('filters', () {
+    testWidgets('the chips count the days and narrow the list', (tester) async {
+      aMonth();
+      await pumpPage(tester);
+
+      expect(find.byType(AdminAttendanceFilterChips), findsOneWidget);
+      await tapChip(tester, 'attendance-filter-auto-ended');
+      expect(find.byType(AdminAttendanceDailyCard), findsOneWidget);
+      expect(find.text('AUTO-ENDED'), findsOneWidget);
+
+      await tapChip(tester, 'attendance-filter-flags');
+      expect(find.byType(AdminAttendanceDailyCard), findsOneWidget);
+
+      await tapChip(tester, 'attendance-filter-absent');
+      expect(find.byType(AdminAttendanceDailyCard), findsNWidgets(13));
+
+      await tapChip(tester, 'attendance-filter-all');
+      expect(find.byType(AdminAttendanceDailyCard), findsNWidgets(17));
+    });
+
+    testWidgets(
+      'the banner names the days ended at 23:00 and filters to them',
+      (tester) async {
+        aMonth();
+        await pumpPage(tester);
+
+        expect(find.text('1 day ended automatically at 23:00'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('btn-discrepancy-review')));
+        await tester.pump();
+
+        expect(find.byType(AdminAttendanceDailyCard), findsOneWidget);
+      },
+    );
+
+    testWidgets('no banner when nothing ended automatically', (tester) async {
+      repository.months[october] = [
+        attendanceSession('a', year: 2026, month: 10, day: 5),
+      ];
+      await pumpPage(tester);
+
+      expect(find.byKey(const Key('btn-discrepancy-review')), findsNothing);
+    });
+
+    testWidgets('filtering everything out says so and offers to clear', (
+      tester,
+    ) async {
+      repository.months[october] = [
+        attendanceSession('a', year: 2026, month: 10, day: 5),
+      ];
+      await pumpPage(tester);
+
+      await tapChip(tester, 'attendance-filter-flags');
+      expect(find.text('No results for these filters'), findsOneWidget);
+
+      await tester.tap(find.text('Clear filters'));
+      await tester.pump();
+      expect(find.text('No results for these filters'), findsNothing);
+    });
+  });
+
+  group('states', () {
+    testWidgets('loading is shown, not an empty month', (tester) async {
+      repository.gate(october);
+      await pumpPage(tester, settle: false);
+      await tester.pump();
+
+      expect(find.byKey(const Key('attendance-loading')), findsOneWidget);
+      expect(find.text('No duty this month'), findsNothing);
+      expect(find.byType(AdminAttendanceSummaryCard), findsNothing);
+
+      repository.release(october);
+      await settleFrames(tester);
+      expect(find.byKey(const Key('attendance-loading')), findsNothing);
+      expect(find.byType(AdminAttendanceSummaryCard), findsOneWidget);
+    });
+
+    testWidgets('a month with no sessions at all says so', (tester) async {
+      repository.employeeCreatedAt = DateTime.utc(2026, 10, 17, 3);
+      await pumpPage(tester);
+
+      expect(find.text('No duty this month'), findsOneWidget);
+    });
+
+    testWidgets('a failed load is an error with Retry, then recovers', (
+      tester,
+    ) async {
+      repository.error = const NetworkException();
+      await pumpPage(tester);
+
+      expect(find.byKey(const Key('attendance-error')), findsOneWidget);
+      expect(find.text("Couldn't load the attendance"), findsOneWidget);
+      expect(find.text('No duty this month'), findsNothing);
+
+      repository.error = null;
+      aMonth();
+      await tester.tap(find.text('Retry'));
+      await settleFrames(tester);
+
+      expect(find.byKey(const Key('attendance-error')), findsNothing);
+      expect(find.byType(AdminAttendanceSummaryCard), findsOneWidget);
+    });
+
+    testWidgets('a month cut at the cap says so', (tester) async {
+      repository.truncated = true;
+      aMonth();
+      await pumpPage(tester);
+
+      expect(find.byKey(const Key('attendance-truncated')), findsOneWidget);
+    });
+
+    testWidgets('pull to refresh reads the month again', (tester) async {
+      aMonth();
+      await pumpPage(tester);
+      final calls = repository.calls.length;
+
+      await tester.fling(
+        find.byType(SingleChildScrollView).first,
+        const Offset(0, 400),
+        1000,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await settleFrames(tester);
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(repository.calls.length, greaterThan(calls));
+    });
+  });
+
+  group('the month', () {
+    testWidgets('previous and next move the month and load it', (tester) async {
+      repository.months[istMonthStartUtc(2026, 9)] = [
+        attendanceSession('s', year: 2026, month: 9, day: 15, km: 4),
+      ];
+      aMonth();
+      await pumpPage(tester);
+
+      await tester.tap(find.byKey(const Key('btn-prev-month')));
+      await settleFrames(tester);
+      expect(find.text('September 2026'), findsOneWidget);
+      expect(find.text('4.0 km'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('btn-next-month')));
+      await settleFrames(tester);
+      expect(find.text('October 2026'), findsOneWidget);
+    });
+
+    testWidgets('the month name is a label, not a button that does nothing', (
+      tester,
+    ) async {
+      aMonth();
+      await pumpPage(tester);
+
+      expect(
+        find.descendant(
+          of: find.byType(InkWell),
+          matching: find.text('October 2026'),
+        ),
+        findsNothing,
+      );
+      expect(find.byIcon(Icons.arrow_drop_down_rounded), findsNothing);
+    });
+  });
+}
+
+/// Taps a filter chip, scrolling its row first if the chip is off screen.
+Future<void> tapChip(WidgetTester tester, String key) async {
+  final chip = find.byKey(Key(key));
+  await tester.ensureVisible(chip);
+  await tester.pump();
+  await tester.tap(chip);
+  await tester.pump();
+}
+
+/// Lets queued async work finish.
+Future<void> settleFrames(WidgetTester tester) async {
+  for (var i = 0; i < 4; i++) {
+    await tester.pump();
+  }
 }

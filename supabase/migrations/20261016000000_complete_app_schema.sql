@@ -1,8 +1,7 @@
 -- =============================================================================
 -- Migration: 20261016000000_complete_app_schema.sql
 -- Description: Complete schema for Diamond Agritech Tracking App
--- Includes: profiles, duty_sessions, location_points, RLS policies, helper RPCs,
--- and bootstrap admin user creation.
+-- Includes: profiles, duty_sessions, location_points, RLS policies, helper RPCs.
 -- =============================================================================
 
 -- Enable pgcrypto for password hashing & uuid generation
@@ -284,64 +283,7 @@ create policy "Employees can insert own location points"
 on public.location_points for insert to authenticated
 with check (employee_id = (select auth.uid()) or employee_id is null);
 
--- 10. Bootstrap initial Admin User
-do $$
-declare
-  new_admin_id uuid := gen_random_uuid();
-  admin_email text := 'admin@diamondagritech.com';
-  admin_pass text := 'Admin@2026!';
-begin
-  if not exists (select 1 from auth.users where email = admin_email) then
-    insert into auth.users (
-      id,
-      instance_id,
-      email,
-      encrypted_password,
-      email_confirmed_at,
-      raw_app_meta_data,
-      raw_user_meta_data,
-      created_at,
-      updated_at,
-      role,
-      aud
-    ) values (
-      new_admin_id,
-      '00000000-0000-0000-0000-000000000000',
-      admin_email,
-      crypt(admin_pass, gen_salt('bf')),
-      now(),
-      '{"provider":"email","providers":["email"],"role":"admin"}'::jsonb,
-      '{"full_name":"Operations Admin","role":"admin"}'::jsonb,
-      now(),
-      now(),
-      'authenticated',
-      'authenticated'
-    );
-  end if;
-
-  insert into public.profiles (
-    id,
-    email,
-    role,
-    status,
-    full_name,
-    must_change_pin,
-    created_at,
-    updated_at
-  )
-  select 
-    id, 
-    email, 
-    'admin', 
-    'active', 
-    'Operations Admin', 
-    false, 
-    now(), 
-    now()
-  from auth.users 
-  where email = admin_email
-  on conflict (id) do update set 
-    role = 'admin',
-    status = 'active',
-    must_change_pin = false;
-end $$;
+-- 10. (Removed) The first admin used to be created here with a password written
+-- into this file. A password in git is a leaked password. Create the first admin
+-- in the Supabase dashboard instead, then run supabase/manual/create_first_admin.sql.
+-- Migration 20261017000000 also neutralises that old password if it was applied.

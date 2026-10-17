@@ -72,11 +72,7 @@ class _RealtimeDisconnectedStripState extends State<RealtimeDisconnectedStrip>
         children: <Widget>[
           RotationTransition(
             turns: _controller,
-            child: const Icon(
-              Icons.sync,
-              size: 16,
-              color: AppColors.warning,
-            ),
+            child: const Icon(Icons.sync, size: 16, color: AppColors.warning),
           ),
           const SizedBox(width: 8),
           Text(

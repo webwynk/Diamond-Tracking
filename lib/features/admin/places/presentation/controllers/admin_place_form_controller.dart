@@ -69,5 +69,5 @@ class AdminPlaceFormNotifier extends Notifier<AdminPlaceFormState> {
 /// Provider for Screen 25 Create / Edit Place Form Notifier.
 final adminPlaceFormControllerProvider =
     NotifierProvider<AdminPlaceFormNotifier, AdminPlaceFormState>(
-  AdminPlaceFormNotifier.new,
-);
+      AdminPlaceFormNotifier.new,
+    );

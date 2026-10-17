@@ -1,55 +1,58 @@
 import 'package:diamond_tracking/core/theme/app_theme.dart';
-import 'package:diamond_tracking/features/admin/dashboard/presentation/admin_dashboard_page.dart';
-import 'package:diamond_tracking/features/admin/dashboard/presentation/widgets/admin_bottom_navigation.dart';
 import 'package:diamond_tracking/features/admin/places/presentation/admin_places_page.dart';
 import 'package:diamond_tracking/features/admin/places/presentation/controllers/admin_places_controller.dart';
 import 'package:diamond_tracking/features/admin/places/presentation/controllers/admin_places_state.dart';
 import 'package:diamond_tracking/features/admin/places/presentation/widgets/admin_place_card.dart';
 import 'package:diamond_tracking/features/admin/places/presentation/widgets/admin_places_filter_chips.dart';
 import 'package:diamond_tracking/features/admin/places/presentation/widgets/admin_places_search_bar.dart';
-import 'package:diamond_tracking/features/admin/places/presentation/widgets/admin_places_telemetry_banner.dart';
-import 'package:diamond_tracking/features/admin/places/presentation/widgets/admin_places_top_bar.dart';
+import 'package:diamond_tracking/features/admin/shell/admin_shell.dart';
+import 'package:diamond_tracking/shared/widgets/app_top_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/places_fixtures.dart';
+
 void main() {
-  Widget buildTestableWidget(Widget child, {ProviderContainer? container}) {
+  Widget buildTestableWidget(
+    Widget child, {
+    ProviderContainer? container,
+    bool seeded = true,
+  }) {
     if (container != null) {
       return UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(
-          theme: AppTheme.light,
-          home: child,
-        ),
+        child: MaterialApp(theme: AppTheme.light, home: child),
       );
     }
     return ProviderScope(
-      child: MaterialApp(
-        theme: AppTheme.light,
-        home: child,
-      ),
+      overrides: [if (seeded) fixturePlacesOverride],
+      child: MaterialApp(theme: AppTheme.light, home: child),
     );
   }
 
   group('Screen 24 AdminPlacesPage Visual & Structural Tests', () {
-    testWidgets('renders all visual elements matching HTML design reference', (tester) async {
+    testWidgets('renders all visual elements matching HTML design reference', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(
-        buildTestableWidget(const AdminPlacesPage()),
-      );
+      await tester.pumpWidget(buildTestableWidget(const AdminPlacesPage()));
       await tester.pumpAndSettle();
 
       // 1. Top App Bar
-      expect(find.byType(AdminPlacesTopBar), findsOneWidget);
+      expect(find.byType(AppTopBar), findsOneWidget);
       expect(find.text('Places'), findsWidgets);
-      expect(find.text('38 ACTIVE'), findsOneWidget);
-      expect(find.byKey(const Key('btn-places-filter')), findsOneWidget);
-      expect(find.byKey(const Key('btn-places-export')), findsOneWidget);
+      expect(
+        find.text('${kFixturePlaces.where((p) => p.isActive).length} ACTIVE'),
+        findsOneWidget,
+      );
+      // The tune and export buttons only showed invented messages and are gone.
+      expect(find.byKey(const Key('btn-places-filter')), findsNothing);
+      expect(find.byKey(const Key('btn-places-export')), findsNothing);
 
       // 2. Search Field
       expect(find.byType(AdminPlacesSearchBar), findsOneWidget);
@@ -68,13 +71,9 @@ void main() {
       expect(find.byKey(const Key('chip-place-warehouses')), findsOneWidget);
       expect(find.byKey(const Key('chip-place-inactive')), findsOneWidget);
 
-      // 4. RTK Telemetry Banner
-      expect(find.byType(AdminPlacesTelemetryBanner), findsOneWidget);
-      expect(
-        find.text('POLYGON GEOFENCE GRID · RTK SYNCED'),
-        findsOneWidget,
-      );
-      expect(find.text('accuracy ±1.8m'), findsOneWidget);
+      // 4. No invented RTK claims
+      expect(find.text('POLYGON GEOFENCE GRID · RTK SYNCED'), findsNothing);
+      expect(find.text('accuracy ±1.8m'), findsNothing);
 
       // 5. Places List Cards (All 5 items)
       expect(find.byType(AdminPlaceCard), findsNWidgets(5));
@@ -103,25 +102,50 @@ void main() {
       expect(find.text('500 m radius · Deolali, Maharashtra'), findsOneWidget);
       expect(find.text('0 visits this month'), findsOneWidget);
 
-      // 6. Field Agronomy Helper Banner
-      expect(find.text('Need a custom perimeter?'), findsOneWidget);
+      // 6. No invented helper banner
+      expect(find.text('Need a custom perimeter?'), findsNothing);
 
       // 7. Floating Action Button
       expect(find.byKey(const Key('btn-add-place')), findsOneWidget);
-
-      // 8. Admin Bottom Navigation Bar with "Places" active
-      expect(find.byType(AdminBottomNavigationBar), findsOneWidget);
     });
 
-    testWidgets('search bar filters places by name and location', (tester) async {
+    testWidgets(
+      'starts with no places: empty prompt with Add place, zero active',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        var created = 0;
+        await tester.pumpWidget(
+          buildTestableWidget(
+            AdminPlacesPage(onCreatePlace: () => created++),
+            seeded: false,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('0 ACTIVE'), findsOneWidget);
+        expect(find.text('No places yet'), findsOneWidget);
+        expect(find.byType(AdminPlaceCard), findsNothing);
+        expect(find.text('Shivpuri Farm'), findsNothing);
+
+        await tester.tap(find.text('Add place'));
+        await tester.pump();
+        expect(created, 1);
+      },
+    );
+
+    testWidgets('search bar filters places by name and location', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(
-        buildTestableWidget(const AdminPlacesPage()),
-      );
+      await tester.pumpWidget(buildTestableWidget(const AdminPlacesPage()));
       await tester.pumpAndSettle();
 
       // Enter search query "Sinnar"
@@ -150,14 +174,11 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final container = ProviderContainer();
+      final container = ProviderContainer(overrides: [fixturePlacesOverride]);
       addTearDown(container.dispose);
 
       await tester.pumpWidget(
-        buildTestableWidget(
-          const AdminPlacesPage(),
-          container: container,
-        ),
+        buildTestableWidget(const AdminPlacesPage(), container: container),
       );
       await tester.pumpAndSettle();
 
@@ -206,20 +227,19 @@ void main() {
       expect(find.byType(AdminPlaceCard), findsNWidgets(5));
     });
 
-    testWidgets('empty search state appears and reset button restores places', (tester) async {
+    testWidgets('empty search state appears and reset button restores places', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final container = ProviderContainer();
+      final container = ProviderContainer(overrides: [fixturePlacesOverride]);
       addTearDown(container.dispose);
 
       await tester.pumpWidget(
-        buildTestableWidget(
-          const AdminPlacesPage(),
-          container: container,
-        ),
+        buildTestableWidget(const AdminPlacesPage(), container: container),
       );
       await tester.pumpAndSettle();
 
@@ -243,25 +263,25 @@ void main() {
       expect(find.byType(AdminPlaceCard), findsNWidgets(5));
     });
 
-    testWidgets('AdminDashboardPage places bottom nav tab navigates to AdminPlacesPage',
-        (tester) async {
+    testWidgets('AdminShell places tab shows AdminPlacesPage', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(
-        buildTestableWidget(const AdminDashboardPage()),
-      );
+      await tester.pumpWidget(buildTestableWidget(const AdminShell()));
       await tester.pumpAndSettle();
 
       // Tap Places navigation item
-      await tester.tap(find.byKey(const Key('admin-nav-places')));
+      await tester.tap(find.byKey(const Key('nav-places')));
       await tester.pumpAndSettle();
 
       // AdminPlacesPage is displayed
       expect(find.byType(AdminPlacesPage), findsOneWidget);
-      expect(find.text('38 ACTIVE'), findsOneWidget);
+      expect(
+        find.text('${kFixturePlaces.where((p) => p.isActive).length} ACTIVE'),
+        findsOneWidget,
+      );
     });
   });
 }

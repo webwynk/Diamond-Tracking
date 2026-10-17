@@ -13,7 +13,7 @@ class SupabaseAuthRepository implements AuthRepository {
   final SupabaseClient _client;
 
   SupabaseAuthRepository({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   /// Internal synthetic email format mapping employee codes to Supabase Auth accounts.
   static String formatEmployeeEmail(String code) {
@@ -53,7 +53,9 @@ class SupabaseAuthRepository implements AuthRepository {
     final cleanPin = pin.trim();
 
     if (cleanCode.isEmpty || cleanPin.isEmpty) {
-      throw const InvalidCredentialsException('Please enter both employee code and PIN.');
+      throw const InvalidCredentialsException(
+        'Please enter both employee code and PIN.',
+      );
     }
 
     final email = formatEmployeeEmail(cleanCode);
@@ -67,7 +69,9 @@ class SupabaseAuthRepository implements AuthRepository {
 
       final user = response.user;
       if (user == null) {
-        throw const InvalidCredentialsException('Incorrect employee code or PIN.');
+        throw const InvalidCredentialsException(
+          'Incorrect employee code or PIN.',
+        );
       }
 
       // 2. Fetch profile from public.profiles
@@ -79,7 +83,9 @@ class SupabaseAuthRepository implements AuthRepository {
 
       if (profileMap == null) {
         await _client.auth.signOut();
-        throw const InvalidCredentialsException('Employee profile record not found.');
+        throw const InvalidCredentialsException(
+          'Employee profile record not found.',
+        );
       }
 
       final profile = UserProfile.fromJson(profileMap);
@@ -112,10 +118,13 @@ class SupabaseAuthRepository implements AuthRepository {
 
       return profile;
     } on AuthException catch (e) {
-      if (e.statusCode == '429' || e.message.toLowerCase().contains('rate limit')) {
+      if (e.statusCode == '429' ||
+          e.message.toLowerCase().contains('rate limit')) {
         throw const AccountLockedException();
       }
-      throw const InvalidCredentialsException('Incorrect employee code or PIN.');
+      throw const InvalidCredentialsException(
+        'Incorrect employee code or PIN.',
+      );
     } catch (e) {
       if (e is AppException) rethrow;
       throw ServerException('Sign-in failed: $e');
@@ -131,7 +140,9 @@ class SupabaseAuthRepository implements AuthRepository {
     final cleanPassword = password.trim();
 
     if (cleanEmail.isEmpty || cleanPassword.isEmpty) {
-      throw const InvalidCredentialsException('Please enter email and password.');
+      throw const InvalidCredentialsException(
+        'Please enter email and password.',
+      );
     }
 
     try {
@@ -186,19 +197,17 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> changePin({
-    required String newPin,
-  }) async {
+  Future<void> changePin({required String newPin}) async {
     try {
       // 1. Update Supabase Auth user password
-      await _client.auth.updateUser(
-        UserAttributes(password: newPin),
-      );
+      await _client.auth.updateUser(UserAttributes(password: newPin));
 
       // 2. Mark must_change_pin = false via secure RPC
       final success = await _client.rpc('complete_pin_change');
       if (success != true) {
-        throw const ServerException('Failed to complete PIN change on database.');
+        throw const ServerException(
+          'Failed to complete PIN change on database.',
+        );
       }
     } on AuthException catch (e) {
       throw ServerException('Failed to update PIN: ${e.message}');

@@ -9,15 +9,15 @@ class AdminPlaceGeofenceMap extends StatelessWidget {
   const AdminPlaceGeofenceMap({
     super.key,
     required this.radiusMeters,
-    required this.adjacentPlaceName,
-    required this.adjacentDistanceMeters,
     required this.onToggleLayers,
+    this.adjacentPlaceName,
+    this.adjacentDistanceMeters,
     this.isSatellite = false,
   });
 
   final double radiusMeters;
-  final String adjacentPlaceName;
-  final int adjacentDistanceMeters;
+  final String? adjacentPlaceName;
+  final int? adjacentDistanceMeters;
   final VoidCallback onToggleLayers;
   final bool isSatellite;
 
@@ -25,8 +25,11 @@ class AdminPlaceGeofenceMap extends StatelessWidget {
   Widget build(BuildContext context) {
     // Dynamic circle diameter based on radius:
     // Base 500m -> 260dp. Range: 100dp (50m) to 360dp (2000m)
-    final circleDiameter = (100.0 + (radiusMeters - 50.0) / (2000.0 - 50.0) * 260.0)
-        .clamp(90.0, 360.0);
+    final circleDiameter =
+        (100.0 + (radiusMeters - 50.0) / (2000.0 - 50.0) * 260.0).clamp(
+          90.0,
+          360.0,
+        );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -41,84 +44,85 @@ class AdminPlaceGeofenceMap extends StatelessWidget {
             ),
 
             // 2. Overlapping Adjacent Registered Entity (Top-Right)
-            Positioned(
-              right: 16,
-              top: 54,
-              child: IgnorePointer(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    // Dashed adjacent circle
-                    Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.neutral400.withValues(alpha: 0.12),
-                        border: Border.all(
-                          color: AppColors.neutral400,
-                          width: 1.5,
-                          style: BorderStyle.solid,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.neutral500,
+            if (adjacentPlaceName != null && adjacentDistanceMeters != null)
+              Positioned(
+                right: 16,
+                top: 54,
+                child: IgnorePointer(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      // Dashed adjacent circle
+                      Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Chip Tag for adjacent entity
-                    Container(
-                      key: const Key('adjacent-geofence-badge'),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface.withValues(alpha: 0.95),
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                        border: Border.all(
-                          color: AppColors.neutral200,
-                          width: 1,
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x0A000000),
-                            blurRadius: 4,
-                            offset: Offset(0, 1),
+                          color: AppColors.neutral400.withValues(alpha: 0.12),
+                          border: Border.all(
+                            color: AppColors.neutral400,
+                            width: 1.5,
+                            style: BorderStyle.solid,
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          const Icon(
-                            Icons.storefront_rounded,
-                            size: 13,
+                        ),
+                        alignment: Alignment.center,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
                             color: AppColors.neutral500,
+                            shape: BoxShape.circle,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$adjacentPlaceName — $adjacentDistanceMeters m away',
-                            style: AppTypography.caption.copyWith(
-                              color: AppColors.neutral600,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+
+                      // Chip Tag for adjacent entity
+                      Container(
+                        key: const Key('adjacent-geofence-badge'),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface.withValues(alpha: 0.95),
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                          border: Border.all(
+                            color: AppColors.neutral200,
+                            width: 1,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x0A000000),
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            const Icon(
+                              Icons.storefront_rounded,
+                              size: 13,
+                              color: AppColors.neutral500,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$adjacentPlaceName — $adjacentDistanceMeters m away',
+                              style: AppTypography.caption.copyWith(
+                                color: AppColors.neutral600,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
             // 3. Active Geofence Area (Centered)
             Center(
@@ -227,10 +231,7 @@ class AdminPlaceGeofenceMap extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.surface.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: AppColors.neutral200,
-                    width: 0.5,
-                  ),
+                  border: Border.all(color: AppColors.neutral200, width: 0.5),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

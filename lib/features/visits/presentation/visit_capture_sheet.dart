@@ -15,20 +15,20 @@ import 'controllers/visit_capture_controller.dart';
 class VisitCaptureSheet extends ConsumerStatefulWidget {
   const VisitCaptureSheet({
     super.key,
-    this.dutySessionId = 'current-session',
-    this.employeeId = 'current-employee',
-    this.placeName = 'Shivpuri Farm',
+    required this.dutySessionId,
+    required this.employeeId,
+    required this.latitude,
+    required this.longitude,
+    this.placeName,
     this.placeId,
-    this.latitude = 19.9975,
-    this.longitude = 73.7898,
-    this.distanceMeters = 500.0,
+    this.distanceMeters,
     this.initialNote,
     this.onSaved,
   });
 
   final String dutySessionId;
   final String employeeId;
-  final String placeName;
+  final String? placeName;
   final String? placeId;
   final double latitude;
   final double longitude;
@@ -39,13 +39,13 @@ class VisitCaptureSheet extends ConsumerStatefulWidget {
   /// Shows the Visit Capture bottom sheet modal over the current screen.
   static Future<bool?> show(
     BuildContext context, {
-    String dutySessionId = 'current-session',
-    String employeeId = 'current-employee',
-    String placeName = 'Shivpuri Farm',
+    required String dutySessionId,
+    required String employeeId,
+    required double latitude,
+    required double longitude,
+    String? placeName,
     String? placeId,
-    double latitude = 19.9975,
-    double longitude = 73.7898,
-    double? distanceMeters = 500.0,
+    double? distanceMeters,
     String? initialNote,
   }) {
     return showModalBottomSheet<bool>(
@@ -80,7 +80,9 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
 
     // Initialize visit state after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(visitCaptureControllerProvider.notifier).initVisit(
+      ref
+          .read(visitCaptureControllerProvider.notifier)
+          .initVisit(
             placeName: widget.placeName,
             placeId: widget.placeId,
             latitude: widget.latitude,
@@ -304,7 +306,9 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            state.placeName,
+                            state.placeName.isEmpty
+                                ? 'Field location'
+                                : state.placeName,
                             style: AppTypography.body.copyWith(
                               fontWeight: FontWeight.w600,
                               fontVariations: const [
@@ -315,7 +319,9 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'You arrived at ${state.arrivalTime} · within ${state.distanceMeters?.toInt() ?? 500} m',
+                            state.distanceMeters == null
+                                ? 'Recorded at ${state.arrivalTime}'
+                                : 'You arrived at ${state.arrivalTime} · within ${state.distanceMeters!.toInt()} m',
                             style: AppTypography.caption,
                           ),
                         ],
@@ -432,8 +438,9 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
                               color: AppColors.neutral0,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: AppColors.neutral900
-                                    .withValues(alpha: 0.10),
+                                color: AppColors.neutral900.withValues(
+                                  alpha: 0.10,
+                                ),
                               ),
                               boxShadow: const [
                                 BoxShadow(
@@ -549,6 +556,10 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
                       style: AppTypography.bodyLarge,
                       decoration: const InputDecoration(
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
                         hintText: 'Add observation details...',
@@ -681,16 +692,17 @@ class _FarmFieldPainter extends CustomPainter {
 
     // Lush green agricultural crop rows
     final fieldPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Color(0xFF388E3C), // Vibrant green crop rows
-          Color(0xFF1B5E20), // Rich deep foliage
-        ],
-      ).createShader(
-        Rect.fromLTWH(0, size.height * 0.4, size.width, size.height * 0.6),
-      );
+      ..shader =
+          const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF388E3C), // Vibrant green crop rows
+              Color(0xFF1B5E20), // Rich deep foliage
+            ],
+          ).createShader(
+            Rect.fromLTWH(0, size.height * 0.4, size.width, size.height * 0.6),
+          );
 
     canvas.drawRect(
       Rect.fromLTWH(0, size.height * 0.4, size.width, size.height * 0.6),

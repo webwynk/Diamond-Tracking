@@ -46,14 +46,16 @@ class PaginationLoaderCard extends StatelessWidget {
               child: isSpinning
                   ? const CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(AppColors.primary600),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.primary600,
+                      ),
                     )
                   : const CircularProgressIndicator(
                       strokeWidth: 2.5,
                       value: 0.75,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(AppColors.primary600),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.primary600,
+                      ),
                     ),
             ),
           ),

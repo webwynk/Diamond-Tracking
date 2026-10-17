@@ -61,7 +61,8 @@ class AdminEmployeeDetailHeader extends StatelessWidget {
                     color: Colors.white,
                     size: 24,
                   ),
-                  onPressed: onMoreOptions ??
+                  onPressed:
+                      onMoreOptions ??
                       () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -171,7 +172,7 @@ class AdminEmployeeDetailHeader extends StatelessWidget {
         bg = AppColors.successBg;
         dotColor = const Color(0xFF15803D);
         textColor = const Color(0xFF15803D);
-        label = 'On duty · 7h 24m';
+        label = 'On duty';
         break;
       case AdminEmployeeStatus.needsCheck:
         bg = AppColors.errorBg;

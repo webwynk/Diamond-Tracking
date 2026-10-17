@@ -7,11 +7,7 @@ import '../controllers/admin_places_state.dart';
 
 /// Individual place / geofence facility card for Screen 24 Places List (Admin).
 class AdminPlaceCard extends StatelessWidget {
-  const AdminPlaceCard({
-    super.key,
-    required this.place,
-    required this.onTap,
-  });
+  const AdminPlaceCard({super.key, required this.place, required this.onTap});
 
   final AdminPlaceItem place;
   final VoidCallback onTap;
@@ -25,10 +21,7 @@ class AdminPlaceCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: place.isActive ? AppColors.surface : AppColors.background,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(
-          color: AppColors.neutral200,
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.neutral200, width: 1),
       ),
       child: Material(
         color: Colors.transparent,
@@ -49,11 +42,7 @@ class AdminPlaceCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   alignment: Alignment.center,
-                  child: Icon(
-                    iconData,
-                    size: 24,
-                    color: iconColor,
-                  ),
+                  child: Icon(iconData, size: 24, color: iconColor),
                 ),
                 const SizedBox(width: AppSpacing.x3),
 
@@ -194,39 +183,31 @@ class AdminPlaceCard extends StatelessWidget {
 
   (Color, Color, IconData) _getBadgeStyle(AdminPlaceItem place) {
     if (!place.isActive) {
-      return (
-        AppColors.neutral100,
-        AppColors.neutral400,
-        Icons.eco_outlined,
-      );
+      return (AppColors.neutral100, AppColors.neutral400, Icons.eco_outlined);
     }
 
     return switch (place.category) {
       AdminPlaceCategory.farms => (
-          AppColors.successBg,
-          AppColors.success,
-          Icons.eco_rounded,
-        ),
+        AppColors.successBg,
+        AppColors.success,
+        Icons.eco_rounded,
+      ),
       AdminPlaceCategory.dealers => (
-          AppColors.infoBg,
-          AppColors.info,
-          Icons.storefront_rounded,
-        ),
+        AppColors.infoBg,
+        AppColors.info,
+        Icons.storefront_rounded,
+      ),
       AdminPlaceCategory.offices => (
-          AppColors.primary50,
-          AppColors.primary600,
-          Icons.corporate_fare_rounded,
-        ),
+        AppColors.primary50,
+        AppColors.primary600,
+        Icons.corporate_fare_rounded,
+      ),
       AdminPlaceCategory.warehouses => (
-          AppColors.warningBg,
-          AppColors.warning,
-          Icons.warehouse_rounded,
-        ),
-      _ => (
-          AppColors.neutral100,
-          AppColors.neutral600,
-          Icons.place_rounded,
-        ),
+        AppColors.warningBg,
+        AppColors.warning,
+        Icons.warehouse_rounded,
+      ),
+      _ => (AppColors.neutral100, AppColors.neutral600, Icons.place_rounded),
     };
   }
 }

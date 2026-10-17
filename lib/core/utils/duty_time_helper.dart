@@ -150,4 +150,3 @@ abstract final class DutyTimeHelper {
     return '$startStr–$endStr';
   }
 }
-

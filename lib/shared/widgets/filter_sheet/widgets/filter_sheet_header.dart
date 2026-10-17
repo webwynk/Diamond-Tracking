@@ -6,10 +6,7 @@ import '../../../../core/theme/app_typography.dart';
 
 /// Drag handle and header row with "Clear all" action for Screen 27.
 class FilterSheetHeader extends StatelessWidget {
-  const FilterSheetHeader({
-    super.key,
-    required this.onClearAll,
-  });
+  const FilterSheetHeader({super.key, required this.onClearAll});
 
   final VoidCallback onClearAll;
 
@@ -51,7 +48,10 @@ class FilterSheetHeader extends StatelessWidget {
                 key: const Key('btn-filters-clear-all'),
                 onPressed: onClearAll,
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   minimumSize: const Size(0, 32),
                 ),
                 child: Text(
@@ -67,11 +67,7 @@ class FilterSheetHeader extends StatelessWidget {
         ),
 
         // 1px #E2E8F0 Divider
-        const Divider(
-          height: 1,
-          thickness: 1,
-          color: AppColors.neutral200,
-        ),
+        const Divider(height: 1, thickness: 1, color: AppColors.neutral200),
       ],
     );
   }

@@ -1,71 +1,87 @@
 import 'dart:async';
-import 'package:battery_plus/battery_plus.dart';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../domain/entities/location_point.dart';
+import '../../domain/repositories/tracking_queue_store.dart';
+import 'tracker_engine.dart';
+import 'tracking_task_handler.dart';
 
-/// Contract for the background GPS tracking engine.
+/// Contract for the background GPS tracking engine, as the app screens see it.
 ///
-/// Abstracted so presentation and integration tests can verify UI transitions,
-/// offline queue indicators, and telemetry events without requiring native Android
-/// hardware or mocking low-level platform channels.
+/// The real work happens in an Android foreground service ([TrackingTaskHandler])
+/// that keeps running when the app is closed. Abstracted so presentation tests
+/// can verify duty transitions without Android hardware.
 abstract class TrackingService {
-  /// Whether the tracking engine is currently active.
-  bool get isTracking;
-
-  /// Stream of emitted telemetry points captured from the GPS engine.
+  /// Points the tracker records, for the screen. The points themselves are
+  /// already safe in the on-phone queue.
   Stream<LocationPoint> get pointStream;
 
-  /// Starts the foreground tracking service with a persistent notification.
-  Future<bool> startTracking({required String sessionId});
+  /// Emits when the tracker stopped by itself (curfew, session closed by the
+  /// server, nothing valid to track), so the screen can follow.
+  Stream<TrackerStopReason> get stopStream;
 
-  /// Stops tracking and dismisses the foreground notification.
+  /// Things the employee should be told while tracking carries on (for example
+  /// the sign-in expired and points are waiting).
+  Stream<TrackerNotice> get noticeStream;
+
+  /// Starts the foreground service for [session] with its persistent
+  /// notification. Returns false when it cannot (location off, permission or
+  /// notification permission missing, service refused).
+  Future<bool> startTracking({required ActiveTrackingSession session});
+
+  /// Stops tracking and dismisses the notification. A system restart will not
+  /// resume it.
   Future<void> stopTracking();
 
-  /// Returns the current number of points stored in the offline queue.
+  /// Whether the background service is running right now, whoever started it
+  /// (it may have outlived the app screens).
+  Future<bool> isTrackerRunning();
+
+  /// Returns the number of points waiting on the phone for the server.
   Future<int> getQueuedPointsCount();
 
-  /// Retrieves all unsynced points from the offline queue.
-  Future<List<LocationPoint>> getQueuedPoints();
-
-  /// Marks a batch of point IDs as acknowledged by the server.
-  Future<void> markPointsSynced(List<String> pointIds);
+  /// Stops tracking and deletes everything recorded on this phone: points, the
+  /// active session and any pending duty-off. Used when an employee signs out,
+  /// so the next person on the same phone never sees their data.
+  Future<void> clearLocalData();
 }
 
-/// Production implementation of [TrackingService] backed by `geolocator`
-/// and `battery_plus`.
+/// Production implementation of [TrackingService]: starts and stops the Android
+/// foreground service and relays what it reports.
 class DeviceTrackingService implements TrackingService {
-  DeviceTrackingService({Battery? battery})
-      : _battery = battery ?? Battery();
+  DeviceTrackingService(this._queue) {
+    FlutterForegroundTask.addTaskDataCallback(_onTaskData);
+  }
 
-  final Battery _battery;
-  final _pointStreamController = StreamController<LocationPoint>.broadcast();
-  final List<LocationPoint> _offlineQueue = <LocationPoint>[];
+  static const int _serviceId = 7301;
 
-  StreamSubscription<Position>? _positionSubscription;
-  String? _activeSessionId;
-  DateTime? _lastEmittedTime;
-  Position? _lastPosition;
+  /// The persistent notification (PRD F3): the employee is never tracked
+  /// invisibly.
+  static const String _notificationTitle = 'Diamond Agritech: duty tracking on';
+  static const String _notificationText =
+      'Your location is recorded while you are on duty.';
+
+  final TrackingQueueStore _queue;
+  final _points = StreamController<LocationPoint>.broadcast();
+  final _stops = StreamController<TrackerStopReason>.broadcast();
+  final _notices = StreamController<TrackerNotice>.broadcast();
   bool _isTracking = false;
 
   @override
-  bool get isTracking => _isTracking;
+  Stream<LocationPoint> get pointStream => _points.stream;
 
   @override
-  Stream<LocationPoint> get pointStream => _pointStreamController.stream;
+  Stream<TrackerStopReason> get stopStream => _stops.stream;
 
   @override
-  Future<bool> startTracking({required String sessionId}) async {
-    if (_isTracking && _activeSessionId == sessionId) return true;
+  Stream<TrackerNotice> get noticeStream => _notices.stream;
 
-    _activeSessionId = sessionId;
-
-    // Verify location services and permission before starting foreground stream
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return false;
-    }
+  @override
+  Future<bool> startTracking({required ActiveTrackingSession session}) async {
+    if (!await Geolocator.isLocationServiceEnabled()) return false;
 
     final permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied ||
@@ -73,135 +89,121 @@ class DeviceTrackingService implements TrackingService {
       return false;
     }
 
-    // Configure foreground notification for Android persistent tracking (PRD F3, F4)
-    late final LocationSettings locationSettings;
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      locationSettings = AndroidSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10,
-        intervalDuration: const Duration(seconds: 30),
-        foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationTitle: 'Tracking active • Diamond Agritech',
-          notificationText: 'Duty tracking is actively recording GPS coordinates',
-          enableWakeLock: true,
-        ),
-      );
-    } else {
-      locationSettings = const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10,
-      );
+    // Without notification permission the foreground notification is hidden on
+    // Android 13+, and tracking must never be invisible.
+    var notifications =
+        await FlutterForegroundTask.checkNotificationPermission();
+    if (notifications != NotificationPermission.granted) {
+      notifications =
+          await FlutterForegroundTask.requestNotificationPermission();
+    }
+    if (notifications != NotificationPermission.granted) return false;
+
+    // The service reads the session from the phone's storage, also when the
+    // system restarts it later with no app running.
+    await _queue.saveActiveSession(session);
+
+    _configureService();
+    if (await FlutterForegroundTask.isRunningService) {
+      final stored = await _queue.activeSession();
+      if (stored?.sessionId == session.sessionId && _isTracking) return true;
+      await FlutterForegroundTask.stopService();
     }
 
-    await _positionSubscription?.cancel();
+    final result = await FlutterForegroundTask.startService(
+      serviceId: _serviceId,
+      serviceTypes: const [ForegroundServiceTypes.location],
+      notificationTitle: _notificationTitle,
+      notificationText: _notificationText,
+      callback: trackingTaskCallback,
+    );
+    if (result is ServiceRequestFailure) {
+      await _queue.clearActiveSession();
+      return false;
+    }
+
     _isTracking = true;
-
-    _positionSubscription = Geolocator.getPositionStream(
-      locationSettings: locationSettings,
-    ).listen(
-      _handlePositionUpdate,
-      onError: (Object error) {
-        // Stream errors should not crash the foreground loop
-        debugPrint('Geolocator stream error: $error');
-      },
-    );
-
     return true;
-  }
-
-  Future<void> _handlePositionUpdate(Position position) async {
-    final sessionId = _activeSessionId;
-    if (!_isTracking || sessionId == null) return;
-
-    final now = DateTime.now().toUtc();
-
-    // Adaptive frequency check (PRD F4):
-    // - Moving (speed >= 0.5 m/s or distance > 25 m): ~30 seconds interval
-    // - Stationary: ~3 minutes interval
-    if (_lastPosition != null && _lastEmittedTime != null) {
-      final elapsed = now.difference(_lastEmittedTime!);
-      final distanceMoved = Geolocator.distanceBetween(
-        _lastPosition!.latitude,
-        _lastPosition!.longitude,
-        position.latitude,
-        position.longitude,
-      );
-
-      final isMoving = (position.speed >= 0.5) || (distanceMoved >= 25.0);
-      final minInterval = isMoving
-          ? const Duration(seconds: 25)
-          : const Duration(minutes: 3);
-
-      if (elapsed < minInterval) {
-        // Skip point to conserve battery and avoid cluttering database with stationary noise
-        return;
-      }
-    }
-
-    int? batteryLevel;
-    try {
-      batteryLevel = await _battery.batteryLevel;
-    } catch (_) {
-      batteryLevel = null;
-    }
-
-    final point = LocationPoint(
-      id: '${sessionId}_${now.millisecondsSinceEpoch}',
-      sessionId: sessionId,
-      latitude: position.latitude,
-      longitude: position.longitude,
-      accuracy: position.accuracy,
-      speed: position.speed,
-      heading: position.heading,
-      altitude: position.altitude,
-      batteryLevel: batteryLevel,
-      isMock: position.isMocked,
-      recordedAt: now,
-      isSynced: false,
-    );
-
-    _lastPosition = position;
-    _lastEmittedTime = now;
-
-    // Buffer into local queue first (offline-first architecture per docs/08)
-    _offlineQueue.add(point);
-    _pointStreamController.add(point);
   }
 
   @override
   Future<void> stopTracking() async {
     _isTracking = false;
-    _activeSessionId = null;
-    _lastPosition = null;
-    _lastEmittedTime = null;
-    await _positionSubscription?.cancel();
-    _positionSubscription = null;
-  }
-
-  @override
-  Future<int> getQueuedPointsCount() async {
-    return _offlineQueue.where((p) => !p.isSynced).length;
-  }
-
-  @override
-  Future<List<LocationPoint>> getQueuedPoints() async {
-    return List<LocationPoint>.unmodifiable(
-      _offlineQueue.where((p) => !p.isSynced),
-    );
-  }
-
-  @override
-  Future<void> markPointsSynced(List<String> pointIds) async {
-    final idSet = pointIds.toSet();
-    for (var i = 0; i < _offlineQueue.length; i++) {
-      if (idSet.contains(_offlineQueue[i].id)) {
-        _offlineQueue[i] = _offlineQueue[i].copyWith(isSynced: true);
-      }
+    // Clear first: a service the system restarts after this must find nothing
+    // to resume.
+    await _queue.clearActiveSession();
+    if (await FlutterForegroundTask.isRunningService) {
+      await FlutterForegroundTask.stopService();
     }
   }
 
+  @override
+  Future<bool> isTrackerRunning() async {
+    final running = await FlutterForegroundTask.isRunningService;
+    if (running) _isTracking = true;
+    return running;
+  }
+
+  @override
+  Future<int> getQueuedPointsCount() => _queue.pendingPointCount();
+
+  @override
+  Future<void> clearLocalData() async {
+    await stopTracking();
+    await _queue.wipeAll();
+  }
+
   void dispose() {
-    stopTracking();
-    _pointStreamController.close();
+    FlutterForegroundTask.removeTaskDataCallback(_onTaskData);
+    _points.close();
+    _stops.close();
+    _notices.close();
+  }
+
+  void _configureService() {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'duty_tracking',
+        channelName: 'Duty tracking',
+        channelDescription: 'Shown while your duty is on.',
+        onlyAlertOnce: true,
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: false,
+        playSound: false,
+      ),
+      foregroundTaskOptions: ForegroundTaskOptions(
+        // The service checks the 23:00 curfew and the session every 15 s.
+        eventAction: ForegroundTaskEventAction.repeat(15000),
+        // Never starts by itself after a reboot: the employee turns duty on.
+        autoRunOnBoot: false,
+        autoRunOnMyPackageReplaced: false,
+        allowWakeLock: true,
+        // Restarts after the system kills it (needs the battery exemption),
+        // and keeps running when the app is swiped away.
+        allowAutoRestart: true,
+        stopWithTask: false,
+      ),
+    );
+  }
+
+  void _onTaskData(Object data) {
+    if (data is! Map) return;
+    switch (data['type']) {
+      case 'point':
+        final raw = data['point'];
+        if (raw is Map) {
+          _points.add(LocationPoint.fromJson(Map<String, dynamic>.from(raw)));
+        }
+      case 'stopped':
+        _isTracking = false;
+        final reason = TrackerStopReason.values.asNameMap()[data['reason']];
+        if (reason != null) _stops.add(reason);
+      case 'notice':
+        final notice = TrackerNotice.values.asNameMap()[data['notice']];
+        if (notice != null) _notices.add(notice);
+      default:
+        debugPrint('Tracker: ignored an unknown message');
+    }
   }
 }

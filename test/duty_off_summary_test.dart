@@ -22,13 +22,19 @@ class TestDutyNotifier extends DutyNotifier {
   DutyScreenState build() => _initialState;
 
   @override
-  Future<DutySession?> endDuty({String? notes}) async {
+  Future<DutySession?> endDuty({
+    String? notes,
+    String reason = 'normal',
+  }) async {
     endDutyCalled = true;
     final ended = _initialState.activeSession?.copyWith(
       status: DutySessionStatus.completed,
       endedAt: DateTime.now().toUtc(),
     );
-    state = state.copyWith(status: DutyStatus.offDuty, activeSession: null);
+    state = state.copyWith(
+      status: DutyStatus.offDuty,
+      clearActiveSession: true,
+    );
     return ended ??
         DutySession(
           id: 'test-ended-session',
@@ -69,7 +75,7 @@ void main() {
     id: 'session-777',
     employeeId: 'emp-014',
     startedAt: DateTime.utc(2026, 10, 12, 2, 34), // 8:04 AM IST
-    endedAt: DateTime.utc(2026, 10, 12, 10, 58),  // 4:28 PM IST
+    endedAt: DateTime.utc(2026, 10, 12, 10, 58), // 4:28 PM IST
     totalDistanceKm: 52.1,
     visitsCount: 6,
   );
@@ -92,8 +98,9 @@ void main() {
   });
 
   group('Screen 11 DutyOffSummaryDialog Widget Tests', () {
-    testWidgets('renders all visual elements matching HTML design reference',
-        (tester) async {
+    testWidgets('renders all visual elements matching HTML design reference', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -152,8 +159,9 @@ void main() {
       expect(routePressed, isTrue);
     });
 
-    testWidgets('displays queued points indicator when sync is pending',
-        (tester) async {
+    testWidgets('displays queued points indicator when sync is pending', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -180,74 +188,79 @@ void main() {
   });
 
   group('EmployeeHomePage End-Duty Integration Tests', () {
-    testWidgets('tapping on-duty hero pill prompts confirmation and opens summary dialog',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets(
+      'tapping on-duty hero pill prompts confirmation and opens summary dialog',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-      final dutyNotifier = TestDutyNotifier(
-        DutyScreenState(
-          status: DutyStatus.onDuty,
-          activeSession: testSession,
-          elapsedDuration: const Duration(hours: 8, minutes: 24),
-          distanceKm: 52.1,
-          visitsCount: 6,
-        ),
-      );
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(
-              () => TestAuthNotifier(AuthAuthenticated(testProfile)),
-            ),
-            dutyControllerProvider.overrideWith(() => dutyNotifier),
-          ],
-          child: MaterialApp(
-            theme: AppTheme.light,
-            home: const EmployeeHomePage(),
+        final dutyNotifier = TestDutyNotifier(
+          DutyScreenState(
+            status: DutyStatus.onDuty,
+            activeSession: testSession,
+            elapsedDuration: const Duration(hours: 8, minutes: 24),
+            distanceKm: 52.1,
+            visitsCount: 6,
           ),
-        ),
-      );
+        );
 
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authControllerProvider.overrideWith(
+                () => TestAuthNotifier(AuthAuthenticated(testProfile)),
+              ),
+              dutyControllerProvider.overrideWith(() => dutyNotifier),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.light,
+              home: const EmployeeHomePage(),
+            ),
+          ),
+        );
 
-      // Tap active on-duty toggle button
-      final onDutyPill = find.byKey(const Key('btn-toggle-duty-active'));
-      expect(onDutyPill, findsOneWidget);
-      await tester.tap(onDutyPill);
-      await tester.pumpAndSettle();
+        await tester.pumpAndSettle();
 
-      // Confirmation dialog appears
-      expect(find.text('End duty?'), findsOneWidget);
-      expect(find.textContaining('This will stop background location tracking'), findsOneWidget);
+        // Tap active on-duty toggle button
+        final onDutyPill = find.byKey(const Key('btn-toggle-duty-active'));
+        expect(onDutyPill, findsOneWidget);
+        await tester.tap(onDutyPill);
+        await tester.pumpAndSettle();
 
-      // Confirm ending duty
-      final confirmBtn = find.byKey(const Key('confirm-end-duty-btn'));
-      expect(confirmBtn, findsOneWidget);
-      await tester.tap(confirmBtn);
-      await tester.pumpAndSettle();
+        // Confirmation dialog appears
+        expect(find.text('End duty?'), findsOneWidget);
+        expect(
+          find.textContaining('This will stop background location tracking'),
+          findsOneWidget,
+        );
 
-      // Verify DutyOffSummaryDialog appears immediately
-      expect(find.text('Duty ended'), findsOneWidget);
-      expect(find.text('Total hours'), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(DutyOffSummaryDialog),
-          matching: find.text('52.1 km'),
-        ),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('btn-summary-done')), findsOneWidget);
+        // Confirm ending duty
+        final confirmBtn = find.byKey(const Key('confirm-end-duty-btn'));
+        expect(confirmBtn, findsOneWidget);
+        await tester.tap(confirmBtn);
+        await tester.pumpAndSettle();
 
-      // Tap Done on summary dialog
-      await tester.tap(find.byKey(const Key('btn-summary-done')));
-      await tester.pumpAndSettle();
+        // Verify DutyOffSummaryDialog appears immediately
+        expect(find.text('Duty ended'), findsOneWidget);
+        expect(find.text('Total hours'), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byType(DutyOffSummaryDialog),
+            matching: find.text('52.1 km'),
+          ),
+          findsOneWidget,
+        );
+        expect(find.byKey(const Key('btn-summary-done')), findsOneWidget);
 
-      // Summary dialog is closed, home page is back in off-duty state
-      expect(find.text('Start duty'), findsOneWidget);
-    });
+        // Tap Done on summary dialog
+        await tester.tap(find.byKey(const Key('btn-summary-done')));
+        await tester.pumpAndSettle();
+
+        // Summary dialog is closed, home page is back in off-duty state
+        expect(find.text('Start duty'), findsOneWidget);
+      },
+    );
   });
 }

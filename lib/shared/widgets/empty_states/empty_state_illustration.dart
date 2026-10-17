@@ -6,10 +6,7 @@ import 'empty_state_type.dart';
 
 /// 56x56 dp custom vector illustration with badge accents for Screen 28.
 class EmptyStateIllustration extends StatelessWidget {
-  const EmptyStateIllustration({
-    super.key,
-    required this.type,
-  });
+  const EmptyStateIllustration({super.key, required this.type});
 
   final EmptyStateType type;
 
@@ -34,31 +31,19 @@ class EmptyStateIllustration extends StatelessWidget {
             Positioned(
               top: -2,
               right: -2,
-              child: _buildBadge(
-                icon: Icons.add,
-                size: 20,
-                iconSize: 13,
-              ),
+              child: _buildBadge(icon: Icons.add, size: 20, iconSize: 13),
             ),
           if (type == EmptyStateType.noNotifications)
             Positioned(
               top: -2,
               right: -2,
-              child: _buildBadge(
-                icon: Icons.check,
-                size: 20,
-                iconSize: 13,
-              ),
+              child: _buildBadge(icon: Icons.check, size: 20, iconSize: 13),
             ),
           if (type == EmptyStateType.routeExpired)
             Positioned(
               bottom: -2,
               right: -2,
-              child: _buildBadge(
-                icon: Icons.schedule,
-                size: 22,
-                iconSize: 14,
-              ),
+              child: _buildBadge(icon: Icons.schedule, size: 22, iconSize: 14),
             ),
         ],
       ),
@@ -78,11 +63,7 @@ class EmptyStateIllustration extends StatelessWidget {
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
-      child: Icon(
-        icon,
-        size: iconSize,
-        color: AppColors.surface,
-      ),
+      child: Icon(icon, size: iconSize, color: AppColors.surface),
     );
   }
 
@@ -91,17 +72,17 @@ class EmptyStateIllustration extends StatelessWidget {
       EmptyStateType.noEmployees => const _NoEmployeesPainterWidget(),
       EmptyStateType.nobodyOnDuty => const _NobodyOnDutyPainterWidget(),
       EmptyStateType.noNotifications => const Icon(
-          Icons.notifications_none_rounded,
-          size: 28,
-          color: AppColors.neutral400,
-        ),
+        Icons.notifications_none_rounded,
+        size: 28,
+        color: AppColors.neutral400,
+      ),
       EmptyStateType.filteredToNothing => const _FilterNothingPainterWidget(),
       EmptyStateType.noRoute => const _NoRoutePainterWidget(),
       EmptyStateType.routeExpired => const Icon(
-          Icons.calendar_month_outlined,
-          size: 28,
-          color: AppColors.neutral400,
-        ),
+        Icons.calendar_month_outlined,
+        size: 28,
+        color: AppColors.neutral400,
+      ),
     };
   }
 }
@@ -118,9 +99,7 @@ class _NoEmployeesPainterWidget extends StatelessWidget {
     return SizedBox(
       width: 32,
       height: 32,
-      child: CustomPaint(
-        painter: _NoEmployeesPainter(),
-      ),
+      child: CustomPaint(painter: _NoEmployeesPainter()),
     );
   }
 }
@@ -141,7 +120,11 @@ class _NoEmployeesPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     // Solid primary officer
-    canvas.drawCircle(Offset(size.width * 0.38, size.height * 0.35), 4.5, strokePaint);
+    canvas.drawCircle(
+      Offset(size.width * 0.38, size.height * 0.35),
+      4.5,
+      strokePaint,
+    );
     final bodyPath = Path()
       ..moveTo(size.width * 0.16, size.height * 0.75)
       ..arcToPoint(
@@ -152,7 +135,11 @@ class _NoEmployeesPainter extends CustomPainter {
     canvas.drawPath(bodyPath, strokePaint);
 
     // Dashed secondary officer
-    canvas.drawCircle(Offset(size.width * 0.68, size.height * 0.38), 3.5, dashPaint);
+    canvas.drawCircle(
+      Offset(size.width * 0.68, size.height * 0.38),
+      3.5,
+      dashPaint,
+    );
     final secondBodyPath = Path()
       ..moveTo(size.width * 0.66, size.height * 0.60)
       ..quadraticBezierTo(
@@ -176,9 +163,7 @@ class _NobodyOnDutyPainterWidget extends StatelessWidget {
     return SizedBox(
       width: 36,
       height: 36,
-      child: CustomPaint(
-        painter: _NobodyOnDutyPainter(),
-      ),
+      child: CustomPaint(painter: _NobodyOnDutyPainter()),
     );
   }
 }
@@ -246,9 +231,7 @@ class _FilterNothingPainterWidget extends StatelessWidget {
     return SizedBox(
       width: 32,
       height: 32,
-      child: CustomPaint(
-        painter: _FilterNothingPainter(),
-      ),
+      child: CustomPaint(painter: _FilterNothingPainter()),
     );
   }
 }
@@ -299,9 +282,7 @@ class _NoRoutePainterWidget extends StatelessWidget {
     return SizedBox(
       width: 36,
       height: 36,
-      child: CustomPaint(
-        painter: _NoRoutePainter(),
-      ),
+      child: CustomPaint(painter: _NoRoutePainter()),
     );
   }
 }
@@ -340,7 +321,11 @@ class _NoRoutePainter extends CustomPainter {
     final startPaint = Paint()
       ..color = AppColors.neutral400
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(size.width * 0.20, size.height * 0.72), 2.5, startPaint);
+    canvas.drawCircle(
+      Offset(size.width * 0.20, size.height * 0.72),
+      2.5,
+      startPaint,
+    );
 
     // End node circle in brand primary with ?
     final endNodePaint = Paint()
@@ -362,7 +347,10 @@ class _NoRoutePainter extends CustomPainter {
     )..layout();
     textPainter.paint(
       canvas,
-      Offset(endCenter.dx - textPainter.width / 2, endCenter.dy - textPainter.height / 2),
+      Offset(
+        endCenter.dx - textPainter.width / 2,
+        endCenter.dy - textPainter.height / 2,
+      ),
     );
   }
 

@@ -10,10 +10,7 @@ import '../../app_skeletons.dart';
 /// Matches Screen 30 (item 4): 3 event log cards (88 dp height) matching
 /// MyDutyHistoryCard layout with rounded icon boxes and metric bars.
 class DutyHistorySkeleton extends StatelessWidget {
-  const DutyHistorySkeleton({
-    super.key,
-    this.itemCount = 3,
-  });
+  const DutyHistorySkeleton({super.key, this.itemCount = 3});
 
   final int itemCount;
 

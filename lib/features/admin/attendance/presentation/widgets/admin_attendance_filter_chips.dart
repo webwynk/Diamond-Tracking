@@ -11,10 +11,10 @@ class AdminAttendanceFilterChips extends StatelessWidget {
     super.key,
     required this.selectedFilter,
     required this.onSelectFilter,
-    this.totalDaysCount = 31,
-    this.autoEndedCount = 1,
-    this.flagsCount = 0,
-    this.absentCount = 19,
+    required this.totalDaysCount,
+    required this.autoEndedCount,
+    required this.flagsCount,
+    required this.absentCount,
   });
 
   final AdminAttendanceFilter selectedFilter;
@@ -130,8 +130,8 @@ class AdminAttendanceFilterChips extends StatelessWidget {
                   color: isSelected
                       ? Colors.white.withValues(alpha: 0.25)
                       : (indicatorColor != null
-                          ? AppColors.warningBg
-                          : AppColors.neutral100),
+                            ? AppColors.warningBg
+                            : AppColors.neutral100),
                   borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
                 child: Text(
@@ -143,8 +143,8 @@ class AdminAttendanceFilterChips extends StatelessWidget {
                     color: isSelected
                         ? AppColors.neutral0
                         : (indicatorColor != null
-                            ? AppColors.neutral900
-                            : AppColors.neutral700),
+                              ? AppColors.neutral900
+                              : AppColors.neutral700),
                   ),
                 ),
               ),

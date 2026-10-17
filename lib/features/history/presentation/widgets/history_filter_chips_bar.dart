@@ -39,7 +39,9 @@ class HistoryFilterChipsBar extends StatelessWidget {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     height: 32,
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.x4,
+                    ),
                     decoration: BoxDecoration(
                       color: filter == selectedFilter
                           ? AppColors.primary600
@@ -54,7 +56,9 @@ class HistoryFilterChipsBar extends StatelessWidget {
                       boxShadow: filter == selectedFilter
                           ? [
                               BoxShadow(
-                                color: AppColors.primary600.withValues(alpha: 0.15),
+                                color: AppColors.primary600.withValues(
+                                  alpha: 0.15,
+                                ),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),

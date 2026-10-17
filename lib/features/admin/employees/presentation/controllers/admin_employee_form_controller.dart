@@ -2,7 +2,9 @@ import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/errors/app_exceptions.dart';
 import '../../../../../domain/entities/user_profile.dart';
+import '../../../../auth/domain/pin_validator.dart';
 import 'admin_employee_form_state.dart';
 import 'admin_employee_list_controller.dart';
 import 'admin_employee_list_state.dart';
@@ -10,34 +12,24 @@ import 'admin_employee_list_state.dart';
 /// Global provider for managing the employee creation and edition flow.
 final adminEmployeeFormControllerProvider =
     NotifierProvider<AdminEmployeeFormNotifier, AdminEmployeeFormState>(
-  AdminEmployeeFormNotifier.new,
-);
+      AdminEmployeeFormNotifier.new,
+    );
 
 /// Controller governing field inputs, PIN generation, validation, and submission.
 class AdminEmployeeFormNotifier extends Notifier<AdminEmployeeFormState> {
-  final Random _random = Random();
+  final Random _random = Random.secure();
 
   @override
-  AdminEmployeeFormState build() {
-    return const AdminEmployeeFormState(
-      fullName: 'Kiran Deshmukh',
-      phoneNumber: '+91 98220 11334',
-      email: 'kiran.d@diamondagritech.in',
-      employeeCode: 'DA-144',
-      initialPin: '849201',
-      role: UserRole.employee,
-      isEmployeeCodeAvailable: true,
-    );
-  }
+  AdminEmployeeFormState build() => const AdminEmployeeFormState();
 
-  /// Initializes the form with an existing employee for editing or defaults for creating.
+  /// Initializes the form with an existing employee for editing, or blank
+  /// fields and a freshly generated PIN for creating.
   void initForm({AdminEmployeeItem? employee}) {
     if (employee != null) {
       state = AdminEmployeeFormState(
         fullName: employee.name,
         phoneNumber: employee.phoneNumber,
-        email: employee.email ??
-            '${employee.name.toLowerCase().replaceAll(' ', '.')}@diamondagritech.in',
+        email: employee.email ?? '',
         employeeCode: employee.employeeCode,
         initialPin: '******',
         role: employee.role,
@@ -46,15 +38,7 @@ class AdminEmployeeFormNotifier extends Notifier<AdminEmployeeFormState> {
         isEmployeeCodeAvailable: true,
       );
     } else {
-      state = const AdminEmployeeFormState(
-        fullName: 'Kiran Deshmukh',
-        phoneNumber: '+91 98220 11334',
-        email: 'kiran.d@diamondagritech.in',
-        employeeCode: 'DA-144',
-        initialPin: '849201',
-        role: UserRole.employee,
-        isEmployeeCodeAvailable: true,
-      );
+      state = AdminEmployeeFormState(initialPin: _generatePin());
     }
   }
 
@@ -82,10 +66,29 @@ class AdminEmployeeFormNotifier extends Notifier<AdminEmployeeFormState> {
     state = state.copyWith(role: role);
   }
 
+  /// Keeps the PIN the admin typed: digits only, at most 6.
+  void setPin(String value) {
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    state = state.copyWith(
+      initialPin: digits.length > 6 ? digits.substring(0, 6) : digits,
+    );
+  }
+
   /// Generates a random 6-digit numeric PIN for the employee.
   void regeneratePin() {
-    final randomPin = (100000 + _random.nextInt(900000)).toString();
-    state = state.copyWith(initialPin: randomPin);
+    state = state.copyWith(initialPin: _generatePin());
+  }
+
+  /// A random 6-digit PIN that obeys the PIN rules (PRD F1): not one repeated
+  /// digit, not a simple sequence.
+  String _generatePin() {
+    while (true) {
+      final pin = (100000 + _random.nextInt(900000)).toString();
+      if (PinValidator.isNotRepeated(pin) &&
+          PinValidator.isNotSequential(pin)) {
+        return pin;
+      }
+    }
   }
 
   /// Submits the employee creation or modification.
@@ -95,41 +98,39 @@ class AdminEmployeeFormNotifier extends Notifier<AdminEmployeeFormState> {
     state = state.copyWith(isSaving: true, errorMessage: null);
 
     try {
-      // Simulate provisioning delay (matching HTML design reference)
-      await Future<void>.delayed(const Duration(milliseconds: 600));
-
-      final rosterNotifier = ref.read(adminEmployeeListControllerProvider.notifier);
+      final repo = ref.read(employeeRepositoryProvider);
+      final rosterNotifier = ref.read(
+        adminEmployeeListControllerProvider.notifier,
+      );
 
       if (state.isEditMode && state.existingEmployeeId != null) {
-        final updated = AdminEmployeeItem(
+        final updated = await repo.updateEmployee(
           id: state.existingEmployeeId!,
-          name: state.fullName.trim(),
-          employeeCode: state.employeeCode.trim(),
-          phoneNumber: state.phoneNumber.trim(),
-          email: state.email.trim(),
-          role: state.role,
-          status: AdminEmployeeStatus.offDuty,
+          fullName: state.fullName.trim(),
+          phone: state.phoneNumber.trim(),
+          email: state.email.trim().isEmpty ? null : state.email.trim(),
         );
         rosterNotifier.updateEmployee(updated);
       } else {
-        final newEmployee = AdminEmployeeItem(
-          id: 'emp-${DateTime.now().millisecondsSinceEpoch}',
-          name: state.fullName.trim(),
-          employeeCode: state.employeeCode.trim(),
-          phoneNumber: state.phoneNumber.trim(),
-          email: state.email.trim(),
-          role: state.role,
-          status: AdminEmployeeStatus.offDuty,
+        final created = await repo.createEmployee(
+          fullName: state.fullName.trim(),
+          phone: state.phoneNumber.trim(),
+          employeeCode: state.employeeCode.trim().toUpperCase(),
+          pin: state.initialPin.trim(),
+          email: state.email.trim().isEmpty ? null : state.email.trim(),
         );
-        rosterNotifier.addEmployee(newEmployee);
+        rosterNotifier.addEmployee(created);
       }
 
       state = state.copyWith(isSaving: false, isSuccess: true);
       return true;
+    } on AppException catch (e) {
+      state = state.copyWith(isSaving: false, errorMessage: e.message);
+      return false;
     } catch (e) {
       state = state.copyWith(
         isSaving: false,
-        errorMessage: 'Failed to provision employee: $e',
+        errorMessage: 'Could not save the employee. Please try again.',
       );
       return false;
     }

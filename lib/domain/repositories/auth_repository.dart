@@ -26,9 +26,7 @@ abstract class AuthRepository {
 
   /// Completes the forced or user-initiated PIN change, updating auth credentials
   /// and clearing `must_change_pin`.
-  Future<void> changePin({
-    required String newPin,
-  });
+  Future<void> changePin({required String newPin});
 
   /// Terminates the current authenticated session.
   Future<void> signOut();

@@ -8,9 +8,7 @@ Widget _wrap(Widget child, {bool disableAnimations = false}) {
     theme: AppTheme.light,
     home: MediaQuery(
       data: MediaQueryData(disableAnimations: disableAnimations),
-      child: Scaffold(
-        body: SingleChildScrollView(child: child),
-      ),
+      child: Scaffold(body: SingleChildScrollView(child: child)),
     ),
   );
 }
@@ -64,46 +62,48 @@ void main() {
   });
 
   group('EnhancedMapPlaceholder Widget Tests', () {
-    testWidgets('renders CAD blueprint container, status labels, and architectural note', (
-      tester,
-    ) async {
-      await tester.pumpWidget(_wrap(const EnhancedMapPlaceholder()));
-      await tester.pump();
+    testWidgets(
+      'renders CAD blueprint container, status labels, and architectural note',
+      (tester) async {
+        await tester.pumpWidget(_wrap(const EnhancedMapPlaceholder()));
+        await tester.pump();
 
-      expect(
-        find.byKey(const Key('skeleton-map-placeholder')),
-        findsOneWidget,
-      );
-      expect(find.text('LOADING MAP…'), findsOneWidget);
-      expect(find.text('TRIANGULATING SATELLITE FIX'), findsOneWidget);
-      expect(find.byIcon(Icons.location_on), findsOneWidget);
+        expect(
+          find.byKey(const Key('skeleton-map-placeholder')),
+          findsOneWidget,
+        );
+        expect(find.text('LOADING MAP…'), findsOneWidget);
+        expect(find.text('TRIANGULATING SATELLITE FIX'), findsOneWidget);
+        expect(find.byIcon(Icons.location_on), findsOneWidget);
 
-      // Verify architectural note
-      expect(
-        find.textContaining(
-          'A map never gets a shimmer skeleton — it displays this branded vector placeholder',
-        ),
-        findsOneWidget,
-      );
-    });
+        // Verify architectural note
+        expect(
+          find.textContaining(
+            'A map never gets a shimmer skeleton — it displays this branded vector placeholder',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
 
-    testWidgets('hides architectural callout note when showCalloutNote is false', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        _wrap(const EnhancedMapPlaceholder(showCalloutNote: false)),
-      );
-      await tester.pump();
+    testWidgets(
+      'hides architectural callout note when showCalloutNote is false',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(const EnhancedMapPlaceholder(showCalloutNote: false)),
+        );
+        await tester.pump();
 
-      expect(
-        find.byKey(const Key('skeleton-map-placeholder')),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('A map never gets a shimmer skeleton'),
-        findsNothing,
-      );
-    });
+        expect(
+          find.byKey(const Key('skeleton-map-placeholder')),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('A map never gets a shimmer skeleton'),
+          findsNothing,
+        );
+      },
+    );
   });
 
   group('PaginationLoaderCard Widget Tests', () {
@@ -136,10 +136,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         _wrap(
-          const PaginationLoaderCard(
-            showCalloutNote: false,
-            isSpinning: false,
-          ),
+          const PaginationLoaderCard(showCalloutNote: false, isSpinning: false),
         ),
       );
       await tester.pump();
@@ -149,94 +146,6 @@ void main() {
         findsOneWidget,
       );
       expect(find.byIcon(Icons.anchor), findsNothing);
-    });
-  });
-
-  group('Screen 30: SkeletonLoadersReferencePage Coordinator Tests', () {
-    testWidgets('renders all 6 geometry-matched sections, header specs, and bottom navigation', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(800, 2000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light,
-          home: const MediaQuery(
-            data: MediaQueryData(disableAnimations: true),
-            child: SkeletonLoadersReferencePage(isPaginationSpinning: false),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      // 1. App Bar Header
-      expect(find.text('SYSTEM REFERENCE'), findsOneWidget);
-      expect(find.byIcon(Icons.person), findsOneWidget);
-
-      // 2. Specification Sheet Header
-      expect(
-        find.text('SPECIFICATION SHEET 30 • DIAMOND AGRITECH'),
-        findsOneWidget,
-      );
-      expect(find.text('INTERACTIVE SHIMMER'), findsOneWidget);
-      expect(find.text('Skeleton Loaders'), findsOneWidget);
-      expect(
-        find.text(
-          'Progressive shimmer patterns and geometry-matched loading placeholders across field workflows.',
-        ),
-        findsOneWidget,
-      );
-
-      // 3. Section Titles and Subtitles
-      expect(find.text('EMPLOYEE LIST'), findsOneWidget);
-      expect(find.text('5 Instances • 80px Row'), findsOneWidget);
-
-      expect(find.text('STAT CARD ROW'), findsOneWidget);
-      expect(find.text('3 Metric Columns'), findsOneWidget);
-
-      expect(find.text('NOTIFICATION LIST'), findsOneWidget);
-      expect(find.text('Grouped Container'), findsOneWidget);
-
-      expect(find.text('DUTY HISTORY'), findsOneWidget);
-      expect(find.text('3 Event Log Cards'), findsOneWidget);
-
-      expect(find.text('MAP PLACEHOLDER'), findsOneWidget);
-      expect(find.text('Telemetry Exception'), findsOneWidget);
-
-      expect(find.text('NEXT-PAGE LOADER'), findsOneWidget);
-      expect(find.text('Scroll Anchor'), findsOneWidget);
-
-      // 4. Section Placeholders
-      expect(find.byType(AppListSkeleton), findsOneWidget);
-      expect(find.byType(AppStatRowSkeleton), findsOneWidget);
-      expect(
-        find.byKey(const Key('skeleton-notification-list')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('skeleton-duty-history')), findsOneWidget);
-      expect(
-        find.byKey(const Key('skeleton-map-placeholder')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('skeleton-pagination-loader-card')),
-        findsOneWidget,
-      );
-
-      // 5. Bottom Navigation Bar Tabs
-      expect(find.text('OVERVIEW'), findsOneWidget);
-      expect(find.text('TELEMETRY'), findsOneWidget);
-      expect(find.text('ROUTES'), findsOneWidget);
-      expect(find.text('SPECS'), findsOneWidget);
-
-      // 6. Interactive Tab Switching
-      await tester.tap(find.text('OVERVIEW'));
-      await tester.pump();
-
-      await tester.tap(find.text('TELEMETRY'));
-      await tester.pump();
     });
   });
 }

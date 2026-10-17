@@ -21,11 +21,7 @@ class AdminEmployeeBlockActionButton extends StatelessWidget {
       child: OutlinedButton.icon(
         key: const Key('btn-employee-block-action'),
         onPressed: onBlockPressed,
-        icon: const Icon(
-          Icons.block_rounded,
-          color: AppColors.error,
-          size: 20,
-        ),
+        icon: const Icon(Icons.block_rounded, color: AppColors.error, size: 20),
         label: Text(
           'Block employee',
           style: AppTypography.label.copyWith(

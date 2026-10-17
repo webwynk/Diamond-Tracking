@@ -32,7 +32,8 @@ class AccountLockedException extends AppException {
   final DateTime? lockedUntil;
 
   const AccountLockedException({
-    String message = 'Account locked due to multiple failed attempts. Try again later.',
+    String message =
+        'Account locked due to multiple failed attempts. Try again later.',
     this.lockedUntil,
   }) : super(message, code: 'account_locked');
 }
@@ -40,22 +41,17 @@ class AccountLockedException extends AppException {
 /// Thrown when an employee attempts to log in from an unapproved / second device.
 class DeviceBindingException extends AppException {
   const DeviceBindingException([
-    super.message = 'This account is registered on another device. Contact office to reset binding.',
+    super.message =
+        'This account is registered on another device. Contact office to reset binding.',
   ]) : super(code: 'device_binding_rejected');
 }
 
 /// Thrown when an authenticated user has insufficient role permissions (e.g. employee trying admin route).
 class UnauthorizedRoleException extends AppException {
   const UnauthorizedRoleException([
-    super.message = 'Access denied. You do not have permission for this section.',
+    super.message =
+        'Access denied. You do not have permission for this section.',
   ]) : super(code: 'unauthorized_role');
-}
-
-/// Thrown when an employee is required to complete first-login PIN change before accessing features.
-class MustChangePinException extends AppException {
-  const MustChangePinException([
-    super.message = 'You must change your PIN before proceeding.',
-  ]) : super(code: 'must_change_pin');
 }
 
 /// Thrown on network timeout or lack of internet connectivity.
@@ -68,14 +64,20 @@ class NetworkException extends AppException {
 /// Generic unexpected server failure.
 class ServerException extends AppException {
   const ServerException([
-    super.message = 'An unexpected server error occurred. Please try again later.',
+    super.message =
+        'An unexpected server error occurred. Please try again later.',
   ]) : super(code: 'server_error');
 }
 
 /// Thrown when an action violates domain validation rules or duty operating window (BR-1).
 class ValidationException extends AppException {
-  const ValidationException([
-    super.message = 'Validation failed.',
-  ]) : super(code: 'validation_error');
+  const ValidationException([super.message = 'Validation failed.'])
+    : super(code: 'validation_error');
 }
 
+/// Thrown when a unique constraint or conflict occurs (e.g. employee code or phone already exists).
+class ConflictException extends AppException {
+  const ConflictException([
+    super.message = 'A conflict occurred with an existing record.',
+  ]) : super(code: 'conflict_error');
+}

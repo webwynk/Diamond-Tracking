@@ -76,11 +76,7 @@ class _LoadFailureCardState extends State<LoadFailureCard>
               shape: BoxShape.circle,
             ),
             child: const Center(
-              child: Icon(
-                Icons.cloud_off,
-                size: 32,
-                color: AppColors.error,
-              ),
+              child: Icon(Icons.cloud_off, size: 32, color: AppColors.error),
             ),
           ),
 
@@ -158,7 +154,10 @@ class _LoadFailureCardState extends State<LoadFailureCard>
               key: const Key('btn-load-failure-back'),
               onPressed: widget.onGoBack,
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 minimumSize: const Size(0, 32),
               ),
               child: Text(

@@ -5,7 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/widgets.dart';
-import '../../admin/dashboard/presentation/admin_dashboard_page.dart';
+import 'auth_navigation.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/auth_state.dart';
 
@@ -44,18 +44,18 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
     }
 
     FocusScope.of(context).unfocus();
-    await ref.read(authControllerProvider.notifier).signInAdmin(
-          email: email,
-          password: password,
-        );
+    await ref
+        .read(authControllerProvider.notifier)
+        .signInAdmin(email: email, password: password);
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
     final isLoading = authState is AuthLoading;
-    final errorMessage =
-        authState is AuthUnauthenticated ? authState.errorMessage : null;
+    final errorMessage = authState is AuthUnauthenticated
+        ? authState.errorMessage
+        : null;
 
     ref.listen<AuthState>(authControllerProvider, (previous, next) {
       if (!mounted) return;
@@ -64,10 +64,7 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
           context,
           message: 'Authenticated as Admin: ${next.profile.fullName}',
         );
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
-          (route) => false,
-        );
+        AuthNavigation.goToLanding(Navigator.of(context), next.profile);
       }
     });
 
@@ -107,23 +104,12 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                         const SizedBox(width: AppSpacing.x3),
-                        // Diamond logo (36x36 dp)
-                        Container(
+                        // Official white logo (36x36 dp)
+                        Image.asset(
+                          'assets/image/white-logo.png',
                           width: 36,
                           height: 36,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: AppColors.neutral0,
-                              width: 2.0,
-                            ),
-                            borderRadius: BorderRadius.circular(AppRadius.sm),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.diamond_outlined,
-                            color: AppColors.neutral0,
-                            size: 20,
-                          ),
+                          fit: BoxFit.contain,
                         ),
                         const SizedBox(width: AppSpacing.x3),
                         Text(
@@ -153,17 +139,12 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
               Transform.translate(
                 offset: const Offset(0, -24),
                 child: Container(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.x4,
-                  ),
+                  margin: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
                   padding: const EdgeInsets.all(AppSpacing.x5),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(
-                      color: AppColors.border,
-                      width: 1.0,
-                    ),
+                    border: Border.all(color: AppColors.border, width: 1.0),
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x0A000000),
@@ -183,42 +164,22 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.x1),
-                      Container(
+                      SizedBox(
                         height: AppSizes.controlHeight,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          border: Border.all(
-                            color: AppColors.neutral300,
+                        child: TextField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          style: AppTypography.bodyLarge.copyWith(
+                            color: AppColors.textPrimary,
                           ),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.x3,
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
+                          decoration: const InputDecoration(
+                            hintText: 'name@diamondagritech.in',
+                            prefixIcon: Icon(
                               Icons.mail_outline_rounded,
                               color: AppColors.statusOff,
                               size: 20,
                             ),
-                            const SizedBox(width: AppSpacing.x3),
-                            Expanded(
-                              child: TextField(
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  hintText: 'name@diamondagritech.in',
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                                style: AppTypography.bodyLarge.copyWith(
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
 
@@ -232,44 +193,22 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.x1),
-                      Container(
+                      SizedBox(
                         height: AppSizes.controlHeight,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          border: Border.all(
-                            color: errorMessage != null
-                                ? AppColors.error
-                                : AppColors.neutral300,
+                        child: TextField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          style: AppTypography.bodyLarge.copyWith(
+                            color: AppColors.textPrimary,
                           ),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.x3,
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
+                          decoration: InputDecoration(
+                            hintText: 'Enter password',
+                            prefixIcon: const Icon(
                               Icons.lock_outline_rounded,
                               color: AppColors.statusOff,
                               size: 20,
                             ),
-                            const SizedBox(width: AppSpacing.x3),
-                            Expanded(
-                              child: TextField(
-                                controller: _passwordController,
-                                obscureText: _obscurePassword,
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  hintText: 'Enter password',
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                                style: AppTypography.bodyLarge.copyWith(
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ),
-                            IconButton(
+                            suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword
                                     ? Icons.visibility_outlined
@@ -283,7 +222,16 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
                                 });
                               },
                             ),
-                          ],
+                            enabledBorder: errorMessage != null
+                                ? const OutlineInputBorder(
+                                    borderRadius: AppRadius.mdAll,
+                                    borderSide: BorderSide(
+                                      color: AppColors.error,
+                                      width: 1.5,
+                                    ),
+                                  )
+                                : null,
+                          ),
                         ),
                       ),
 

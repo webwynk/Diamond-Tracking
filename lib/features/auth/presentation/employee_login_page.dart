@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../domain/entities/user_profile.dart';
 import '../../../shared/widgets/widgets.dart';
 import 'admin_login_page.dart';
+import 'auth_navigation.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/auth_state.dart';
 import 'pin_change_page.dart';
@@ -46,10 +48,9 @@ class _EmployeeLoginPageState extends ConsumerState<EmployeeLoginPage> {
     }
 
     FocusScope.of(context).unfocus();
-    await ref.read(authControllerProvider.notifier).signInEmployee(
-          employeeCode: code,
-          pin: pin,
-        );
+    await ref
+        .read(authControllerProvider.notifier)
+        .signInEmployee(employeeCode: code, pin: pin);
   }
 
   void _showForgotPinDialog() {
@@ -62,15 +63,11 @@ class _EmployeeLoginPageState extends ConsumerState<EmployeeLoginPage> {
         ),
         title: Text(
           'Forgot PIN?',
-          style: AppTypography.h3.copyWith(
-            color: AppColors.textPrimary,
-          ),
+          style: AppTypography.h3.copyWith(color: AppColors.textPrimary),
         ),
         content: Text(
           'Please contact your Diamond Agritech office administrator to request a PIN reset. Once reset, you will create a new PIN on your next login.',
-          style: AppTypography.body.copyWith(
-            color: AppColors.textSecondary,
-          ),
+          style: AppTypography.body.copyWith(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
@@ -92,8 +89,9 @@ class _EmployeeLoginPageState extends ConsumerState<EmployeeLoginPage> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
     final isLoading = authState is AuthLoading;
-    final errorMessage =
-        authState is AuthUnauthenticated ? authState.errorMessage : null;
+    final errorMessage = authState is AuthUnauthenticated
+        ? authState.errorMessage
+        : null;
 
     ref.listen<AuthState>(authControllerProvider, (previous, next) {
       if (!mounted) return;
@@ -101,12 +99,15 @@ class _EmployeeLoginPageState extends ConsumerState<EmployeeLoginPage> {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const PinChangePage()),
         );
-      } else if (next is AuthAuthenticated) {
-        // Successful login
+      } else if (next is AuthAuthenticated &&
+          next.profile.role == UserRole.employee) {
+        // The role check keeps this page from also reacting when an admin
+        // signs in on the Admin login pushed above it.
         AppSnackbar.show(
           context,
           message: 'Welcome back, ${next.profile.fullName}!',
         );
+        AuthNavigation.goToLanding(Navigator.of(context), next.profile);
       }
     });
 
@@ -116,7 +117,8 @@ class _EmployeeLoginPageState extends ConsumerState<EmployeeLoginPage> {
         child: SingleChildScrollView(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height -
+              minHeight:
+                  MediaQuery.of(context).size.height -
                   MediaQuery.of(context).padding.top -
                   MediaQuery.of(context).padding.bottom,
             ),
@@ -141,23 +143,12 @@ class _EmployeeLoginPageState extends ConsumerState<EmployeeLoginPage> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Vector diamond logo (40x40 dp)
-                        Container(
+                        // Official white logo (40x40 dp)
+                        Image.asset(
+                          'assets/image/white-logo.png',
                           width: 40,
                           height: 40,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: AppColors.neutral0,
-                              width: 2.0,
-                            ),
-                            borderRadius: BorderRadius.circular(AppRadius.sm),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.diamond_outlined,
-                            color: AppColors.neutral0,
-                            size: 24,
-                          ),
+                          fit: BoxFit.contain,
                         ),
                         const SizedBox(width: AppSpacing.x3),
                         Column(
@@ -173,7 +164,9 @@ class _EmployeeLoginPageState extends ConsumerState<EmployeeLoginPage> {
                             Text(
                               'Employee Login',
                               style: AppTypography.body.copyWith(
-                                color: AppColors.neutral0.withValues(alpha: 0.8),
+                                color: AppColors.neutral0.withValues(
+                                  alpha: 0.8,
+                                ),
                               ),
                             ),
                           ],
@@ -193,10 +186,7 @@ class _EmployeeLoginPageState extends ConsumerState<EmployeeLoginPage> {
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(AppRadius.lg),
-                        border: Border.all(
-                          color: AppColors.border,
-                          width: 1.0,
-                        ),
+                        border: Border.all(color: AppColors.border, width: 1.0),
                         boxShadow: const [
                           BoxShadow(
                             color: Color(0x0A000000),
@@ -216,43 +206,22 @@ class _EmployeeLoginPageState extends ConsumerState<EmployeeLoginPage> {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          Container(
+                          SizedBox(
                             height: AppSizes.controlHeight,
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              border: Border.all(
-                                color: AppColors.neutral300,
+                            child: TextField(
+                              controller: _codeController,
+                              textCapitalization: TextCapitalization.characters,
+                              style: AppTypography.bodyLarge.copyWith(
+                                color: AppColors.textPrimary,
                               ),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.x3,
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
+                              decoration: const InputDecoration(
+                                hintText: 'e.g. DA-014',
+                                prefixIcon: Icon(
                                   Icons.badge_outlined,
                                   color: AppColors.textDisabled,
                                   size: 20,
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _codeController,
-                                    textCapitalization:
-                                        TextCapitalization.characters,
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      hintText: 'e.g. DA-014',
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.zero,
-                                    ),
-                                    style: AppTypography.bodyLarge.copyWith(
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
 
@@ -266,48 +235,26 @@ class _EmployeeLoginPageState extends ConsumerState<EmployeeLoginPage> {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          Container(
+                          SizedBox(
                             height: AppSizes.controlHeight,
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              border: Border.all(
-                                color: errorMessage != null
-                                    ? AppColors.error
-                                    : AppColors.neutral300,
+                            child: TextField(
+                              controller: _pinController,
+                              obscureText: _obscurePin,
+                              keyboardType: TextInputType.number,
+                              maxLength: 6,
+                              style: AppTypography.bodyLarge.copyWith(
+                                color: AppColors.textPrimary,
+                                letterSpacing: _obscurePin ? 4 : 1,
                               ),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.x3,
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
+                              decoration: InputDecoration(
+                                hintText: '6-digit PIN',
+                                counterText: '',
+                                prefixIcon: const Icon(
                                   Icons.lock_outline_rounded,
                                   color: AppColors.textDisabled,
                                   size: 20,
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _pinController,
-                                    obscureText: _obscurePin,
-                                    keyboardType: TextInputType.number,
-                                    maxLength: 6,
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      hintText: '6-digit PIN',
-                                      counterText: '',
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.zero,
-                                    ),
-                                    style: AppTypography.bodyLarge.copyWith(
-                                      color: AppColors.textPrimary,
-                                      letterSpacing: _obscurePin ? 4 : 1,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
+                                suffixIcon: IconButton(
                                   icon: Icon(
                                     _obscurePin
                                         ? Icons.visibility_outlined
@@ -321,7 +268,16 @@ class _EmployeeLoginPageState extends ConsumerState<EmployeeLoginPage> {
                                     });
                                   },
                                 ),
-                              ],
+                                enabledBorder: errorMessage != null
+                                    ? const OutlineInputBorder(
+                                        borderRadius: AppRadius.mdAll,
+                                        borderSide: BorderSide(
+                                          color: AppColors.error,
+                                          width: 1.5,
+                                        ),
+                                      )
+                                    : null,
+                              ),
                             ),
                           ),
 
@@ -335,7 +291,9 @@ class _EmployeeLoginPageState extends ConsumerState<EmployeeLoginPage> {
                               ),
                               decoration: BoxDecoration(
                                 color: AppColors.errorBg,
-                                borderRadius: BorderRadius.circular(AppRadius.sm),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.sm,
+                                ),
                               ),
                               child: Row(
                                 children: [

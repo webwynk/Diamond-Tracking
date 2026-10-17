@@ -8,10 +8,7 @@ import '../controllers/duty_history_state.dart';
 /// Monthly / Period Summary card styled with #E8F3F8 background and 4 stat blocks
 /// adhering strictly to Screen 12 design specifications.
 class HistoryMonthlySummaryCard extends StatelessWidget {
-  const HistoryMonthlySummaryCard({
-    super.key,
-    required this.summary,
-  });
+  const HistoryMonthlySummaryCard({super.key, required this.summary});
 
   final DutyHistorySummary summary;
 
@@ -107,9 +104,7 @@ class HistoryMonthlySummaryCard extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: AppTypography.caption.copyWith(
-            color: AppColors.textSecondary,
-          ),
+          style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
         ),
       ],
     );

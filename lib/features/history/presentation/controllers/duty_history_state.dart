@@ -88,7 +88,7 @@ class DutyHistoryItem {
 @immutable
 class DutyHistorySummary {
   const DutyHistorySummary({
-    this.periodLabel = 'OCTOBER 2026',
+    this.periodLabel = '',
     this.totalDays = 0,
     this.totalHours = '0h 0m',
     this.totalKm = 0.0,
@@ -123,8 +123,6 @@ class DutyHistorySummary {
 class DutyHistoryState {
   const DutyHistoryState({
     this.isLoading = false,
-    this.isLoadingMore = false,
-    this.hasMore = false,
     this.filter = DutyHistoryFilter.thisMonth,
     this.summary = const DutyHistorySummary(),
     this.items = const <DutyHistoryItem>[],
@@ -132,8 +130,6 @@ class DutyHistoryState {
   });
 
   final bool isLoading;
-  final bool isLoadingMore;
-  final bool hasMore;
   final DutyHistoryFilter filter;
   final DutyHistorySummary summary;
   final List<DutyHistoryItem> items;
@@ -141,8 +137,6 @@ class DutyHistoryState {
 
   DutyHistoryState copyWith({
     bool? isLoading,
-    bool? isLoadingMore,
-    bool? hasMore,
     DutyHistoryFilter? filter,
     DutyHistorySummary? summary,
     List<DutyHistoryItem>? items,
@@ -150,8 +144,6 @@ class DutyHistoryState {
   }) {
     return DutyHistoryState(
       isLoading: isLoading ?? this.isLoading,
-      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-      hasMore: hasMore ?? this.hasMore,
       filter: filter ?? this.filter,
       summary: summary ?? this.summary,
       items: items ?? this.items,

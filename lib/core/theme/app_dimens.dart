@@ -88,6 +88,9 @@ abstract final class AppSizes {
   /// 48. Standard button and input height.
   static const double controlHeight = 48;
 
+  /// 56. Height of every top app bar, below the status bar.
+  static const double appBarHeight = 56;
+
   /// 72. Minimum list row height.
   static const double listRowMinHeight = 72;
 

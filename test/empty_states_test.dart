@@ -2,7 +2,6 @@ import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/shared/widgets/empty_states/empty_state_card.dart';
 import 'package:diamond_tracking/shared/widgets/empty_states/empty_state_illustration.dart';
 import 'package:diamond_tracking/shared/widgets/empty_states/empty_state_type.dart';
-import 'package:diamond_tracking/shared/widgets/empty_states/empty_states_reference_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -26,7 +25,10 @@ void main() {
       expect(EmptyStateType.nobodyOnDuty.actionLabel, 'View team');
 
       expect(EmptyStateType.noNotifications.actionLabel, isNull);
-      expect(EmptyStateType.noNotifications.pendingBadgeText, 'NO ACTIONS PENDING');
+      expect(
+        EmptyStateType.noNotifications.pendingBadgeText,
+        'NO ACTIONS PENDING',
+      );
 
       expect(EmptyStateType.filteredToNothing.actionLabel, 'Clear filters');
       expect(EmptyStateType.noRoute.actionLabel, 'Pick another date');
@@ -35,26 +37,29 @@ void main() {
   });
 
   group('EmptyStateIllustration Widget Tests', () {
-    testWidgets('renders all 6 illustration variants with appropriate badge overlays', (tester) async {
-      for (final type in EmptyStateType.values) {
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.light,
-            home: Scaffold(
-              body: Center(
-                child: EmptyStateIllustration(type: type),
+    testWidgets(
+      'renders all 6 illustration variants with appropriate badge overlays',
+      (tester) async {
+        for (final type in EmptyStateType.values) {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: AppTheme.light,
+              home: Scaffold(
+                body: Center(child: EmptyStateIllustration(type: type)),
               ),
             ),
-          ),
-        );
+          );
 
-        expect(find.byType(EmptyStateIllustration), findsOneWidget);
-      }
-    });
+          expect(find.byType(EmptyStateIllustration), findsOneWidget);
+        }
+      },
+    );
   });
 
   group('EmptyStateCard Widget Tests', () {
-    testWidgets('renders Case 01 with primary button and triggers callback', (tester) async {
+    testWidgets('renders Case 01 with primary button and triggers callback', (
+      tester,
+    ) async {
       var tapped = false;
 
       await tester.pumpWidget(
@@ -77,10 +82,15 @@ void main() {
 
       // Verify content
       expect(find.text('No employees yet'), findsOneWidget);
-      expect(find.text('Add your first team member to initiate regional tracking.'), findsOneWidget);
+      expect(
+        find.text('Add your first team member to initiate regional tracking.'),
+        findsOneWidget,
+      );
 
       // Verify primary action button
-      final buttonFinder = find.byKey(const Key('btn-empty-action-noEmployees'));
+      final buttonFinder = find.byKey(
+        const Key('btn-empty-action-noEmployees'),
+      );
       expect(buttonFinder, findsOneWidget);
       expect(find.text('Add employee'), findsOneWidget);
 
@@ -89,15 +99,15 @@ void main() {
       expect(tapped, isTrue);
     });
 
-    testWidgets('renders Case 03 with passive status badge and no button', (tester) async {
+    testWidgets('renders Case 03 with passive status badge and no button', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
           home: const Scaffold(
             body: Center(
-              child: EmptyStateCard(
-                type: EmptyStateType.noNotifications,
-              ),
+              child: EmptyStateCard(type: EmptyStateType.noNotifications),
             ),
           ),
         ),
@@ -106,11 +116,16 @@ void main() {
       expect(find.text('CASE 03 · NO NOTIFICATIONS'), findsOneWidget);
       expect(find.text('FEED_CLEAR'), findsOneWidget);
       expect(find.text("You're all caught up"), findsOneWidget);
-      expect(find.byKey(const Key('badge-empty-pending-noNotifications')), findsOneWidget);
+      expect(
+        find.byKey(const Key('badge-empty-pending-noNotifications')),
+        findsOneWidget,
+      );
       expect(find.text('NO ACTIONS PENDING'), findsOneWidget);
     });
 
-    testWidgets('renders without case header when showCaseHeader is false', (tester) async {
+    testWidgets('renders without case header when showCaseHeader is false', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
@@ -127,58 +142,6 @@ void main() {
 
       expect(find.text('CASE 04 · FILTERED TO NOTHING'), findsNothing);
       expect(find.text('No results for these filters'), findsOneWidget);
-    });
-  });
-
-  group('Screen 28: EmptyStatesReferencePage Tests', () {
-    testWidgets('renders complete system specification header, 6 cards, and telemetry footer', (tester) async {
-      tester.view.physicalSize = const Size(1200, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
-
-      var addEmpTriggered = false;
-      var viewTeamTriggered = false;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light,
-          home: EmptyStatesReferencePage(
-            onAddEmployee: () => addEmpTriggered = true,
-            onViewTeam: () => viewTeamTriggered = true,
-          ),
-        ),
-      );
-
-      // Verify System Spec Header
-      expect(find.text('DIAMOND AGRITECH · UI SYSTEM SPECIFICATION'), findsOneWidget);
-      expect(find.text('Screen 28 — Empty States Reference Sheet'), findsOneWidget);
-      expect(find.text('Matrix Mode: Android Telemetry v3.4'), findsOneWidget);
-      expect(find.text('Canvas Scale: 1:1 Reference Target'), findsOneWidget);
-      expect(find.text('6 Scenarios Calibrated'), findsOneWidget);
-
-      // Verify all 6 cards in matrix
-      expect(find.byKey(const Key('card-empty-state-noEmployees')), findsOneWidget);
-      expect(find.byKey(const Key('card-empty-state-nobodyOnDuty')), findsOneWidget);
-      expect(find.byKey(const Key('card-empty-state-noNotifications')), findsOneWidget);
-      expect(find.byKey(const Key('card-empty-state-filteredToNothing')), findsOneWidget);
-      expect(find.byKey(const Key('card-empty-state-noRoute')), findsOneWidget);
-      expect(find.byKey(const Key('card-empty-state-routeExpired')), findsOneWidget);
-
-      // Verify Telemetry Footer Strip
-      expect(find.text('Field Telemetry Standards · Empty States Subsystem'), findsOneWidget);
-      expect(find.text('16px'), findsOneWidget);
-      expect(find.text('56×56px'), findsOneWidget);
-      expect(find.text('36px'), findsOneWidget);
-
-      // Verify interactive callback on Case 01
-      await tester.tap(find.byKey(const Key('btn-empty-action-noEmployees')));
-      await tester.pumpAndSettle();
-      expect(addEmpTriggered, isTrue);
-
-      // Verify interactive callback on Case 02
-      await tester.tap(find.byKey(const Key('btn-empty-action-nobodyOnDuty')));
-      await tester.pumpAndSettle();
-      expect(viewTeamTriggered, isTrue);
     });
   });
 }

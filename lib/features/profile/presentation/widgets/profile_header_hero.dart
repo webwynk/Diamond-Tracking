@@ -55,9 +55,8 @@ class ProfileHeaderHero extends StatelessWidget {
                   IconButton(
                     key: const Key('profile-back-btn'),
                     icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
+                      Icons.arrow_back_rounded,
                       color: AppColors.neutral0,
-                      size: 20,
                     ),
                     onPressed: () {
                       if (onBack != null) {

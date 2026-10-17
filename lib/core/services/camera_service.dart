@@ -15,7 +15,8 @@ abstract class CameraService {
 
 /// Production implementation using [ImagePicker] strictly restricted to [ImageSource.camera].
 class DeviceCameraService implements CameraService {
-  DeviceCameraService({ImagePicker? picker}) : _picker = picker ?? ImagePicker();
+  DeviceCameraService({ImagePicker? picker})
+    : _picker = picker ?? ImagePicker();
 
   final ImagePicker _picker;
 

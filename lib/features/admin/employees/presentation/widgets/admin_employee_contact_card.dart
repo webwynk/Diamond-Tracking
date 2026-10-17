@@ -5,22 +5,23 @@ import '../../../../../core/theme/app_dimens.dart';
 import '../../../../../core/theme/app_typography.dart';
 import '../controllers/admin_employee_list_state.dart';
 
-/// White card with Overline "CONTACT" and rows for Phone, Email, and Joined date.
+/// White card with Overline "CONTACT" and rows for Phone and Email.
 class AdminEmployeeContactCard extends StatelessWidget {
   const AdminEmployeeContactCard({
     super.key,
     required this.employee,
-    this.email = 'suresh.p@diamondagritech.in',
-    this.joinedDate = '18 Feb 2026',
     this.onPhoneTap,
     this.onEmailTap,
   });
 
   final AdminEmployeeItem employee;
-  final String email;
-  final String joinedDate;
   final VoidCallback? onPhoneTap;
   final VoidCallback? onEmailTap;
+
+  String get _email {
+    final email = employee.email?.trim();
+    return (email == null || email.isEmpty) ? '—' : email;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +53,8 @@ class AdminEmployeeContactCard extends StatelessWidget {
             label: 'Phone',
             value: employee.phoneNumber,
             showChevron: true,
-            onTap: onPhoneTap ??
+            onTap:
+                onPhoneTap ??
                 () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -70,28 +72,18 @@ class AdminEmployeeContactCard extends StatelessWidget {
             key: const Key('row-contact-email'),
             icon: Icons.mail_rounded,
             label: 'Email',
-            value: email,
+            value: _email,
             showChevron: true,
-            onTap: onEmailTap ??
+            onTap:
+                onEmailTap ??
                 () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Opening email to $email...'),
+                      content: Text('Opening email to $_email...'),
                       duration: const Duration(seconds: 1),
                     ),
                   );
                 },
-          ),
-
-          const Divider(color: AppColors.border, height: 1),
-
-          // Row 3: Joined Date
-          _buildContactRow(
-            key: const Key('row-contact-joined'),
-            icon: Icons.calendar_today_rounded,
-            label: 'Joined',
-            value: joinedDate,
-            showChevron: false,
           ),
         ],
       ),

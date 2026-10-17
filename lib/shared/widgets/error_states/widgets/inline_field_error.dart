@@ -42,10 +42,7 @@ class InlineFieldError extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(
-              color: AppColors.error,
-              width: 1.5,
-            ),
+            border: Border.all(color: AppColors.error, width: 1.5),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

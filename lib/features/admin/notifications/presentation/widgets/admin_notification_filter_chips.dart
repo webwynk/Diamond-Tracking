@@ -65,14 +65,6 @@ class AdminNotificationFilterChips extends StatelessWidget {
               filter: AdminNotificationFilter.alerts,
               label: 'Alerts',
             ),
-            const SizedBox(width: AppSpacing.x2),
-
-            // 5. Visits
-            _buildChip(
-              key: const Key('filter-chip-visits'),
-              filter: AdminNotificationFilter.visits,
-              label: 'Visits',
-            ),
           ],
         ),
       ),
@@ -118,7 +110,10 @@ class AdminNotificationFilterChips extends StatelessWidget {
               if (countBadge != null) ...[
                 const SizedBox(width: AppSpacing.x1 + 2),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? Colors.white.withValues(alpha: 0.25)

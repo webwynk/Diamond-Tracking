@@ -1,155 +1,147 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/errors/app_exceptions.dart';
+import '../../../../../core/utils/duty_time_helper.dart';
+import '../../../../../core/utils/phone_clock.dart';
+import '../../../../../data/repositories/supabase_attendance_repository.dart';
+import '../../../../../domain/entities/attendance_month.dart';
+import '../../../../../domain/repositories/attendance_repository.dart';
 import 'admin_attendance_state.dart';
 
-/// Provider exposing the administrative attendance and payroll audit controller.
-final adminAttendanceControllerProvider =
-    NotifierProvider<AdminAttendanceNotifier, AdminAttendanceState>(
-  AdminAttendanceNotifier.new,
-);
+/// Provider exposing the source of attendance records.
+final attendanceRepositoryProvider = Provider<AttendanceRepository>((ref) {
+  return SupabaseAttendanceRepository();
+});
 
-/// Riverpod 3 Notifier managing monthly attendance records, filtering, and payroll approvals.
+/// Provider for Screen 22, one per employee. Auto-disposed with the screen.
+final adminAttendanceControllerProvider = NotifierProvider.autoDispose
+    .family<AdminAttendanceNotifier, AdminAttendanceState, String>(
+      AdminAttendanceNotifier.new,
+    );
+
+/// Loads one employee's month of attendance and filters it.
+///
+/// Every figure is added up from the month's session rows (docs/01 F7), the
+/// same rows and the same arithmetic as the route view. Months are IST months.
+/// A load overtaken by a newer one (the admin tapping through months) is
+/// dropped. Nothing is invented: until the load finishes the screen shows
+/// loading, and a failure is an error with Retry, never an empty month.
 class AdminAttendanceNotifier extends Notifier<AdminAttendanceState> {
+  AdminAttendanceNotifier(this.employeeId);
+
+  final String employeeId;
+
+  /// How far back the month picker goes before the employee's first day is
+  /// known (it is known after the first load).
+  static const int historyMonths = 24;
+
+  int _request = 0;
+  bool _stopped = false;
+
+  DateTime _currentMonthIst() {
+    final ist = DutyTimeHelper.toIst(ref.read(phoneClockProvider)());
+    return DateTime(ist.year, ist.month);
+  }
+
   @override
   AdminAttendanceState build() {
-    return AdminAttendanceState(
-      employeeName: 'Suresh Patel',
-      employeeCode: 'DA-022',
-      roleSubtitle: 'Agronomist · Nashik Central Beat',
-      selectedMonth: 'October 2026',
-      metrics: const AdminMonthlyMetrics(
-        daysWorked: 12,
-        totalHoursText: '96h 40m',
-        distanceKm: '578.3 km',
-        visitsCount: 54,
-        autoEndedCount: 1,
-        flagsCount: 0,
-        payableHoursText: '96h 40m',
-        payableAmountText: '₹14,500 Base',
-      ),
-      dailyLogs: _buildDefaultDailyLogs(),
-      selectedFilter: AdminAttendanceFilter.allDays,
-      isMonthApproved: false,
-      hasDiscrepancy: true,
-    );
+    ref.onDispose(() => _stopped = true);
+    Future<void>.microtask(_load);
+    return AdminAttendanceState(month: _currentMonthIst());
   }
 
   void setFilter(AdminAttendanceFilter filter) {
     state = state.copyWith(selectedFilter: filter);
   }
 
+  /// Loads the month again (after a failure, or to see a fresher "so far").
+  Future<void> reload() => _load();
+
   void previousMonth() {
-    if (state.selectedMonth == 'October 2026') {
-      state = state.copyWith(selectedMonth: 'September 2026');
-    } else if (state.selectedMonth == 'September 2026') {
-      state = state.copyWith(selectedMonth: 'August 2026');
-    }
+    final current = _currentMonthIst();
+    final earliest = DateTime(current.year, current.month - historyMonths);
+    final previous = DateTime(state.month.year, state.month.month - 1);
+    if (previous.isBefore(earliest)) return;
+    final first = state.firstMonth;
+    if (first != null && previous.isBefore(first)) return;
+    _select(previous);
   }
 
+  /// Moves forward one month, never past the current month.
   void nextMonth() {
-    if (state.selectedMonth == 'August 2026') {
-      state = state.copyWith(selectedMonth: 'September 2026');
-    } else if (state.selectedMonth == 'September 2026') {
-      state = state.copyWith(selectedMonth: 'October 2026');
+    final next = DateTime(state.month.year, state.month.month + 1);
+    if (next.isAfter(_currentMonthIst())) return;
+    _select(next);
+  }
+
+  void _select(DateTime month) {
+    state = AdminAttendanceState(
+      month: month,
+      selectedFilter: state.selectedFilter,
+      firstMonth: state.firstMonth,
+    );
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (_stopped) return;
+    final ticket = ++_request;
+    final month = state.month;
+    state = state.copyWith(load: AttendanceLoad.loading, clearError: true);
+
+    // The IST month as a UTC interval (IST has no daylight saving).
+    final startUtc = DateTime.utc(
+      month.year,
+      month.month,
+    ).subtract(DutyTimeHelper.istOffset);
+    final endUtc = DateTime.utc(
+      month.year,
+      month.month + 1,
+    ).subtract(DutyTimeHelper.istOffset);
+
+    try {
+      final source = await ref
+          .read(attendanceRepositoryProvider)
+          .fetchMonth(
+            employeeId: employeeId,
+            monthStartUtc: startUtc,
+            monthEndUtc: endUtc,
+          );
+      if (ticket != _request || _stopped) return;
+
+      final built = AttendanceMonth.build(
+        month: month,
+        sessions: source.sessions,
+        serverNow: source.serverNow,
+        employeeCreatedAt: source.employeeCreatedAt,
+      );
+      final created = source.employeeCreatedAt;
+      final createdIst = created == null ? null : DutyTimeHelper.toIst(created);
+      state = state.copyWith(
+        load: AttendanceLoad.loaded,
+        metrics: AdminMonthlyMetrics.fromSummary(built.summary),
+        dailyLogs: [
+          for (final day in built.days) AdminDailyAttendanceItem.fromDay(day),
+        ],
+        truncated: source.truncated,
+        firstMonth: createdIst == null
+            ? null
+            : DateTime(createdIst.year, createdIst.month),
+      );
+    } on AppException catch (e) {
+      if (ticket != _request || _stopped) return;
+      state = state.copyWith(
+        load: AttendanceLoad.failed,
+        errorMessage: e.message,
+      );
+    } catch (e, st) {
+      if (ticket != _request || _stopped) return;
+      debugPrint('AdminAttendance: could not load: $e\n$st');
+      state = state.copyWith(
+        load: AttendanceLoad.failed,
+        errorMessage: 'Could not load the attendance. Please try again.',
+      );
     }
-  }
-
-  void approveMonth() {
-    state = state.copyWith(
-      isMonthApproved: true,
-      hasDiscrepancy: false,
-    );
-  }
-
-  void adjustPayableHours({
-    required String hours,
-    required String amount,
-  }) {
-    state = state.copyWith(
-      metrics: AdminMonthlyMetrics(
-        daysWorked: state.metrics.daysWorked,
-        totalHoursText: state.metrics.totalHoursText,
-        distanceKm: state.metrics.distanceKm,
-        visitsCount: state.metrics.visitsCount,
-        autoEndedCount: state.metrics.autoEndedCount,
-        flagsCount: state.metrics.flagsCount,
-        payableHoursText: hours,
-        payableAmountText: amount,
-      ),
-    );
-  }
-
-  void resolveDiscrepancy() {
-    state = state.copyWith(hasDiscrepancy: false);
-  }
-
-  List<AdminDailyAttendanceItem> _buildDefaultDailyLogs() {
-    return const <AdminDailyAttendanceItem>[
-      // Day 1: 11 / Sat — Normal complete
-      AdminDailyAttendanceItem(
-        id: 'day-11',
-        dayNumber: '11',
-        dayOfWeek: 'Sat',
-        statusType: AdminDailyStatusType.normal,
-        sessions: [
-          AdminDailySession(start: '8:04 AM', end: '6:12 PM'),
-        ],
-        statsText: '8h 08m · 47.3 km · 5 visits',
-        hasChevron: true,
-      ),
-
-      // Day 2: 10 / Fri — Auto-ended Discrepancy
-      AdminDailyAttendanceItem(
-        id: 'day-10',
-        dayNumber: '10',
-        dayOfWeek: 'Fri',
-        statusType: AdminDailyStatusType.autoEnded,
-        sessions: [
-          AdminDailySession(start: '8:00 AM', end: '11:00 PM'),
-        ],
-        statsText: '15h 00m · 96.4 km · 9 visits',
-        alertNote: 'Exceeded shift threshold (14h cap applied)',
-        hasChevron: true,
-        hasFlag: true,
-      ),
-
-      // Day 3: 09 / Thu — Two duty sessions in one day
-      AdminDailyAttendanceItem(
-        id: 'day-09',
-        dayNumber: '09',
-        dayOfWeek: 'Thu',
-        statusType: AdminDailyStatusType.multiSession,
-        sessions: [
-          AdminDailySession(start: '8:02 AM', end: '1:10 PM'),
-          AdminDailySession(start: '2:30 PM', end: '6:40 PM'),
-        ],
-        statsText: 'Cumulative: 9h 18m · 54.2 km · 6 visits',
-        hasChevron: true,
-      ),
-
-      // Day 4: 08 / Wed — Absent / Weekly Off
-      AdminDailyAttendanceItem(
-        id: 'day-08',
-        dayNumber: '08',
-        dayOfWeek: 'Wed',
-        statusType: AdminDailyStatusType.absent,
-        sessions: [],
-        statsText: 'Scheduled weekly rest / Non-operational',
-        hasChevron: false,
-      ),
-
-      // Day 5: 07 / Tue — Normal complete
-      AdminDailyAttendanceItem(
-        id: 'day-07',
-        dayNumber: '07',
-        dayOfWeek: 'Tue',
-        statusType: AdminDailyStatusType.normal,
-        sessions: [
-          AdminDailySession(start: '8:15 AM', end: '5:45 PM'),
-        ],
-        statsText: '9h 30m · 51.0 km · 6 visits',
-        hasChevron: true,
-      ),
-    ];
   }
 }

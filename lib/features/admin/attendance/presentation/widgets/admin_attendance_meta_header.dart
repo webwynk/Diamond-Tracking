@@ -4,22 +4,18 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_dimens.dart';
 import '../../../../../core/theme/app_typography.dart';
 
-/// Employee profile and active payroll meta sub-header for Screen 22.
+/// Employee identity sub-header for Screen 22.
 class AdminAttendanceMetaHeader extends StatelessWidget {
   const AdminAttendanceMetaHeader({
     super.key,
     required this.name,
     required this.code,
-    required this.roleSubtitle,
     required this.initials,
-    this.payrollStatus = 'Active Payroll',
   });
 
   final String name;
   final String code;
-  final String roleSubtitle;
   final String initials;
-  final String payrollStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -96,47 +92,7 @@ class AdminAttendanceMetaHeader extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        roleSubtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.neutral500,
-                        ),
-                      ),
                     ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.x2),
-
-          // Right: Active Payroll Status Pill
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.successBg,
-              borderRadius: BorderRadius.circular(AppRadius.full),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: AppColors.success,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  payrollStatus,
-                  style: AppTypography.overline.copyWith(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],

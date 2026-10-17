@@ -20,16 +20,16 @@ final visitRepositoryProvider = Provider<VisitRepository>((ref) {
 @immutable
 class VisitCaptureState {
   const VisitCaptureState({
-    this.placeName = 'Shivpuri Farm',
+    this.placeName = '',
     this.placeId,
-    this.arrivalTime = '2:14 PM',
-    this.distanceMeters = 500.0,
-    this.latitude = 19.9975,
-    this.longitude = 73.7898,
+    this.arrivalTime = '',
+    this.distanceMeters,
+    this.latitude,
+    this.longitude,
     this.photoPath,
-    this.geotagTimestamp = '12 Oct 2026, 2:15 PM',
-    this.geotagCoordinates = '19.9975° N, 73.7898° E',
-    this.note = 'Met owner, discussed kharif seed order.',
+    this.geotagTimestamp = '',
+    this.geotagCoordinates = '',
+    this.note = '',
     this.photoSkipped = false,
     this.photoSkipReason,
     this.isSaving = false,
@@ -41,8 +41,10 @@ class VisitCaptureState {
   final String? placeId;
   final String arrivalTime;
   final double? distanceMeters;
-  final double latitude;
-  final double longitude;
+
+  /// Null until a GPS position is supplied by [VisitCaptureNotifier.initVisit].
+  final double? latitude;
+  final double? longitude;
   final String? photoPath;
   final String geotagTimestamp;
   final String geotagCoordinates;
@@ -93,8 +95,8 @@ class VisitCaptureState {
 /// Global provider for managing the visit capture flow.
 final visitCaptureControllerProvider =
     NotifierProvider<VisitCaptureNotifier, VisitCaptureState>(
-  VisitCaptureNotifier.new,
-);
+      VisitCaptureNotifier.new,
+    );
 
 /// Controller governing visit photo capture, geotag overlay, note updates,
 /// and visit submission adhering to PRD F10 & BR-12.
@@ -112,7 +114,7 @@ class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
 
   /// Initializes the visit capture state with place and GPS context.
   void initVisit({
-    required String placeName,
+    String? placeName,
     String? placeId,
     required double latitude,
     required double longitude,
@@ -128,7 +130,7 @@ class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
         '${latitude.toStringAsFixed(4)}° N, ${longitude.toStringAsFixed(4)}° E';
 
     state = state.copyWith(
-      placeName: placeName,
+      placeName: placeName ?? '',
       placeId: placeId,
       latitude: latitude,
       longitude: longitude,
@@ -136,7 +138,7 @@ class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
       arrivalTime: formattedTime,
       geotagTimestamp: formattedDate,
       geotagCoordinates: formattedCoords,
-      note: initialNote ?? state.note,
+      note: initialNote ?? '',
       photoSkipped: false,
       photoSkipReason: null,
       isSaved: false,
@@ -186,6 +188,16 @@ class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
   }) async {
     if (state.isSaving) return false;
 
+    final latitude = state.latitude;
+    final longitude = state.longitude;
+    if (latitude == null || longitude == null) {
+      state = state.copyWith(
+        errorMessage:
+            'No GPS position for this visit. Try again once GPS locks.',
+      );
+      return false;
+    }
+
     state = state.copyWith(isSaving: true, errorMessage: null);
 
     try {
@@ -193,10 +205,10 @@ class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         dutySessionId: dutySessionId,
         employeeId: employeeId,
-        placeName: state.placeName,
+        placeName: state.placeName.isEmpty ? 'Field location' : state.placeName,
         placeId: state.placeId,
-        latitude: state.latitude,
-        longitude: state.longitude,
+        latitude: latitude,
+        longitude: longitude,
         distanceMeters: state.distanceMeters,
         photoPath: state.photoPath,
         photoSkipped: state.photoSkipped,
@@ -221,8 +233,18 @@ class VisitCaptureNotifier extends Notifier<VisitCaptureState> {
 
   static String _monthName(int month) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     if (month >= 1 && month <= 12) return months[month - 1];
     return '';

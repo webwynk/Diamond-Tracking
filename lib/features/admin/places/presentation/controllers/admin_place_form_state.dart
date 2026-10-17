@@ -1,27 +1,21 @@
 import 'package:flutter/foundation.dart';
 
 /// Form place types for Screen 25 Create / Edit Place.
-enum PlaceFormType {
-  farm,
-  dealer,
-  office,
-  warehouse,
-  other,
-}
+enum PlaceFormType { farm, dealer, office, warehouse, other }
 
 /// Immutable state for Screen 25 Create / Edit Place (Admin).
 @immutable
 class AdminPlaceFormState {
   const AdminPlaceFormState({
     this.placeId,
-    this.name = 'Shivpuri Farm',
+    this.name = '',
     this.type = PlaceFormType.farm,
     this.radiusMeters = 500.0,
-    this.latitude = 19.99753,
-    this.longitude = 73.78981,
+    this.latitude,
+    this.longitude,
     this.isActive = true,
-    this.adjacentPlaceName = 'Patel Agro Dealer',
-    this.adjacentDistanceMeters = 320,
+    this.adjacentPlaceName,
+    this.adjacentDistanceMeters,
     this.isSaving = false,
     this.isSatellite = false,
     this.errorMessage,
@@ -31,19 +25,24 @@ class AdminPlaceFormState {
   final String name;
   final PlaceFormType type;
   final double radiusMeters;
-  final double latitude;
-  final double longitude;
+
+  /// Null until a location has been chosen.
+  final double? latitude;
+  final double? longitude;
   final bool isActive;
-  final String adjacentPlaceName;
-  final int adjacentDistanceMeters;
+
+  /// Nearest other registered place, when one overlaps. Null when none.
+  final String? adjacentPlaceName;
+  final int? adjacentDistanceMeters;
   final bool isSaving;
   final bool isSatellite;
   final String? errorMessage;
 
   bool get isEditMode => placeId != null;
-  String get coordinatesText =>
-      '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
-  String get radiusDisplay => '${radiusMeters.round()} m';
+  bool get hasLocation => latitude != null && longitude != null;
+  String get coordinatesText => hasLocation
+      ? '${latitude!.toStringAsFixed(5)}, ${longitude!.toStringAsFixed(5)}'
+      : '—';
 
   AdminPlaceFormState copyWith({
     String? placeId,

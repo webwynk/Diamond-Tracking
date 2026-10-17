@@ -72,11 +72,7 @@ class AdminStatCard extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
-                    child: Icon(
-                      icon,
-                      size: 18,
-                      color: iconColor,
-                    ),
+                    child: Icon(icon, size: 18, color: iconColor),
                   ),
                   if (showPingDot && pingColor != null)
                     Container(
@@ -88,11 +84,7 @@ class AdminStatCard extends StatelessWidget {
                       ),
                     )
                   else if (trailingIcon != null)
-                    Icon(
-                      trailingIcon,
-                      size: 16,
-                      color: AppColors.textDisabled,
-                    ),
+                    Icon(trailingIcon, size: 16, color: AppColors.textDisabled),
                 ],
               ),
               const SizedBox(height: AppSpacing.x3),

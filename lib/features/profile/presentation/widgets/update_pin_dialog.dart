@@ -8,10 +8,7 @@ import '../../../../shared/widgets/app_button.dart';
 
 /// Modal dialog for updating the 4-digit security PIN adhering to Screen 13 specifications.
 class UpdatePinDialog extends StatefulWidget {
-  const UpdatePinDialog({
-    super.key,
-    required this.onSavePin,
-  });
+  const UpdatePinDialog({super.key, required this.onSavePin});
 
   final Future<bool> Function(String newPin) onSavePin;
 
@@ -81,9 +78,7 @@ class _UpdatePinDialogState extends State<UpdatePinDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.x6),
@@ -167,10 +162,7 @@ class _UpdatePinDialogState extends State<UpdatePinDialog> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: AppRadius.mdAll,
-                  borderSide: BorderSide(
-                    color: AppColors.primary600,
-                    width: 2,
-                  ),
+                  borderSide: BorderSide(color: AppColors.primary600, width: 2),
                 ),
               ),
               onChanged: (_) {

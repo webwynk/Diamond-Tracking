@@ -33,11 +33,7 @@ class OfflineInfoBanner extends StatelessWidget {
         children: <Widget>[
           const Padding(
             padding: EdgeInsets.only(top: 2),
-            child: Icon(
-              Icons.cloud_off,
-              size: 24,
-              color: AppColors.info,
-            ),
+            child: Icon(Icons.cloud_off, size: 24, color: AppColors.info),
           ),
           const SizedBox(width: AppSpacing.x3),
           Expanded(

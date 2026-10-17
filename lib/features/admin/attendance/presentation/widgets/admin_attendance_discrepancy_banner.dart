@@ -70,7 +70,7 @@ class AdminAttendanceDiscrepancyBanner extends StatelessWidget {
             key: const Key('btn-discrepancy-review'),
             onTap: onReview,
             child: Text(
-              'Review',
+              'Show',
               style: AppTypography.caption.copyWith(
                 color: AppColors.primary600,
                 fontWeight: FontWeight.w600,

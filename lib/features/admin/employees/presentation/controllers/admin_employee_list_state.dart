@@ -3,22 +3,10 @@ import 'package:flutter/foundation.dart';
 import '../../../../../domain/entities/user_profile.dart';
 
 /// Status classification for an employee on the admin roster.
-enum AdminEmployeeStatus {
-  onDuty,
-  needsCheck,
-  stale,
-  offDuty,
-  blocked,
-}
+enum AdminEmployeeStatus { onDuty, needsCheck, stale, offDuty, blocked }
 
 /// Filter mode for the admin employee list.
-enum AdminEmployeeFilter {
-  active,
-  onDuty,
-  offDuty,
-  blocked,
-  hasFlags,
-}
+enum AdminEmployeeFilter { active, onDuty, offDuty, blocked, hasFlags }
 
 /// Domain entity representing a field employee on the administration roster.
 @immutable
@@ -102,6 +90,8 @@ class AdminEmployeeListState {
     this.filterTuneBadgeCount = 1,
     this.employees = const [],
     this.isLoading = false,
+    this.hasLoaded = false,
+    this.errorMessage,
   });
 
   final AdminEmployeeFilter selectedFilter;
@@ -111,12 +101,21 @@ class AdminEmployeeListState {
   final List<AdminEmployeeItem> employees;
   final bool isLoading;
 
-  int get totalEmployeesCount => 143;
-  int get activeEmployeesCount => 141;
-  int get onDutyCount => 112;
-  int get offDutyCount => 31;
-  int get blockedCount => 2;
-  int get hasFlagsCount => 3;
+  /// True once the roster has been fetched from the server at least once.
+  final bool hasLoaded;
+
+  /// Why the last load failed; null when it did not.
+  final String? errorMessage;
+
+  int get totalEmployeesCount => employees.length;
+  int get activeEmployeesCount => employees.where((e) => e.isActive).length;
+  int get onDutyCount =>
+      employees.where((e) => e.status == AdminEmployeeStatus.onDuty).length;
+  int get offDutyCount =>
+      employees.where((e) => e.status == AdminEmployeeStatus.offDuty).length;
+  int get blockedCount =>
+      employees.where((e) => e.status == AdminEmployeeStatus.blocked).length;
+  int get hasFlagsCount => employees.where((e) => e.hasFlags).length;
 
   /// Filtered list based on search term, active-only switch, and selected chip.
   List<AdminEmployeeItem> get filteredEmployees {
@@ -167,6 +166,9 @@ class AdminEmployeeListState {
     int? filterTuneBadgeCount,
     List<AdminEmployeeItem>? employees,
     bool? isLoading,
+    bool? hasLoaded,
+    String? errorMessage,
+    bool clearError = false,
   }) {
     return AdminEmployeeListState(
       selectedFilter: selectedFilter ?? this.selectedFilter,
@@ -175,6 +177,8 @@ class AdminEmployeeListState {
       filterTuneBadgeCount: filterTuneBadgeCount ?? this.filterTuneBadgeCount,
       employees: employees ?? this.employees,
       isLoading: isLoading ?? this.isLoading,
+      hasLoaded: hasLoaded ?? this.hasLoaded,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
 }

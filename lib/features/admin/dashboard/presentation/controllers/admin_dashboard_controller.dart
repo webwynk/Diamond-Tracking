@@ -1,76 +1,149 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/errors/app_exceptions.dart';
+import '../../../../../core/utils/phone_clock.dart';
+import '../../../../../core/utils/time_ago.dart';
+import '../../../../../data/repositories/supabase_admin_activity_repository.dart';
+import '../../../../../domain/entities/admin_activity_event.dart';
+import '../../../../../domain/repositories/admin_activity_repository.dart';
+import '../../../map/presentation/controllers/admin_live_map_controller.dart';
 import 'admin_dashboard_state.dart';
 
-/// Global provider for observing and controlling the Admin Dashboard.
-final adminDashboardControllerProvider =
-    NotifierProvider<AdminDashboardNotifier, AdminDashboardState>(
-  AdminDashboardNotifier.new,
-);
+/// Provider exposing the source of the Recent activity feed.
+final adminActivityRepositoryProvider = Provider<AdminActivityRepository>((
+  ref,
+) {
+  return SupabaseAdminActivityRepository();
+});
 
-/// Notifier governing the administrator's dashboard telemetry, live counts,
-/// and recent operational activity feed for Screen 14.
+/// Global provider for observing the Admin Dashboard.
+///
+/// Auto-disposed with the admin shell, so the timer stops on sign-out.
+final adminDashboardControllerProvider =
+    NotifierProvider.autoDispose<AdminDashboardNotifier, AdminDashboardState>(
+      AdminDashboardNotifier.new,
+    );
+
+/// Loads the Recent activity feed from the server.
+///
+/// It reloads every minute, and straight away when someone starts or ends duty
+/// (the live feed's on-duty list changes). A failed first load is an error with
+/// Retry, never an empty "no activity yet"; a failed refresh keeps what is
+/// shown. Nothing is invented.
 class AdminDashboardNotifier extends Notifier<AdminDashboardState> {
+  static const Duration _refreshEvery = Duration(minutes: 1);
+  static const int _rows = 10;
+
+  Timer? _timer;
+  bool _loading = false;
+  bool _loadAgain = false;
+  bool _stopped = false;
+
   @override
   AdminDashboardState build() {
-    final defaultActivities = _getDefaultActivities();
-    return AdminDashboardState(
-      isLoading: false,
-      onDutyCount: 112,
-      offDutyCount: 31,
-      noUpdateCount: 4,
-      needsCheckCount: 3,
-      unreadNotificationsCount: 7,
-      activities: defaultActivities,
+    ref.onDispose(() {
+      _stopped = true;
+      _timer?.cancel();
+    });
+    // Someone started or ended duty: the feed has a new line.
+    ref.listen(
+      adminLiveMapControllerProvider.select(
+        (s) => s.officers.map((o) => o.id).join(','),
+      ),
+      (_, _) => unawaited(_load()),
     );
+    Future<void>.microtask(() {
+      if (_stopped) return;
+      _timer = Timer.periodic(_refreshEvery, (_) => unawaited(_load()));
+      unawaited(_load());
+    });
+    return const AdminDashboardState();
   }
 
-  /// Reloads dashboard metrics and activity stream.
-  Future<void> refreshDashboard() async {
-    state = state.copyWith(isLoading: true);
-    // Simulates fast 150ms network roundtrip
-    await Future<void>.delayed(const Duration(milliseconds: 150));
-    state = state.copyWith(
-      isLoading: false,
-      activities: _getDefaultActivities(),
-    );
+  /// Tries the first load again after it failed.
+  Future<void> retry() {
+    state = state.copyWith(isLoading: true, clearError: true);
+    return _load();
   }
 
-  List<AdminActivityItem> _getDefaultActivities() {
-    final now = DateTime.now();
-    return [
-      AdminActivityItem(
-        id: 'act_1',
-        type: AdminActivityType.dutyStarted,
-        title: 'Suresh Patel started duty',
-        subtitle: 'DA-022 · Route 4B',
-        timeAgo: '2m',
-        timestamp: now.subtract(const Duration(minutes: 2)),
+  /// Reloads without showing the loading state (pull to refresh).
+  Future<void> refresh() => _load();
+
+  Future<void> _load() async {
+    if (_stopped) return;
+    if (_loading) {
+      // A change arrived mid-load: load once more when this one ends.
+      _loadAgain = true;
+      return;
+    }
+    _loading = true;
+    try {
+      final events = await ref
+          .read(adminActivityRepositoryProvider)
+          .fetchRecent(limit: _rows);
+      if (_stopped) return;
+      final now = ref.read(phoneClockProvider)().toUtc();
+      state = state.copyWith(
+        activities: [for (final event in events) _toItem(event, now)],
+        isLoading: false,
+        clearError: true,
+      );
+    } on AppException catch (e) {
+      _failed(e.message);
+    } catch (_) {
+      _failed('Could not load recent activity. Please try again.');
+    } finally {
+      _loading = false;
+    }
+    if (_loadAgain && !_stopped) {
+      _loadAgain = false;
+      await _load();
+    }
+  }
+
+  /// Keeps what is already shown when a refresh fails; only a failed first
+  /// load becomes an error.
+  void _failed(String message) {
+    if (_stopped) return;
+    if (state.isLoading) {
+      state = state.copyWith(isLoading: false, errorMessage: message);
+    }
+  }
+
+  AdminActivityItem _toItem(AdminActivityEvent event, DateTime now) {
+    final name = event.personName;
+    final code = event.employeeCode;
+    final (String title, String subtitle) = switch (event.kind) {
+      AdminActivityKind.dutyStarted => ('$name started duty', code ?? ''),
+      AdminActivityKind.dutyEnded => (
+        '$name ended duty',
+        event.detail ?? code ?? '',
       ),
-      AdminActivityItem(
-        id: 'act_2',
-        type: AdminActivityType.locationFlagged,
-        title: 'Anil Sharma — location flagged',
-        subtitle: 'DA-008 · Geofence deviation',
-        timeAgo: '14m',
-        timestamp: now.subtract(const Duration(minutes: 14)),
+      AdminActivityKind.dutyAutoEnded => (
+        'Duty ended automatically',
+        [name, ?code].join(' · '),
       ),
-      AdminActivityItem(
-        id: 'act_3',
-        type: AdminActivityType.reachedFarm,
-        title: 'Vijay Singh reached Shivpuri Farm',
-        subtitle: 'DA-031 · Check-in verified',
-        timeAgo: '26m',
-        timestamp: now.subtract(const Duration(minutes: 26)),
+      AdminActivityKind.employeeCreated => (
+        '$name was added',
+        [?code, ?event.detail].join(' · '),
       ),
-      AdminActivityItem(
-        id: 'act_4',
-        type: AdminActivityType.noUpdate,
-        title: 'Prakash Rao — no update 12 min',
-        subtitle: 'DA-017 · Low GPS signal',
-        timeAgo: '31m',
-        timestamp: now.subtract(const Duration(minutes: 31)),
+      AdminActivityKind.employeeBlocked => (
+        '$name was blocked',
+        event.detail ?? '',
       ),
-    ];
+      AdminActivityKind.employeeUnblocked => (
+        '$name was unblocked',
+        event.detail ?? '',
+      ),
+    };
+    return AdminActivityItem(
+      id: event.id,
+      kind: event.kind,
+      title: title,
+      subtitle: subtitle,
+      timeAgo: TimeAgo.format(now.difference(event.occurredAt)),
+    );
   }
 }

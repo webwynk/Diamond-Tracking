@@ -27,10 +27,7 @@ class EmptyStateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(
-        maxWidth: 280,
-        minWidth: 220,
-      ),
+      constraints: const BoxConstraints(maxWidth: 280, minWidth: 220),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -42,10 +39,7 @@ class EmptyStateCard extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 8),
               decoration: const BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(
-                    color: AppColors.neutral200,
-                    width: 1,
-                  ),
+                  bottom: BorderSide(color: AppColors.neutral200, width: 1),
                 ),
               ),
               child: Row(
@@ -204,10 +198,7 @@ class EmptyStateCard extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               backgroundColor: AppColors.surface,
               foregroundColor: AppColors.primary600,
-              side: const BorderSide(
-                color: AppColors.primary600,
-                width: 1.5,
-              ),
+              side: const BorderSide(color: AppColors.primary600, width: 1.5),
               padding: const EdgeInsets.symmetric(horizontal: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.full),

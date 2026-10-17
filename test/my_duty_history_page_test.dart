@@ -1,6 +1,11 @@
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/domain/entities/duty_session.dart';
+import 'package:diamond_tracking/domain/entities/location_point.dart';
+import 'package:diamond_tracking/domain/entities/point_ingest_result.dart';
+import 'package:diamond_tracking/domain/entities/user_profile.dart';
 import 'package:diamond_tracking/domain/repositories/duty_repository.dart';
+import 'package:diamond_tracking/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:diamond_tracking/features/auth/presentation/controllers/auth_state.dart';
 import 'package:diamond_tracking/features/duty/presentation/controllers/duty_controller.dart';
 import 'package:diamond_tracking/features/history/presentation/controllers/duty_history_controller.dart';
 import 'package:diamond_tracking/features/history/presentation/controllers/duty_history_state.dart';
@@ -14,10 +19,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _FakeDutyRepository implements DutyRepository {
   List<DutySession> historySessions = [];
+  bool failHistory = false;
 
   @override
-  Future<DutySession?> getActiveDutySession({required String employeeId}) async =>
-      null;
+  Future<DutySession?> getActiveDutySession({
+    required String employeeId,
+  }) async => null;
 
   @override
   Future<DutySession> startDutySession({required String employeeId}) async {
@@ -36,8 +43,7 @@ class _FakeDutyRepository implements DutyRepository {
   @override
   Future<DutySession?> getYesterdayDutySession({
     required String employeeId,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
   Future<List<DutySession>> getDutyHistory({
@@ -47,143 +53,182 @@ class _FakeDutyRepository implements DutyRepository {
     int limit = 30,
     int offset = 0,
   }) async {
+    if (failHistory) throw Exception('network down');
     return historySessions;
   }
 
   @override
-  Future<void> uploadLocationPointsBatch({
-    required List<dynamic> points,
-  }) async {}
+  Future<DateTime> getServerTime() async => DateTime.now().toUtc();
+
+  @override
+  Future<PointIngestResult> ingestLocationPoints({
+    required List<LocationPoint> points,
+  }) async => const PointIngestResult();
+}
+
+class _SignedInEmployee extends AuthNotifier {
+  @override
+  AuthState build() => AuthAuthenticated(
+    UserProfile(
+      id: 'emp_1',
+      role: UserRole.employee,
+      status: UserStatus.active,
+      fullName: 'Suresh Kumar',
+      mustChangePin: false,
+      failedLoginAttempts: 0,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+      employeeCode: 'DA-001',
+    ),
+  );
+}
+
+class _SignedOut extends AuthNotifier {
+  @override
+  AuthState build() => const AuthUnauthenticated();
+}
+
+DutySession _session(
+  String id,
+  DateTime startedAt, {
+  Duration length = const Duration(hours: 8, minutes: 15),
+  double km = 40,
+  int visits = 4,
+  int mockPoints = 0,
+  bool autoEnded = false,
+}) {
+  return DutySession(
+    id: id,
+    employeeId: 'emp_1',
+    startedAt: startedAt,
+    endedAt: startedAt.add(length),
+    totalDistanceKm: km,
+    visitsCount: visits,
+    mockPointsCount: mockPoints,
+    status: autoEnded
+        ? DutySessionStatus.autoCurfew
+        : DutySessionStatus.completed,
+    endReason: autoEnded ? 'auto_curfew' : null,
+  );
 }
 
 void main() {
+  final now = DateTime.now();
+  // Mid-morning times inside the current and the previous month.
+  final thisMonthA = DateTime(now.year, now.month, 1, 9);
+  final thisMonthB = DateTime(now.year, now.month, 2, 9);
+  final thisMonthC = DateTime(now.year, now.month, 3, 9);
+  final lastMonthA = DateTime(now.year, now.month - 1, 15, 9);
+
   Widget buildTestWidget({
     DutyRepository? dutyRepository,
-    VoidCallback? onNavigateToDuty,
-    VoidCallback? onNavigateToMap,
+    bool signedIn = true,
   }) {
     return ProviderScope(
       overrides: [
         if (dutyRepository != null)
           dutyRepositoryProvider.overrideWithValue(dutyRepository),
+        if (signedIn)
+          authControllerProvider.overrideWith(_SignedInEmployee.new),
       ],
       child: MaterialApp(
         theme: AppTheme.light,
-        home: MyDutyHistoryPage(
-          onNavigateToDuty: onNavigateToDuty,
-          onNavigateToMap: onNavigateToMap,
-        ),
+        home: const MyDutyHistoryPage(),
       ),
     );
   }
 
-  group('DutyHistoryController & State Unit Tests', () {
-    test('initializes with default design reference seed data', () async {
-      final container = ProviderContainer(
-        overrides: [
-          dutyRepositoryProvider.overrideWithValue(_FakeDutyRepository()),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      final notifier = container.read(dutyHistoryControllerProvider.notifier);
-      await notifier.loadHistory();
-
-      final state = container.read(dutyHistoryControllerProvider);
-      expect(state.isLoading, false);
-      expect(state.filter, DutyHistoryFilter.thisMonth);
-      expect(state.summary.periodLabel, 'OCTOBER 2026');
-      expect(state.summary.totalDays, 11);
-      expect(state.summary.totalHours, '89h 12m');
-      expect(state.summary.totalKm, 534.8);
-      expect(state.summary.totalVisits, 48);
-
-      expect(state.items.length, 4);
-      expect(state.items[0].dateTitle, 'Sat, 11 Oct');
-      expect(state.items[0].chipType, DutyHistoryChipType.none);
-      expect(state.items[1].dateTitle, 'Fri, 10 Oct');
-      expect(state.items[1].chipType, DutyHistoryChipType.autoEnded);
-      expect(state.items[2].dateTitle, 'Thu, 09 Oct');
-      expect(state.items[2].chipType, DutyHistoryChipType.flagged);
-      expect(state.items[2].flagCount, 2);
-      expect(state.items[3].dateTitle, 'Wed, 08 Oct');
-      expect(state.items[3].chipType, DutyHistoryChipType.noDuty);
-    });
-
-    test('switches filter to last month and recalculates summary', () async {
-      final container = ProviderContainer(
-        overrides: [
-          dutyRepositoryProvider.overrideWithValue(_FakeDutyRepository()),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      final notifier = container.read(dutyHistoryControllerProvider.notifier);
-      await notifier.loadHistory();
-
-      notifier.setFilter(DutyHistoryFilter.lastMonth);
-      final state = container.read(dutyHistoryControllerProvider);
-
-      expect(state.filter, DutyHistoryFilter.lastMonth);
-      expect(state.summary.periodLabel, 'SEPTEMBER 2026');
-      expect(state.summary.totalDays, 24);
-      expect(state.summary.totalHours, '192h 40m');
-      expect(state.summary.totalKm, 1140.2);
-      expect(state.summary.totalVisits, 102);
-      expect(state.items.length, 2);
-    });
-
-    test('switches filter to auto-ended and shows only auto-ended items', () async {
-      final container = ProviderContainer(
-        overrides: [
-          dutyRepositoryProvider.overrideWithValue(_FakeDutyRepository()),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      final notifier = container.read(dutyHistoryControllerProvider.notifier);
-      await notifier.loadHistory();
-
-      notifier.setFilter(DutyHistoryFilter.autoEnded);
-      final state = container.read(dutyHistoryControllerProvider);
-
-      expect(state.filter, DutyHistoryFilter.autoEnded);
-      expect(state.items.length, 1);
-      expect(state.items.first.chipType, DutyHistoryChipType.autoEnded);
-      expect(state.items.first.dateTitle, 'Fri, 10 Oct');
-    });
-
-    test('correctly maps real sessions returned from repository', () async {
-      final repo = _FakeDutyRepository();
-      final now = DateTime(2026, 10, 15, 8, 30);
-      repo.historySessions = [
-        DutySession(
-          id: 'sess_1',
-          employeeId: 'emp_1',
-          startedAt: now,
-          endedAt: now.add(const Duration(hours: 8, minutes: 15)),
-          totalDistanceKm: 42.5,
-          visitsCount: 4,
-          status: DutySessionStatus.completed,
+  ProviderContainer containerWith(
+    _FakeDutyRepository repo, {
+    bool signedIn = true,
+  }) {
+    final container = ProviderContainer(
+      overrides: [
+        dutyRepositoryProvider.overrideWithValue(repo),
+        authControllerProvider.overrideWith(
+          signedIn ? _SignedInEmployee.new : _SignedOut.new,
         ),
-        DutySession(
-          id: 'sess_2',
-          employeeId: 'emp_1',
-          startedAt: now.subtract(const Duration(days: 1)),
-          endedAt: now.subtract(const Duration(days: 1)).add(const Duration(hours: 14)),
-          totalDistanceKm: 58.0,
-          visitsCount: 6,
-          status: DutySessionStatus.autoCurfew,
-          endReason: 'auto_curfew',
-        ),
-      ];
+      ],
+    );
+    addTearDown(container.dispose);
+    return container;
+  }
 
-      final container = ProviderContainer(
-        overrides: [
-          dutyRepositoryProvider.overrideWithValue(repo),
-        ],
-      );
-      addTearDown(container.dispose);
+  void tall(WidgetTester tester) {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+  }
+
+  group('DutyHistoryController', () {
+    test(
+      'with no sessions it is empty: zero summary, no invented records',
+      () async {
+        final container = containerWith(_FakeDutyRepository());
+
+        final notifier = container.read(dutyHistoryControllerProvider.notifier);
+        await notifier.loadHistory();
+
+        final state = container.read(dutyHistoryControllerProvider);
+        expect(state.isLoading, isFalse);
+        expect(state.errorMessage, isNull);
+        expect(state.filter, DutyHistoryFilter.thisMonth);
+        expect(state.items, isEmpty);
+        expect(state.summary.totalDays, 0);
+        expect(state.summary.totalHours, '0h 0m');
+        expect(state.summary.totalKm, 0);
+        expect(state.summary.totalVisits, 0);
+        expect(state.summary.periodLabel, isNotEmpty);
+      },
+    );
+
+    test(
+      'a repository failure sets an error and never falls back to sample data',
+      () async {
+        final repo = _FakeDutyRepository()..failHistory = true;
+        final container = containerWith(repo);
+
+        final notifier = container.read(dutyHistoryControllerProvider.notifier);
+        await notifier.loadHistory();
+
+        final state = container.read(dutyHistoryControllerProvider);
+        expect(state.isLoading, isFalse);
+        expect(state.errorMessage, isNotNull);
+        expect(state.items, isEmpty);
+        expect(state.summary.totalDays, 0);
+
+        // A retry that succeeds clears the error.
+        repo
+          ..failHistory = false
+          ..historySessions = [_session('s1', thisMonthA)];
+        await notifier.loadHistory();
+        final recovered = container.read(dutyHistoryControllerProvider);
+        expect(recovered.errorMessage, isNull);
+        expect(recovered.items.length, 1);
+      },
+    );
+
+    test('a signed-out user gets an empty history without querying', () async {
+      final repo = _FakeDutyRepository()
+        ..historySessions = [_session('s1', thisMonthA)];
+      final container = containerWith(repo, signedIn: false);
+
+      final notifier = container.read(dutyHistoryControllerProvider.notifier);
+      await notifier.loadHistory();
+
+      final state = container.read(dutyHistoryControllerProvider);
+      expect(state.items, isEmpty);
+      expect(state.isLoading, isFalse);
+    });
+
+    test('maps real sessions and computes the summary from them', () async {
+      final repo = _FakeDutyRepository()
+        ..historySessions = [
+          _session('sess_1', thisMonthB, km: 42.5, visits: 4),
+          _session('sess_2', thisMonthA, km: 58, visits: 6, autoEnded: true),
+        ];
+      final container = containerWith(repo);
 
       final notifier = container.read(dutyHistoryControllerProvider.notifier);
       await notifier.loadHistory();
@@ -196,59 +241,67 @@ void main() {
       expect(state.summary.totalVisits, 10);
       expect(state.summary.totalKm, 100.5);
     });
+
+    test(
+      'this month, last month, auto-ended and custom filter the loaded sessions',
+      () async {
+        final repo = _FakeDutyRepository()
+          ..historySessions = [
+            _session('a', thisMonthB),
+            _session('b', thisMonthA, autoEnded: true),
+            _session('c', lastMonthA, km: 10, visits: 1),
+          ];
+        final container = containerWith(repo);
+        final notifier = container.read(dutyHistoryControllerProvider.notifier);
+        await notifier.loadHistory();
+
+        DutyHistoryState read() =>
+            container.read(dutyHistoryControllerProvider);
+
+        expect(read().items.length, 2); // this month
+
+        notifier.setFilter(DutyHistoryFilter.lastMonth);
+        expect(read().filter, DutyHistoryFilter.lastMonth);
+        expect(read().items.map((i) => i.id), ['c']);
+        expect(read().summary.totalKm, 10);
+
+        notifier.setFilter(DutyHistoryFilter.autoEnded);
+        expect(read().items.map((i) => i.id), ['b']);
+        expect(read().summary.periodLabel, 'AUTO-ENDED SHIFTS');
+
+        notifier.setFilter(DutyHistoryFilter.custom);
+        expect(read().items.length, 3);
+      },
+    );
   });
 
-  group('MyDutyHistoryPage Widget Tests', () {
-    testWidgets('renders all key elements of Screen 12 matching design specification',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  group('MyDutyHistoryPage', () {
+    testWidgets('renders header, chips and real session cards', (tester) async {
+      tall(tester);
+      final repo = _FakeDutyRepository()
+        ..historySessions = [
+          _session('a', thisMonthB, km: 47.3, visits: 5),
+          _session('b', thisMonthA, km: 54.2, visits: 6, autoEnded: true),
+          _session('c', thisMonthC, mockPoints: 2),
+        ];
 
-      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpWidget(buildTestWidget(dutyRepository: repo));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      // 1. App Bar
       expect(find.text('My history'), findsOneWidget);
-      expect(find.byKey(const Key('history-back-btn')), findsOneWidget);
+      expect(find.byTooltip('Back'), findsNothing); // tab screen
       expect(find.byKey(const Key('history-filter-btn')), findsOneWidget);
-      expect(find.text('1'), findsOneWidget); // Filter badge count
 
-      // 2. Filter Chips
       expect(find.byType(HistoryFilterChipsBar), findsOneWidget);
       expect(find.text('This month'), findsOneWidget);
       expect(find.text('Last month'), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(HistoryFilterChipsBar),
-          matching: find.text('Auto-ended'),
-        ),
-        findsOneWidget,
-      );
       expect(find.text('Custom'), findsOneWidget);
 
-      // 3. Monthly Summary Card
       expect(find.byType(HistoryMonthlySummaryCard), findsOneWidget);
-      expect(find.text('OCTOBER 2026'), findsOneWidget);
-      expect(find.text('11'), findsOneWidget); // Days
-      expect(find.text('89h 12m'), findsOneWidget); // Hours
-      expect(find.text('534.8'), findsOneWidget); // km
-      expect(find.text('48'), findsOneWidget); // Visits
-
-      // 4. History Cards List
-      expect(find.byType(DutyHistoryCard), findsNWidgets(4));
-
-      // Row 1: Sat, 11 Oct (Normal day, no chip)
-      expect(find.text('Sat, 11 Oct'), findsOneWidget);
-      expect(find.text('8:02 AM–6:30 PM'), findsOneWidget);
-      expect(find.text('8h 28m'), findsOneWidget);
+      expect(find.byType(DutyHistoryCard), findsNWidgets(3));
       expect(find.text('47.3 km'), findsOneWidget);
       expect(find.text('5 visits'), findsOneWidget);
-
-      // Row 2: Fri, 10 Oct (Auto-ended chip)
-      expect(find.text('Fri, 10 Oct'), findsOneWidget);
       expect(
         find.descendant(
           of: find.byType(DutyHistoryCard),
@@ -256,84 +309,84 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('15h 00m'), findsOneWidget);
-
-      // Row 3: Thu, 09 Oct (2 flags chip)
-      expect(find.text('Thu, 09 Oct'), findsOneWidget);
       expect(find.text('2 flags'), findsOneWidget);
 
-      // Row 4: Wed, 08 Oct (No duty chip, dashes)
-      expect(find.text('Wed, 08 Oct'), findsOneWidget);
-      expect(find.text('No duty'), findsOneWidget);
-
-      // 5. Pagination Loading Indicator
-      expect(find.text('Loading earlier records…'), findsOneWidget);
-
-      // 6. Persistent Bottom Navigation Bar
-      expect(find.byKey(const Key('bottom-nav-duty-tab')), findsOneWidget);
-      expect(find.byKey(const Key('bottom-nav-map-tab')), findsOneWidget);
-      expect(find.byKey(const Key('bottom-nav-history-tab')), findsOneWidget);
-      expect(find.text('Duty'), findsOneWidget);
-      expect(find.text('Map'), findsOneWidget);
-      expect(find.text('History'), findsOneWidget);
+      // The endless "Loading earlier records…" spinner was a fake and is gone.
+      expect(find.text('Loading earlier records…'), findsNothing);
     });
 
-    testWidgets('tapping filter chips updates list and summary card',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('shows an honest empty message, not sample records', (
+      tester,
+    ) async {
+      tall(tester);
 
-      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpWidget(
+        buildTestWidget(dutyRepository: _FakeDutyRepository()),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Tap 'Last month' chip
-      await tester.tap(find.byKey(const Key('filter-chip-lastMonth')));
+      expect(find.byType(DutyHistoryCard), findsNothing);
+      expect(
+        find.text('No duty history records found for this period.'),
+        findsOneWidget,
+      );
+      expect(find.text('89h 12m'), findsNothing);
+      expect(find.text('534.8'), findsNothing);
+      expect(find.text('Sat, 11 Oct'), findsNothing);
+      expect(find.text('Loading earlier records…'), findsNothing);
+    });
+
+    testWidgets('shows an error with Retry when loading fails, and recovers', (
+      tester,
+    ) async {
+      tall(tester);
+      final repo = _FakeDutyRepository()..failHistory = true;
+
+      await tester.pumpWidget(buildTestWidget(dutyRepository: repo));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('SEPTEMBER 2026'), findsOneWidget);
-      expect(find.text('192h 40m'), findsOneWidget);
-      expect(find.text('1140.2'), findsOneWidget);
-      expect(find.text('Wed, 30 Sep'), findsOneWidget);
+      expect(find.text("Couldn't load your history"), findsOneWidget);
+      expect(find.byType(DutyHistoryCard), findsNothing);
 
-      // Tap 'Auto-ended' chip
-      await tester.tap(find.byKey(const Key('filter-chip-autoEnded')));
+      repo
+        ..failHistory = false
+        ..historySessions = [_session('a', thisMonthA)];
+      await tester.tap(find.text('Retry'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('AUTO-ENDED SHIFTS'), findsOneWidget);
-      expect(find.text('Fri, 10 Oct'), findsOneWidget);
+      expect(find.text("Couldn't load your history"), findsNothing);
       expect(find.byType(DutyHistoryCard), findsOneWidget);
     });
 
-    testWidgets('tapping bottom navigation tabs invokes navigation callbacks',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('tapping filter chips updates the list and summary', (
+      tester,
+    ) async {
+      tall(tester);
+      final repo = _FakeDutyRepository()
+        ..historySessions = [
+          _session('a', thisMonthA),
+          _session('b', lastMonthA, km: 10, visits: 1, autoEnded: true),
+        ];
 
-      bool navigatedToDuty = false;
-      bool navigatedToMap = false;
-
-      await tester.pumpWidget(buildTestWidget(
-        onNavigateToDuty: () => navigatedToDuty = true,
-        onNavigateToMap: () => navigatedToMap = true,
-      ));
+      await tester.pumpWidget(buildTestWidget(dutyRepository: repo));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(DutyHistoryCard), findsOneWidget);
 
-
-      await tester.tap(find.byKey(const Key('bottom-nav-duty-tab')));
+      await tester.tap(find.byKey(const Key('filter-chip-lastMonth')));
       await tester.pump();
-      expect(navigatedToDuty, true);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.byKey(const Key('history-card-b')), findsOneWidget);
+      expect(find.byKey(const Key('history-card-a')), findsNothing);
 
-      await tester.tap(find.byKey(const Key('bottom-nav-map-tab')));
+      await tester.tap(find.byKey(const Key('filter-chip-autoEnded')));
       await tester.pump();
-      expect(navigatedToMap, true);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('AUTO-ENDED SHIFTS'), findsOneWidget);
+      expect(find.byType(DutyHistoryCard), findsOneWidget);
     });
   });
 }

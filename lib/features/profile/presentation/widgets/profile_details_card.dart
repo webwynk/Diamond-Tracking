@@ -85,11 +85,7 @@ class ProfileDetailsCard extends StatelessWidget {
               SizedBox(
                 width: 32,
                 height: 32,
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: AppColors.textDisabled,
-                ),
+                child: Icon(icon, size: 20, color: AppColors.textDisabled),
               ),
               const SizedBox(width: AppSpacing.x3),
 
@@ -122,11 +118,7 @@ class ProfileDetailsCard extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          const Divider(
-            height: 1,
-            thickness: 1,
-            color: AppColors.neutral200,
-          ),
+          const Divider(height: 1, thickness: 1, color: AppColors.neutral200),
       ],
     );
   }

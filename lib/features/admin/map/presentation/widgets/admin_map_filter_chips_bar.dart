@@ -5,18 +5,19 @@ import '../../../../../core/theme/app_dimens.dart';
 import '../../../../../core/theme/app_typography.dart';
 import '../controllers/admin_live_map_state.dart';
 
-/// Horizontally scrollable status filter chips bar for Screen 15.
+/// Horizontally scrollable status filter chips bar for the live map.
+///
+/// Only people on duty have a position, so there are no off-duty or blocked
+/// chips: the Team list shows those.
 class AdminMapFilterChipsBar extends StatelessWidget {
   const AdminMapFilterChipsBar({
     super.key,
     required this.selectedFilter,
     required this.onFilterSelected,
-    this.totalCount = 143,
-    this.onDutyCount = 112,
-    this.staleCount = 4,
-    this.needsCheckCount = 3,
-    this.offDutyCount = 31,
-    this.blockedCount = 2,
+    required this.totalCount,
+    required this.onDutyCount,
+    required this.staleCount,
+    required this.needsCheckCount,
   });
 
   final AdminMapFilter selectedFilter;
@@ -25,8 +26,6 @@ class AdminMapFilterChipsBar extends StatelessWidget {
   final int onDutyCount;
   final int staleCount;
   final int needsCheckCount;
-  final int offDutyCount;
-  final int blockedCount;
 
   @override
   Widget build(BuildContext context) {
@@ -37,39 +36,24 @@ class AdminMapFilterChipsBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
         child: Row(
           children: [
-            _buildChip(
-              filter: AdminMapFilter.all,
-              label: 'All $totalCount',
-            ),
+            _buildChip(filter: AdminMapFilter.all, label: 'All $totalCount'),
             const SizedBox(width: AppSpacing.x2),
             _buildChip(
               filter: AdminMapFilter.onDuty,
               label: 'On duty $onDutyCount',
-              dotColor: AppColors.success,
+              dotColor: AppColors.statusActive,
             ),
             const SizedBox(width: AppSpacing.x2),
             _buildChip(
               filter: AdminMapFilter.stale,
               label: 'Stale $staleCount',
-              dotColor: AppColors.warning,
+              dotColor: AppColors.statusStale,
             ),
             const SizedBox(width: AppSpacing.x2),
             _buildChip(
               filter: AdminMapFilter.needsCheck,
               label: 'Check $needsCheckCount',
-              dotColor: AppColors.error,
-            ),
-            const SizedBox(width: AppSpacing.x2),
-            _buildChip(
-              filter: AdminMapFilter.offDuty,
-              label: 'Off $offDutyCount',
-              dotColor: AppColors.neutral400,
-            ),
-            const SizedBox(width: AppSpacing.x2),
-            _buildChip(
-              filter: AdminMapFilter.blocked,
-              label: 'Blocked $blockedCount',
-              dotColor: const Color(0xFF1E293B),
+              dotColor: AppColors.statusSuspect,
             ),
           ],
         ),

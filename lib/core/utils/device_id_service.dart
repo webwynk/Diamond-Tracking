@@ -17,7 +17,10 @@ class DeviceIdService {
     // In initial phase or testing without external plugins, generate a
     // reproducible pseudo-unique client identifier based on device entropy.
     final random = Random();
-    final parts = List.generate(4, (_) => random.nextInt(0xFFFFFFFF).toRadixString(16).padLeft(8, '0'));
+    final parts = List.generate(
+      4,
+      (_) => random.nextInt(0xFFFFFFFF).toRadixString(16).padLeft(8, '0'),
+    );
     _cachedDeviceId = 'device_${parts.join('-')}';
     return _cachedDeviceId!;
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_dimens.dart';
@@ -14,6 +15,8 @@ class AdminEmployeeLoginCard extends StatelessWidget {
     required this.onEmployeeIdChanged,
     required this.onPinChanged,
     required this.onRegeneratePin,
+    this.employeeCodeError,
+    this.pinError,
   });
 
   final TextEditingController employeeIdController;
@@ -22,6 +25,12 @@ class AdminEmployeeLoginCard extends StatelessWidget {
   final ValueChanged<String> onEmployeeIdChanged;
   final ValueChanged<String> onPinChanged;
   final VoidCallback onRegeneratePin;
+
+  /// Shown under the field when the ID cannot be accepted by the server.
+  final String? employeeCodeError;
+
+  /// Shown under the PIN when it breaks the PIN rules.
+  final String? pinError;
 
   @override
   Widget build(BuildContext context) {
@@ -39,10 +48,7 @@ class AdminEmployeeLoginCard extends StatelessWidget {
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
-              Text(
-                'LOGIN',
-                style: AppTypography.overline,
-              ),
+              Text('LOGIN', style: AppTypography.overline),
               Icon(
                 Icons.vpn_key_outlined,
                 size: 16,
@@ -139,9 +145,12 @@ class AdminEmployeeLoginCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Cannot be changed later.',
+                employeeCodeError ?? 'Cannot be changed later.',
+                key: const Key('admin-employee-id-helper'),
                 style: AppTypography.caption.copyWith(
-                  color: AppColors.neutral400,
+                  color: employeeCodeError != null
+                      ? AppColors.error
+                      : AppColors.neutral400,
                 ),
               ),
             ],
@@ -165,9 +174,13 @@ class AdminEmployeeLoginCard extends StatelessWidget {
                   key: const Key('admin-employee-pin-field'),
                   controller: pinController,
                   onChanged: onPinChanged,
-                  obscureText: true,
+                  // Shown, not hidden: the admin has to read it out to the
+                  // employee, who changes it at first login.
                   maxLength: 6,
                   keyboardType: TextInputType.number,
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
                   style: AppTypography.bodyLarge.copyWith(
                     color: AppColors.neutral900,
                     letterSpacing: 4.0,
@@ -232,9 +245,12 @@ class AdminEmployeeLoginCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'The employee must change this at first login.',
+                pinError ?? 'The employee must change this at first login.',
+                key: const Key('admin-employee-pin-helper'),
                 style: AppTypography.caption.copyWith(
-                  color: AppColors.neutral400,
+                  color: pinError != null
+                      ? AppColors.error
+                      : AppColors.neutral400,
                 ),
               ),
             ],

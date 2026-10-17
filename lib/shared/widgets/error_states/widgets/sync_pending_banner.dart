@@ -8,11 +8,7 @@ import '../../../../core/theme/app_typography.dart';
 ///
 /// Indicates telemetry points or visits queued on the device awaiting network sync.
 class SyncPendingBanner extends StatelessWidget {
-  const SyncPendingBanner({
-    super.key,
-    this.pointCount = 18,
-    this.onDetails,
-  });
+  const SyncPendingBanner({super.key, this.pointCount = 18, this.onDetails});
 
   final int pointCount;
   final VoidCallback? onDetails;

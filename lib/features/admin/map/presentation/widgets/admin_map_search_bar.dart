@@ -4,21 +4,17 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_dimens.dart';
 import '../../../../../core/theme/app_typography.dart';
 
-/// Floating search bar with filter parameter shortcut for Screen 15.
+/// Floating search bar for the live map (name or employee code).
 class AdminMapSearchBar extends StatelessWidget {
   const AdminMapSearchBar({
     super.key,
     required this.controller,
     required this.onChanged,
-    required this.onFilterPressed,
-    this.activeFilterCount = 2,
     this.onClear,
   });
 
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
-  final VoidCallback onFilterPressed;
-  final int activeFilterCount;
   final VoidCallback? onClear;
 
   @override
@@ -51,15 +47,17 @@ class AdminMapSearchBar extends StatelessWidget {
               key: const Key('input-admin-map-search'),
               controller: controller,
               onChanged: onChanged,
-              style: AppTypography.body.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              style: AppTypography.body.copyWith(color: AppColors.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Search name or ID',
                 hintStyle: AppTypography.body.copyWith(
                   color: AppColors.neutral400,
                 ),
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
               ),
@@ -73,55 +71,6 @@ class AdminMapSearchBar extends StatelessWidget {
               constraints: const BoxConstraints(),
               onPressed: onClear,
             ),
-          const SizedBox(width: AppSpacing.x2),
-          // Filter Parameters Action with Badge
-          InkWell(
-            key: const Key('btn-admin-map-filter-tune'),
-            onTap: onFilterPressed,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.neutral50,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.tune_rounded,
-                    size: 20,
-                    color: AppColors.neutral600,
-                  ),
-                ),
-                if (activeFilterCount > 0)
-                  Positioned(
-                    top: -4,
-                    right: -4,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary600,
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        activeFilterCount.toString(),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.neutral0,
-                          height: 1.0,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
         ],
       ),
     );

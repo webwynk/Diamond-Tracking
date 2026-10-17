@@ -1,122 +1,21 @@
-import 'dart:async';
-import 'package:diamond_tracking/core/services/tracking_service.dart';
+import 'package:diamond_tracking/core/errors/app_exceptions.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/core/utils/duty_time_helper.dart';
-import 'package:diamond_tracking/domain/entities/duty_session.dart';
 import 'package:diamond_tracking/domain/entities/location_point.dart';
 import 'package:diamond_tracking/domain/entities/user_profile.dart';
-import 'package:diamond_tracking/domain/repositories/duty_repository.dart';
 import 'package:diamond_tracking/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:diamond_tracking/features/auth/presentation/controllers/auth_state.dart';
 import 'package:diamond_tracking/features/duty/presentation/controllers/duty_controller.dart';
 import 'package:diamond_tracking/features/duty/presentation/controllers/duty_state.dart';
 import 'package:diamond_tracking/features/home/presentation/employee_home_page.dart';
+import 'package:diamond_tracking/features/onboarding/presentation/controllers/permission_controller.dart';
+import 'package:diamond_tracking/features/onboarding/presentation/permission_setup_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class MockDutyRepository implements DutyRepository {
-  DutySession? mockActiveSession;
-  DutySession? mockYesterdaySession;
-
-  @override
-  Future<DutySession?> getActiveDutySession({required String employeeId}) async {
-    return mockActiveSession;
-  }
-
-  @override
-  Future<DutySession> startDutySession({required String employeeId}) async {
-    final now = DateTime.now().toUtc();
-    final session = DutySession(
-      id: 'session_mock_1',
-      employeeId: employeeId,
-      startedAt: now,
-      status: DutySessionStatus.open,
-    );
-    mockActiveSession = session;
-    return session;
-  }
-
-  @override
-  Future<DutySession> endDutySession({
-    required String sessionId,
-    String? endReason,
-    String? notes,
-  }) async {
-    final session = mockActiveSession ??
-        DutySession(
-          id: sessionId,
-          employeeId: 'emp_1',
-          startedAt: DateTime.now().toUtc().subtract(const Duration(hours: 4)),
-          status: DutySessionStatus.completed,
-        );
-    final completed = session.copyWith(
-      status: DutySessionStatus.completed,
-      endedAt: DateTime.now().toUtc(),
-      endReason: endReason ?? 'normal',
-    );
-    mockActiveSession = null;
-    return completed;
-  }
-
-  @override
-  Future<DutySession?> getYesterdayDutySession({required String employeeId}) async {
-    return mockYesterdaySession;
-  }
-
-  List<DutySession> mockHistory = [];
-
-  @override
-  Future<List<DutySession>> getDutyHistory({
-    required String employeeId,
-    DateTime? startDate,
-    DateTime? endDate,
-    int limit = 30,
-    int offset = 0,
-  }) async {
-    return mockHistory;
-  }
-
-  @override
-  Future<void> uploadLocationPointsBatch({required List<LocationPoint> points}) async {}
-}
-
-class MockTrackingService implements TrackingService {
-  final _controller = StreamController<LocationPoint>.broadcast();
-  bool tracking = false;
-  int queuedCount = 0;
-
-  @override
-  bool get isTracking => tracking;
-
-  @override
-  Stream<LocationPoint> get pointStream => _controller.stream;
-
-  @override
-  Future<bool> startTracking({required String sessionId}) async {
-    tracking = true;
-    return true;
-  }
-
-  @override
-  Future<void> stopTracking() async {
-    tracking = false;
-  }
-
-  @override
-  Future<int> getQueuedPointsCount() async => queuedCount;
-
-  @override
-  Future<List<LocationPoint>> getQueuedPoints() async => [];
-
-  @override
-  Future<void> markPointsSynced(List<String> pointIds) async {}
-
-  void emitPoint(LocationPoint point) {
-    queuedCount++;
-    _controller.add(point);
-  }
-}
+import 'support/fake_duty.dart';
+import 'support/fake_permission_service.dart';
 
 void main() {
   group('DutyTimeHelper Unit Tests', () {
@@ -140,16 +39,34 @@ void main() {
       expect(DutyTimeHelper.isWithinDutyWindow(start), isTrue);
 
       // 22:59 IST -> true
-      final lateEvening = DateTime.utc(2026, 10, 15, 17, 29); // 17:29 UTC = 22:59 IST
+      final lateEvening = DateTime.utc(
+        2026,
+        10,
+        15,
+        17,
+        29,
+      ); // 17:29 UTC = 22:59 IST
       expect(DutyTimeHelper.isWithinDutyWindow(lateEvening), isTrue);
 
       // 23:00 IST -> false
-      final curfew = DateTime.utc(2026, 10, 15, 17, 30); // 17:30 UTC = 23:00 IST
+      final curfew = DateTime.utc(
+        2026,
+        10,
+        15,
+        17,
+        30,
+      ); // 17:30 UTC = 23:00 IST
       expect(DutyTimeHelper.isWithinDutyWindow(curfew), isFalse);
     });
 
     test('isCurfewWarningActive activates between 22:45 and 23:00 IST', () {
-      final warning = DateTime.utc(2026, 10, 15, 17, 15); // 17:15 UTC = 22:45 IST
+      final warning = DateTime.utc(
+        2026,
+        10,
+        15,
+        17,
+        15,
+      ); // 17:15 UTC = 22:45 IST
       expect(DutyTimeHelper.isCurfewWarningActive(warning), isTrue);
 
       final earlier = DateTime.utc(2026, 10, 15, 17, 14); // 22:44 IST
@@ -209,7 +126,6 @@ void main() {
         batteryLevel: 85,
         isMock: false,
         recordedAt: now,
-        isSynced: true,
       );
 
       final json = point.toJson();
@@ -229,9 +145,10 @@ void main() {
     });
 
     Widget buildTestWidget({
-      required MockDutyRepository mockRepo,
-      required MockTrackingService mockTracking,
+      required FakeDutyRepository mockRepo,
+      required FakeTrackingService mockTracking,
       DutyScreenState? initialDutyState,
+      FakePermissionService? permissions,
     }) {
       final testProfile = UserProfile(
         id: 'test_emp_014',
@@ -249,6 +166,10 @@ void main() {
         overrides: [
           dutyRepositoryProvider.overrideWithValue(mockRepo),
           trackingServiceProvider.overrideWithValue(mockTracking),
+          permissionServiceProvider.overrideWithValue(
+            permissions ?? FakePermissionService(),
+          ),
+          trackingUploaderProvider.overrideWithValue(FakeUploader()),
           authControllerProvider.overrideWith(
             () => TestAuthNotifier(AuthAuthenticated(testProfile)),
           ),
@@ -260,85 +181,135 @@ void main() {
       );
     }
 
-    testWidgets('Screen 06 renders Off Duty header, start duty toggle, and today stats', (tester) async {
-      final mockRepo = MockDutyRepository();
-      final mockTracking = MockTrackingService();
+    testWidgets(
+      'Screen 06 renders Off Duty header, start duty toggle, and today stats',
+      (tester) async {
+        final mockRepo = FakeDutyRepository();
+        final mockTracking = FakeTrackingService();
 
-      await tester.pumpWidget(buildTestWidget(
-        mockRepo: mockRepo,
-        mockTracking: mockTracking,
-      ));
+        await tester.pumpWidget(
+          buildTestWidget(mockRepo: mockRepo, mockTracking: mockTracking),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Ramesh Kumar'), findsOneWidget);
+        expect(find.text('DA-014'), findsOneWidget);
+        expect(find.text('TODAY SO FAR'), findsOneWidget);
+        expect(find.text('HOURS'), findsOneWidget);
+        expect(find.text('DISTANCE'), findsOneWidget);
+        expect(find.text('VISITS'), findsOneWidget);
+        expect(find.text('Start duty'), findsOneWidget);
+        expect(find.text('Tap to begin tracking'), findsOneWidget);
+        expect(find.text('Yesterday'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'tapping Start Duty initiates tracking and switches to On Duty',
+      (tester) async {
+        final mockRepo = FakeDutyRepository();
+        final mockTracking = FakeTrackingService();
+
+        await tester.pumpWidget(
+          buildTestWidget(mockRepo: mockRepo, mockTracking: mockTracking),
+        );
+        await tester.pumpAndSettle();
+
+        // Tap the hero toggle
+        await tester.tap(find.text('Start duty'));
+        await tester.pumpAndSettle();
+
+        // Tracking engine should have started
+        expect(mockTracking.isTracking, isTrue);
+        // Hero toggle should now display 'ON DUTY' and 'Tap to end duty'
+        expect(find.text('ON DUTY'), findsOneWidget);
+        expect(find.text('Tap to end duty'), findsOneWidget);
+        expect(find.text('Tracking active'), findsOneWidget);
+        expect(find.text('Current location'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'tapping Tap to end duty terminates tracking and returns to Off Duty',
+      (tester) async {
+        final mockRepo = FakeDutyRepository();
+        final mockTracking = FakeTrackingService();
+
+        await tester.pumpWidget(
+          buildTestWidget(mockRepo: mockRepo, mockTracking: mockTracking),
+        );
+        await tester.pumpAndSettle();
+
+        // Start duty
+        await tester.tap(find.text('Start duty'));
+        await tester.pumpAndSettle();
+        expect(mockTracking.isTracking, isTrue);
+
+        // End duty: tap pill, confirm in dialog, then dismiss summary dialog
+        await tester.tap(find.text('Tap to end duty'));
+        await tester.pumpAndSettle();
+
+        final confirmBtn = find.byKey(const Key('confirm-end-duty-btn'));
+        if (confirmBtn.evaluate().isNotEmpty) {
+          await tester.tap(confirmBtn);
+          await tester.pumpAndSettle();
+        }
+
+        final summaryDoneBtn = find.byKey(const Key('btn-summary-done'));
+        if (summaryDoneBtn.evaluate().isNotEmpty) {
+          await tester.tap(summaryDoneBtn);
+          await tester.pumpAndSettle();
+        }
+
+        // Tracking should be stopped
+        expect(mockTracking.isTracking, isFalse);
+        expect(find.text('Start duty'), findsOneWidget);
+        expect(find.text('Tap to begin tracking'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Start duty without Allow-all-the-time opens the permission setup, creates no session',
+      (tester) async {
+        final mockRepo = FakeDutyRepository();
+        final mockTracking = FakeTrackingService();
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            mockRepo: mockRepo,
+            mockTracking: mockTracking,
+            permissions: FakePermissionService(backgroundGranted: false),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Start duty'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(PermissionSetupPage), findsOneWidget);
+        expect(mockRepo.calls, isEmpty);
+        expect(mockTracking.isTracking, isFalse);
+      },
+    );
+
+    testWidgets('a failed start tells the employee why and stays off duty', (
+      tester,
+    ) async {
+      final mockRepo = FakeDutyRepository()
+        ..startError = const NetworkException();
+      final mockTracking = FakeTrackingService();
+
+      await tester.pumpWidget(
+        buildTestWidget(mockRepo: mockRepo, mockTracking: mockTracking),
+      );
       await tester.pumpAndSettle();
 
-      expect(find.text('Ramesh Kumar'), findsOneWidget);
-      expect(find.text('DA-014'), findsOneWidget);
-      expect(find.text('TODAY SO FAR'), findsOneWidget);
-      expect(find.text('HOURS'), findsOneWidget);
-      expect(find.text('DISTANCE'), findsOneWidget);
-      expect(find.text('VISITS'), findsOneWidget);
+      await tester.tap(find.text('Start duty'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(const NetworkException().message), findsOneWidget);
       expect(find.text('Start duty'), findsOneWidget);
-      expect(find.text('Tap to begin tracking'), findsOneWidget);
-      expect(find.text('Yesterday'), findsOneWidget);
-    });
-
-    testWidgets('tapping Start Duty initiates tracking and switches to On Duty', (tester) async {
-      final mockRepo = MockDutyRepository();
-      final mockTracking = MockTrackingService();
-
-      await tester.pumpWidget(buildTestWidget(
-        mockRepo: mockRepo,
-        mockTracking: mockTracking,
-      ));
-      await tester.pumpAndSettle();
-
-      // Tap the hero toggle
-      await tester.tap(find.text('Start duty'));
-      await tester.pumpAndSettle();
-
-      // Tracking engine should have started
-      expect(mockTracking.isTracking, isTrue);
-      // Hero toggle should now display 'ON DUTY' and 'Tap to end duty'
-      expect(find.text('ON DUTY'), findsOneWidget);
-      expect(find.text('Tap to end duty'), findsOneWidget);
-      expect(find.text('Tracking active'), findsOneWidget);
-      expect(find.text('Current location'), findsOneWidget);
-    });
-
-    testWidgets('tapping Tap to end duty terminates tracking and returns to Off Duty', (tester) async {
-      final mockRepo = MockDutyRepository();
-      final mockTracking = MockTrackingService();
-
-      await tester.pumpWidget(buildTestWidget(
-        mockRepo: mockRepo,
-        mockTracking: mockTracking,
-      ));
-      await tester.pumpAndSettle();
-
-      // Start duty
-      await tester.tap(find.text('Start duty'));
-      await tester.pumpAndSettle();
-      expect(mockTracking.isTracking, isTrue);
-
-      // End duty: tap pill, confirm in dialog, then dismiss summary dialog
-      await tester.tap(find.text('Tap to end duty'));
-      await tester.pumpAndSettle();
-
-      final confirmBtn = find.byKey(const Key('confirm-end-duty-btn'));
-      if (confirmBtn.evaluate().isNotEmpty) {
-        await tester.tap(confirmBtn);
-        await tester.pumpAndSettle();
-      }
-
-      final summaryDoneBtn = find.byKey(const Key('btn-summary-done'));
-      if (summaryDoneBtn.evaluate().isNotEmpty) {
-        await tester.tap(summaryDoneBtn);
-        await tester.pumpAndSettle();
-      }
-
-      // Tracking should be stopped
       expect(mockTracking.isTracking, isFalse);
-      expect(find.text('Start duty'), findsOneWidget);
-      expect(find.text('Tap to begin tracking'), findsOneWidget);
     });
   });
 }

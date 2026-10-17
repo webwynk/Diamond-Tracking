@@ -15,13 +15,17 @@ class MockPermissionService implements PermissionService {
   bool openSettingsCalled = false;
 
   @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
   Future<bool> isLocationGranted() async => locationGranted;
 
   @override
   Future<bool> isBackgroundLocationGranted() async => backgroundGranted;
 
   @override
-  Future<bool> isBatteryOptimizationIgnored() async => batteryOptimizationIgnored;
+  Future<bool> isBatteryOptimizationIgnored() async =>
+      batteryOptimizationIgnored;
 
   @override
   Future<bool> requestLocation() async {
@@ -50,14 +54,17 @@ class MockPermissionService implements PermissionService {
 
 void main() {
   group('PermissionSetupState Unit Tests', () {
-    test('default state has all requirements false and allRequirementsSatisfied is false', () {
-      const state = PermissionSetupState();
-      expect(state.isLocationGranted, isFalse);
-      expect(state.isBackgroundGranted, isFalse);
-      expect(state.isBatteryOptimizationIgnored, isFalse);
-      expect(state.isLoading, isFalse);
-      expect(state.allRequirementsSatisfied, isFalse);
-    });
+    test(
+      'default state has all requirements false and allRequirementsSatisfied is false',
+      () {
+        const state = PermissionSetupState();
+        expect(state.isLocationGranted, isFalse);
+        expect(state.isBackgroundGranted, isFalse);
+        expect(state.isBatteryOptimizationIgnored, isFalse);
+        expect(state.isLoading, isFalse);
+        expect(state.allRequirementsSatisfied, isFalse);
+      },
+    );
 
     test('allRequirementsSatisfied is true only when all 3 flags are true', () {
       const state1 = PermissionSetupState(isLocationGranted: true);
@@ -103,9 +110,7 @@ void main() {
     test('loads initial permission status from service on build', () async {
       final mock = MockPermissionService()..locationGranted = true;
       final container = ProviderContainer(
-        overrides: [
-          permissionServiceProvider.overrideWithValue(mock),
-        ],
+        overrides: [permissionServiceProvider.overrideWithValue(mock)],
       );
       addTearDown(container.dispose);
 
@@ -124,28 +129,30 @@ void main() {
     test('requestLocation updates location flag and refreshes state', () async {
       final mock = MockPermissionService();
       final container = ProviderContainer(
-        overrides: [
-          permissionServiceProvider.overrideWithValue(mock),
-        ],
+        overrides: [permissionServiceProvider.overrideWithValue(mock)],
       );
       addTearDown(container.dispose);
 
       final notifier = container.read(permissionControllerProvider.notifier);
       await container.pump();
 
-      expect(container.read(permissionControllerProvider).isLocationGranted, isFalse);
+      expect(
+        container.read(permissionControllerProvider).isLocationGranted,
+        isFalse,
+      );
 
       final granted = await notifier.requestLocation();
       expect(granted, isTrue);
-      expect(container.read(permissionControllerProvider).isLocationGranted, isTrue);
+      expect(
+        container.read(permissionControllerProvider).isLocationGranted,
+        isTrue,
+      );
     });
 
     test('requestBackgroundLocation updates background flag', () async {
       final mock = MockPermissionService();
       final container = ProviderContainer(
-        overrides: [
-          permissionServiceProvider.overrideWithValue(mock),
-        ],
+        overrides: [permissionServiceProvider.overrideWithValue(mock)],
       );
       addTearDown(container.dispose);
 
@@ -154,15 +161,16 @@ void main() {
 
       final granted = await notifier.requestBackgroundLocation();
       expect(granted, isTrue);
-      expect(container.read(permissionControllerProvider).isBackgroundGranted, isTrue);
+      expect(
+        container.read(permissionControllerProvider).isBackgroundGranted,
+        isTrue,
+      );
     });
 
     test('requestBatteryOptimization updates battery flag', () async {
       final mock = MockPermissionService();
       final container = ProviderContainer(
-        overrides: [
-          permissionServiceProvider.overrideWithValue(mock),
-        ],
+        overrides: [permissionServiceProvider.overrideWithValue(mock)],
       );
       addTearDown(container.dispose);
 
@@ -171,7 +179,12 @@ void main() {
 
       final ignored = await notifier.requestBatteryOptimization();
       expect(ignored, isTrue);
-      expect(container.read(permissionControllerProvider).isBatteryOptimizationIgnored, isTrue);
+      expect(
+        container
+            .read(permissionControllerProvider)
+            .isBatteryOptimizationIgnored,
+        isTrue,
+      );
     });
   });
 
@@ -182,9 +195,7 @@ void main() {
       VoidCallback? onBackPressed,
     }) {
       return ProviderScope(
-        overrides: [
-          permissionServiceProvider.overrideWithValue(mockService),
-        ],
+        overrides: [permissionServiceProvider.overrideWithValue(mockService)],
         child: MaterialApp(
           theme: AppTheme.light,
           home: PermissionSetupPage(
@@ -195,69 +206,94 @@ void main() {
       );
     }
 
-    testWidgets('renders top bar, explanatory text, and 3 cards', (tester) async {
+    testWidgets('renders top bar, explanatory text, and 3 cards', (
+      tester,
+    ) async {
       final mock = MockPermissionService();
       await tester.pumpWidget(buildTestApp(mockService: mock));
       await tester.pumpAndSettle();
 
       expect(find.text('Before You Start'), findsOneWidget);
       expect(
-        find.text('Duty tracking needs these three settings. We only record your location while you are on duty.'),
+        find.text(
+          'Duty tracking needs these three settings. We only record your location while you are on duty.',
+        ),
         findsOneWidget,
       );
       expect(find.text('Location access'), findsOneWidget);
       expect(find.text('Allow all the time'), findsOneWidget);
       expect(find.text('Disable battery saver'), findsOneWidget);
-      expect(find.textContaining('On Xiaomi, Oppo, Vivo and Realme'), findsOneWidget);
+      expect(
+        find.textContaining('On Xiaomi, Oppo, Vivo and Realme'),
+        findsOneWidget,
+      );
 
       // Continue button should be disabled initially
-      final continueBtn = tester.widget<AppButton>(find.byKey(const Key('btn-continue')));
+      final continueBtn = tester.widget<AppButton>(
+        find.byKey(const Key('btn-continue')),
+      );
       expect(continueBtn.onPressed, isNull);
       expect(find.text('Complete all three steps to continue.'), findsWidgets);
     });
 
-    testWidgets('tapping Allow on Card 1 requests location and transitions focus', (tester) async {
-      final mock = MockPermissionService();
-      await tester.pumpWidget(buildTestApp(mockService: mock));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'tapping Allow on Card 1 requests location and transitions focus',
+      (tester) async {
+        final mock = MockPermissionService();
+        await tester.pumpWidget(buildTestApp(mockService: mock));
+        await tester.pumpAndSettle();
 
-      // Tap Allow on Card 1
-      final allowButtons = find.widgetWithText(ElevatedButton, 'Allow');
-      expect(allowButtons, findsNWidgets(2)); // Card 1 and Card 2 both have 'Allow'
+        // Tap Allow on Card 1
+        final allowButtons = find.widgetWithText(ElevatedButton, 'Allow');
+        expect(
+          allowButtons,
+          findsNWidgets(2),
+        ); // Card 1 and Card 2 both have 'Allow'
 
-      await tester.tap(allowButtons.first);
-      await tester.pumpAndSettle();
+        await tester.tap(allowButtons.first);
+        await tester.pumpAndSettle();
 
-      expect(mock.locationGranted, isTrue);
-      // Location access should now display 'Granted'
-      expect(find.text('Granted'), findsOneWidget);
-    });
+        expect(mock.locationGranted, isTrue);
+        // Location access should now display 'Granted'
+        expect(find.text('Granted'), findsOneWidget);
+      },
+    );
 
-    testWidgets('when all 3 prerequisites granted, Continue button is enabled and completes', (tester) async {
-      final mock = MockPermissionService()
-        ..locationGranted = true
-        ..backgroundGranted = true
-        ..batteryOptimizationIgnored = true;
+    testWidgets(
+      'when all 3 prerequisites granted, Continue button is enabled and completes',
+      (tester) async {
+        final mock = MockPermissionService()
+          ..locationGranted = true
+          ..backgroundGranted = true
+          ..batteryOptimizationIgnored = true;
 
-      var completedCalled = false;
-      await tester.pumpWidget(buildTestApp(
-        mockService: mock,
-        onCompleted: () => completedCalled = true,
-      ));
-      await tester.pumpAndSettle();
+        var completedCalled = false;
+        await tester.pumpWidget(
+          buildTestApp(
+            mockService: mock,
+            onCompleted: () => completedCalled = true,
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      // All 3 should show checkmarks
-      expect(find.byIcon(Icons.check_circle), findsNWidgets(3));
-      expect(find.text('All requirements satisfied. You are ready to start.'), findsOneWidget);
+        // All 3 should show checkmarks
+        expect(find.byIcon(Icons.check_circle), findsNWidgets(3));
+        expect(
+          find.text('All requirements satisfied. You are ready to start.'),
+          findsOneWidget,
+        );
 
-      final continueBtn = tester.widget<AppButton>(find.byKey(const Key('btn-continue')));
-      expect(continueBtn.onPressed, isNotNull);
+        final continueBtn = tester.widget<AppButton>(
+          find.byKey(const Key('btn-continue')),
+        );
+        expect(continueBtn.onPressed, isNotNull);
 
-      await tester.tap(find.byKey(const Key('btn-continue')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('btn-continue')));
+        await tester.pumpAndSettle();
 
-      expect(completedCalled, isTrue);
-    });
+        expect(completedCalled, isTrue);
+      },
+    );
 
     testWidgets('tapping Open on Card 3 shows guidance dialog', (tester) async {
       final mock = MockPermissionService()
