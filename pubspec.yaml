@@ -6,7 +6,7 @@ publish_to: 'none'
 # version is <build-name>+<build-number>.
 # On Android, build-name becomes versionName and build-number becomes versionCode.
 # versionCode must increase on every Play upload and APK build (Rule 10).
-version: 1.5.2+24
+version: 1.6.8+33
 
 environment:
   sdk: ^3.12.2
@@ -35,6 +35,11 @@ dependencies:
   maplibre_gl: ^0.27.1
   image_picker: ^1.1.2
 
+  # The app's private documents folder: a visit photo waiting to be sent is kept
+  # there, because the camera's cache folder can be cleared by Android.
+  # Already in the lock file through other packages.
+  path_provider: ^2.1.6
+
   # On-phone database for the GPS queue: points, the active session and a
   # pending duty-off must survive restarts and force-kills (docs/08 section 6).
   drift: ^2.35.2
@@ -49,6 +54,7 @@ dependencies:
   pdf: ^3.13.1
   printing: ^5.15.1
   shared_preferences: ^2.5.6
+  flutter_secure_storage: ^11.2.0
 
 dev_dependencies:
   flutter_test:

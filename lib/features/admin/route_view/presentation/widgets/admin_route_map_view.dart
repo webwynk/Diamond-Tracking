@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/utils/failure_log.dart';
 import '../../../../../core/utils/route_geometry.dart';
 import '../../../../../domain/entities/route_day.dart';
 import '../../../../../shared/widgets/india_map.dart';
@@ -183,7 +184,7 @@ class AdminRouteMapViewState extends State<AdminRouteMapView> {
       _ready = true;
       unawaited(fit());
     } on Object catch (e, st) {
-      debugPrint('AdminRouteMapView: could not set up the layers: $e\n$st');
+      logFailure('AdminRouteMapView: could not set up the layers', e, st);
     }
   }
 
@@ -195,7 +196,7 @@ class AdminRouteMapViewState extends State<AdminRouteMapView> {
       await controller.setGeoJsonSource(_markSource, _markGeoJson());
       if (fit && mounted) await this.fit();
     } on Object catch (e) {
-      debugPrint('AdminRouteMapView: could not update the route: $e');
+      logFailure('AdminRouteMapView: could not update the route', e);
     }
   }
 

@@ -105,73 +105,6 @@ void main() {
     );
   });
 
-  group('AppIconButton', () {
-    testWidgets('enforces minimum 48x48 dp touch target and tooltip', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        _wrap(
-          AppIconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Settings',
-            onPressed: () {},
-          ),
-        ),
-      );
-
-      final Size size = tester.getSize(find.byType(IconButton));
-      expect(size.width, greaterThanOrEqualTo(AppSizes.minTouchTarget));
-      expect(size.height, greaterThanOrEqualTo(AppSizes.minTouchTarget));
-
-      final IconButton button = tester.widget<IconButton>(
-        find.byType(IconButton),
-      );
-      expect(button.tooltip, 'Settings');
-    });
-  });
-
-  group('AppTextField', () {
-    testWidgets('renders label strictly above field and handles error text', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        _wrap(
-          const AppTextField(
-            label: 'Employee ID',
-            hintText: 'e.g. DA-001',
-            errorText: 'Employee ID is required',
-          ),
-        ),
-      );
-
-      expect(find.text('Employee ID'), findsOneWidget);
-      expect(find.text('Employee ID is required'), findsOneWidget);
-      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
-    });
-  });
-
-  group('AppStatCard', () {
-    testWidgets('renders category, tabular value, and unit', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        _wrap(
-          const AppStatCard(
-            title: 'Distance Today',
-            value: '42.8',
-            unit: 'km',
-            trend: '+5.2 km vs yesterday',
-          ),
-        ),
-      );
-
-      expect(find.text('DISTANCE TODAY'), findsOneWidget);
-      expect(find.text('42.8'), findsOneWidget);
-      expect(find.text('km'), findsOneWidget);
-      expect(find.text('+5.2 km vs yesterday'), findsOneWidget);
-    });
-  });
-
   group('AppStatusPill', () {
     testWidgets('enforces colour plus text label for all statuses', (
       WidgetTester tester,
@@ -287,7 +220,7 @@ void main() {
     });
   });
 
-  group('AppPaginationLoader and AppMapPlaceholder', () {
+  group('AppPaginationLoader', () {
     testWidgets('pagination loader renders 56 dp spinner row', (
       WidgetTester tester,
     ) async {
@@ -297,15 +230,6 @@ void main() {
       expect(size.height, equals(56));
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
-
-    testWidgets('map placeholder renders branded container without shimmer', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(_wrap(const AppMapPlaceholder()));
-
-      expect(find.text('Loading map…'), findsOneWidget);
-      expect(find.byIcon(Icons.location_on_outlined), findsOneWidget);
-    });
   });
 
   group('AppShimmer and Skeletons', () {
@@ -313,19 +237,10 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
-        _wrap(
-          const Column(
-            children: <Widget>[
-              AppListSkeleton(itemCount: 2),
-              SizedBox(height: 16),
-              AppStatRowSkeleton(),
-            ],
-          ),
-        ),
+        _wrap(const Column(children: <Widget>[AppListSkeleton(itemCount: 2)])),
       );
 
       expect(find.byType(AppListSkeleton), findsOneWidget);
-      expect(find.byType(AppStatRowSkeleton), findsOneWidget);
     });
   });
 }

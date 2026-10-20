@@ -2,22 +2,24 @@ import 'package:diamond_tracking/core/theme/app_colors.dart';
 import 'package:diamond_tracking/core/theme/app_dimens.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/features/admin/attendance/presentation/admin_attendance_page.dart';
+import 'package:diamond_tracking/features/admin/attendance/presentation/controllers/admin_attendance_controller.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/admin_employee_form_page.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/admin_employee_list_page.dart';
 import 'package:diamond_tracking/features/admin/map/presentation/admin_live_map_page.dart';
 import 'package:diamond_tracking/features/admin/notifications/presentation/admin_notification_centre_page.dart';
-import 'package:diamond_tracking/features/admin/places/presentation/admin_place_form_page.dart';
-import 'package:diamond_tracking/features/admin/places/presentation/admin_places_page.dart';
 import 'package:diamond_tracking/features/admin/reports/presentation/admin_reports_page.dart';
 import 'package:diamond_tracking/features/admin/route_view/presentation/admin_route_view_page.dart';
 import 'package:diamond_tracking/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:diamond_tracking/features/auth/presentation/controllers/auth_state.dart';
+import 'package:diamond_tracking/features/duty/presentation/controllers/duty_controller.dart';
 import 'package:diamond_tracking/features/history/presentation/my_duty_history_page.dart';
 import 'package:diamond_tracking/shared/widgets/app_top_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/fake_attendance.dart';
+import 'support/fake_duty.dart';
 import 'support/fake_employee_repository.dart';
 import 'support/fake_live_locations.dart';
 import 'support/fake_notification_repository.dart';
@@ -38,6 +40,10 @@ Widget _host(Widget appBarOrPage, {bool asAppBar = true}) {
         FakeEmployeeRepository(),
       ),
       ...routeOverrides(FakeRouteRepository()),
+      attendanceRepositoryProvider.overrideWithValue(
+        FakeAttendanceRepository(),
+      ),
+      dutyRepositoryProvider.overrideWithValue(FakeDutyRepository()),
       notificationOverride(FakeNotificationRepository()),
     ],
     child: MaterialApp(
@@ -311,7 +317,6 @@ void main() {
         employeeCode: 'DA-022',
       ),
       'Team': const AdminEmployeeListPage(),
-      'Places': const AdminPlacesPage(),
       'Reports': const AdminReportsPage(),
       'Live map': const AdminLiveMapPage(),
       'Route view': const AdminRouteViewPage(
@@ -319,7 +324,6 @@ void main() {
         employeeName: 'Suresh Patel',
       ),
       'Employee form': const AdminEmployeeFormPage(),
-      'Place form': const AdminPlaceFormPage(),
       'My history': const MyDutyHistoryPage(),
     };
 

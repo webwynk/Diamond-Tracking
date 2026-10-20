@@ -5,19 +5,26 @@ import '../../../../../core/theme/app_dimens.dart';
 import '../../../../../core/theme/app_typography.dart';
 import '../controllers/admin_employee_list_state.dart';
 
-/// Screen 18 Header: 170+ dp tall #016893 container with rounded bottom corners,
-/// white back button, overflow menu, 80 dp circular avatar, name, code pill, and live duty pill.
+/// Screen 18 identity hero: brand blue with rounded bottom corners, back and
+/// edit buttons, the avatar, the name, the employee code and the duty status.
+///
+/// Leaves room at the bottom for the action bar, which floats over its edge.
 class AdminEmployeeDetailHeader extends StatelessWidget {
   const AdminEmployeeDetailHeader({
     super.key,
     required this.employee,
     this.onBack,
-    this.onMoreOptions,
+    this.onEdit,
   });
+
+  /// How far the action bar below overlaps this hero.
+  static const double overlap = AppSpacing.x8;
+
+  static const double _avatarSize = 72;
 
   final AdminEmployeeItem employee;
   final VoidCallback? onBack;
-  final VoidCallback? onMoreOptions;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -32,127 +39,96 @@ class AdminEmployeeDetailHeader extends StatelessWidget {
         ),
       ),
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.x4,
         AppSpacing.x2,
-        AppSpacing.x4,
-        AppSpacing.x8, // Room for 24dp overlap from body
+        0,
+        AppSpacing.x2,
+        overlap + AppSpacing.x5,
       ),
       child: SafeArea(
         bottom: false,
         child: Column(
-          children: [
-            // 1. Top Action Icons Bar (48x48 dp touch targets)
+          children: <Widget>[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+              children: <Widget>[
                 IconButton(
                   key: const Key('btn-employee-detail-back'),
+                  tooltip: 'Back',
                   icon: const Icon(
                     Icons.arrow_back_rounded,
-                    color: Colors.white,
-                    size: 24,
+                    color: AppColors.neutral0,
+                    size: AppSizes.icon,
                   ),
                   onPressed: onBack ?? () => Navigator.of(context).maybePop(),
                 ),
                 IconButton(
-                  key: const Key('btn-employee-detail-overflow'),
+                  key: const Key('btn-employee-detail-edit'),
+                  tooltip: 'Edit employee',
                   icon: const Icon(
-                    Icons.more_vert_rounded,
-                    color: Colors.white,
-                    size: 24,
+                    Icons.edit_outlined,
+                    color: AppColors.neutral0,
+                    size: AppSizes.icon,
                   ),
-                  onPressed:
-                      onMoreOptions ??
-                      () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Options for ${employee.name}'),
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
-                      },
+                  onPressed: onEdit,
                 ),
               ],
             ),
-
-            // 2. 80 dp Circular Avatar
             Container(
               key: const Key('avatar-employee-detail'),
-              width: 80,
-              height: 80,
+              width: _avatarSize,
+              height: _avatarSize,
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  width: 2.0,
+                  color: AppColors.primary400,
+                  width: AppSpacing.x1,
+                  strokeAlign: BorderSide.strokeAlignOutside,
                 ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x20000000),
-                    blurRadius: 12,
-                    offset: Offset(0, 4),
-                  ),
-                ],
               ),
               alignment: Alignment.center,
               child: Text(
                 employee.initials,
-                style: AppTypography.display.copyWith(
-                  color: isBlocked
-                      ? AppColors.textSecondary
-                      : AppColors.primary600,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 28,
+                style: AppTypography.h2.withColor(
+                  isBlocked ? AppColors.textSecondary : AppColors.primary600,
                 ),
               ),
             ),
-
-            const SizedBox(height: AppSpacing.x3),
-
-            // 3. Employee Full Name
-            Text(
-              employee.name,
-              style: const TextStyle(
-                fontFamily: 'DMSans',
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-                height: 1.2,
+            const SizedBox(height: AppSpacing.x4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
+              child: Text(
+                employee.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppTypography.h2.withColor(AppColors.neutral0),
               ),
-              textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: AppSpacing.x2),
-
-            // 4. Status Chips & Identifiers Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Employee Code Pill (15% white fill)
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: AppSpacing.x2,
+              runSpacing: AppSpacing.x2,
+              children: <Widget>[
                 Container(
                   key: const Key('pill-employee-code'),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 3,
+                    horizontal: AppSpacing.x3,
+                    vertical: AppSpacing.x1,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppRadius.full),
+                    color: AppColors.neutral0.withValues(alpha: 0.16),
+                    borderRadius: AppRadius.fullAll,
                   ),
                   child: Text(
                     employee.employeeCode,
-                    style: AppTypography.label.copyWith(
-                      color: Colors.white,
-                      fontSize: 13,
+                    style: AppTypography.label.tabular.withColor(
+                      AppColors.neutral0,
                     ),
                   ),
                 ),
-
-                const SizedBox(width: AppSpacing.x2),
-
-                // Live Duty Status Pill
-                _buildDutyStatusPill(),
+                _StatusChip(employee: employee),
               ],
             ),
           ],
@@ -160,73 +136,56 @@ class AdminEmployeeDetailHeader extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildDutyStatusPill() {
-    Color bg;
-    Color? dotColor;
-    Color textColor;
-    String label;
+/// The duty status: a white chip with the status colour as a dot and the
+/// status in words, so it reads on the blue hero and without colour.
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.employee});
 
-    switch (employee.status) {
-      case AdminEmployeeStatus.onDuty:
-        bg = AppColors.successBg;
-        dotColor = const Color(0xFF15803D);
-        textColor = const Color(0xFF15803D);
-        label = 'On duty';
-        break;
-      case AdminEmployeeStatus.needsCheck:
-        bg = AppColors.errorBg;
-        dotColor = AppColors.error;
-        textColor = AppColors.error;
-        label = 'Check needed';
-        break;
-      case AdminEmployeeStatus.stale:
-        bg = AppColors.warningBg;
-        dotColor = const Color(0xFF92400E);
-        textColor = const Color(0xFF92400E);
-        label = 'No update 5 min';
-        break;
-      case AdminEmployeeStatus.offDuty:
-        bg = const Color(0xFFF1F5F9);
-        dotColor = AppColors.textSecondary;
-        textColor = AppColors.textSecondary;
-        label = 'Off duty';
-        break;
-      case AdminEmployeeStatus.blocked:
-        bg = const Color(0xFF1E293B);
-        dotColor = null;
-        textColor = Colors.white;
-        label = 'Blocked';
-        break;
-    }
+  final AdminEmployeeItem employee;
+
+  @override
+  Widget build(BuildContext context) {
+    final (Color dot, String label) = switch (employee.status) {
+      AdminEmployeeStatus.onDuty => (
+        AppColors.statusActive,
+        employee.dutyStartTime == null
+            ? 'On duty'
+            : 'On duty · since ${employee.dutyStartTime}',
+      ),
+      AdminEmployeeStatus.needsCheck => (
+        AppColors.statusSuspect,
+        'Check needed',
+      ),
+      AdminEmployeeStatus.stale => (AppColors.statusStale, 'No update 5 min'),
+      AdminEmployeeStatus.offDuty => (AppColors.statusOff, 'Off duty'),
+      AdminEmployeeStatus.blocked => (AppColors.statusBlocked, 'Blocked'),
+    };
 
     return Container(
       key: const Key('pill-employee-duty-status'),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(AppRadius.full),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.x3,
+        vertical: AppSpacing.x1,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.fullAll,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          if (dotColor != null) ...[
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: dotColor,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 6),
-          ],
-          Text(
-            label,
-            style: AppTypography.label.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
+        children: <Widget>[
+          Container(
+            width: AppSpacing.x2,
+            height: AppSpacing.x2,
+            decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: AppSpacing.x2),
+          Flexible(
+            child: Text(
+              label,
+              style: AppTypography.label.withColor(AppColors.textPrimary),
             ),
           ),
         ],

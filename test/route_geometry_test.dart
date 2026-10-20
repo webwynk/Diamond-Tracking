@@ -57,7 +57,8 @@ void main() {
       expect(analysis.last!.latitude, 20.002);
       expect(analysis.lines, hasLength(1));
       expect(analysis.jumpCount, 0);
-      expect(analysis.flaggedCount, 0);
+      expect(analysis.fakeLocationCount, 0);
+      expect(analysis.weakGpsCount, 0);
       expect(analysis.hasAnythingToDraw, isTrue);
     });
 
@@ -69,6 +70,8 @@ void main() {
       ]);
 
       expect(analysis.mockPoints, hasLength(1));
+      expect(analysis.fakeLocationCount, 1);
+      expect(analysis.weakGpsCount, 0);
       expect(analysis.goodPointCount, 2);
       expect(analysis.jumpCount, 0, reason: 'the fake point is not a jump');
       for (final line in analysis.lines) {
@@ -86,6 +89,12 @@ void main() {
         ]);
 
         expect(analysis.inaccuratePoints, hasLength(1));
+        expect(analysis.weakGpsCount, 1);
+        expect(
+          analysis.fakeLocationCount,
+          0,
+          reason: 'a weak signal is not a fake location',
+        );
         expect(analysis.goodPointCount, 2);
       },
     );

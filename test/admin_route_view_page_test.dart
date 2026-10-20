@@ -13,6 +13,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_route.dart';
 
+/// The number shown in one of the stats under the map.
+String statValue(WidgetTester tester, String key) => tester
+    .widgetList<Text>(
+      find.descendant(of: find.byKey(Key(key)), matching: find.byType(Text)),
+    )
+    .first
+    .data!;
+
 void main() {
   late FakeRouteRepository repository;
   final today = istDayStartUtc(2026, 10, 17);
@@ -108,6 +116,7 @@ void main() {
       expect(find.text('Duty hours'), findsOneWidget);
       expect(find.text('8:04 AM – 3:30 PM'), findsOneWidget);
       expect(find.byKey(const Key('route-flag-note')), findsNothing);
+      expect(find.byKey(const Key('route-weak-gps-note')), findsNothing);
     });
 
     testWidgets('explains the markers and offers to show the whole route', (
@@ -220,7 +229,7 @@ void main() {
       expect(
         find.descendant(
           of: note,
-          matching: find.textContaining('2 flagged points are left out'),
+          matching: find.textContaining('1 fake-location point is left out'),
         ),
         findsOneWidget,
       );
@@ -234,10 +243,60 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Fake location'), findsOneWidget);
-      expect(find.text('Low accuracy'), findsOneWidget);
+      expect(find.text('Weak GPS'), findsOneWidget);
+      expect(statValue(tester, 'route-stat-flagged'), '1');
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('route-weak-gps-note')),
+          matching: find.textContaining('1 weak GPS reading was left out'),
+        ),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('a single flagged point reads naturally', (tester) async {
+    testWidgets('a weak GPS signal alone is calm: no red, no "flagged"', (
+      tester,
+    ) async {
+      repository.days[today] = dayOf(
+        [routeSession('s1')],
+        points: [
+          routePoint(20.0000, 73, 0),
+          routePoint(20.0001, 73, 10),
+          routePoint(20.0002, 73, 20, accuracy: 400),
+        ],
+      );
+      await pumpPage(tester);
+
+      expect(statValue(tester, 'route-stat-flagged'), '0');
+      expect(find.byKey(const Key('route-flag-note')), findsNothing);
+      expect(find.byKey(const Key('route-weak-gps-note')), findsOneWidget);
+      expect(find.textContaining('flagged'), findsNothing);
+      expect(find.text('Weak GPS'), findsOneWidget);
+      expect(find.text('Fake location'), findsNothing);
+      expect(find.textContaining('This is normal'), findsOneWidget);
+    });
+
+    testWidgets('a fake location alone gets the warning and no weak note', (
+      tester,
+    ) async {
+      repository.days[today] = dayOf(
+        [routeSession('s1')],
+        points: [
+          routePoint(20.0000, 73, 0),
+          routePoint(21.0, 74, 5, isMock: true),
+          routePoint(20.0001, 73, 10),
+        ],
+      );
+      await pumpPage(tester);
+
+      expect(statValue(tester, 'route-stat-flagged'), '1');
+      expect(find.byKey(const Key('route-flag-note')), findsOneWidget);
+      expect(find.byKey(const Key('route-weak-gps-note')), findsNothing);
+      expect(find.text('Fake location'), findsOneWidget);
+      expect(find.text('Weak GPS'), findsNothing);
+    });
+
+    testWidgets('a single fake-location point reads naturally', (tester) async {
       repository.days[today] = dayOf(
         [routeSession('s1')],
         points: [
@@ -249,7 +308,7 @@ void main() {
       await pumpPage(tester);
 
       expect(
-        find.textContaining('1 flagged point is left out of the route'),
+        find.textContaining('1 fake-location point is left out of the route'),
         findsOneWidget,
       );
     });

@@ -1,3 +1,4 @@
+import 'package:diamond_tracking/core/config/env.dart';
 import 'package:diamond_tracking/core/constants/map_constants.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/features/duty/presentation/controllers/duty_controller.dart';
@@ -11,22 +12,33 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('MapConstants Unit Tests', () {
     test(
-      'defines required OpenFreeMap tile styles with zero API key dependencies',
+      'defines provider-aware tile styles and attribution with automatic fallback',
       () {
-        expect(
-          MapConstants.defaultStyle,
-          contains('tiles.openfreemap.org/styles/liberty'),
-        );
-        expect(
-          MapConstants.brightStyle,
-          contains('tiles.openfreemap.org/styles/bright'),
-        );
-        expect(
-          MapConstants.positronStyle,
-          contains('tiles.openfreemap.org/styles/positron'),
-        );
-        expect(MapConstants.attribution, contains('OpenFreeMap'));
-        expect(MapConstants.attribution, contains('OpenStreetMap'));
+        if (Env.maptilerApiKey.isEmpty) {
+          expect(
+            MapConstants.defaultStyle,
+            contains('tiles.openfreemap.org/styles/liberty'),
+          );
+          expect(
+            MapConstants.brightStyle,
+            contains('tiles.openfreemap.org/styles/bright'),
+          );
+          expect(MapConstants.attribution, contains('OpenFreeMap'));
+          expect(MapConstants.attribution, contains('OpenStreetMap'));
+          expect(MapConstants.providerName, equals('OpenFreeMap'));
+        } else {
+          expect(
+            MapConstants.defaultStyle,
+            contains('api.maptiler.com/maps/streets-v2/style.json'),
+          );
+          expect(
+            MapConstants.brightStyle,
+            contains('api.maptiler.com/maps/outdoor-v2/style.json'),
+          );
+          expect(MapConstants.attribution, contains('MapTiler'));
+          expect(MapConstants.attribution, contains('OpenStreetMap'));
+          expect(MapConstants.providerName, equals('MapTiler'));
+        }
       },
     );
 

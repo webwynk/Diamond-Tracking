@@ -11,10 +11,20 @@ import 'package:diamond_tracking/features/auth/presentation/widgets/pin_box_inpu
 import 'package:diamond_tracking/features/duty/presentation/controllers/duty_controller.dart';
 import 'package:diamond_tracking/features/duty/presentation/controllers/duty_state.dart';
 import 'package:diamond_tracking/features/home/presentation/employee_home_page.dart';
+import 'package:diamond_tracking/features/visits/presentation/controllers/visit_capture_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/fake_admin_activity.dart';
+import 'support/fake_admin_visits.dart';
+import 'support/fake_attendance.dart';
+import 'support/fake_duty.dart';
+import 'support/fake_employee_repository.dart';
+import 'support/fake_live_locations.dart';
+import 'support/fake_notification_repository.dart';
+import 'support/quiet_visit_sync.dart';
 
 class MockAuthRepository implements AuthRepository {
   UserProfile? mockProfile;
@@ -95,6 +105,18 @@ void main() {
       overrides: [
         authRepositoryProvider.overrideWithValue(mockRepo),
         dutyControllerProvider.overrideWith(_FakeDutyNotifier.new),
+        // Signing in lands on the real shells; their screens read the server
+        // and the phone's database, and the test must not.
+        dutyRepositoryProvider.overrideWithValue(FakeDutyRepository()),
+        visitSyncServiceProvider.overrideWithValue(QuietVisitSync()),
+        ...liveMapOverrides(
+          FakeLiveLocationRepository(),
+          FakeEmployeeRepository(),
+        ),
+        activityOverride(FakeAdminActivityRepository()),
+        notificationOverride(FakeNotificationRepository()),
+        ...attendanceOverrides(FakeAttendanceRepository()),
+        adminVisitsOverride(),
       ],
       child: MaterialApp(theme: AppTheme.light, home: child),
     );

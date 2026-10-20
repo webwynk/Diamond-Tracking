@@ -3,8 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('UserProfile entity', () {
-    final DateTime now = DateTime.parse('2026-10-15T12:00:00.000Z');
-
     final Map<String, dynamic> sampleEmployeeJson = <String, dynamic>{
       'id': '11111111-1111-1111-1111-111111111111',
       'role': 'employee',
@@ -48,8 +46,6 @@ void main() {
 
       expect(profile.id, '11111111-1111-1111-1111-111111111111');
       expect(profile.role, UserRole.employee);
-      expect(profile.isEmployee, isTrue);
-      expect(profile.isAdmin, isFalse);
       expect(profile.status, UserStatus.active);
       expect(profile.isActive, isTrue);
       expect(profile.isBlocked, isFalse);
@@ -58,7 +54,6 @@ void main() {
       expect(profile.phone, '+919876543210');
       expect(profile.deviceId, 'android-device-abc-123');
       expect(profile.mustChangePin, isTrue);
-      expect(profile.isLocked(now), isFalse);
     });
 
     test('parses admin profile from JSON correctly', () {
@@ -66,24 +61,9 @@ void main() {
 
       expect(profile.id, '22222222-2222-2222-2222-222222222222');
       expect(profile.role, UserRole.admin);
-      expect(profile.isAdmin, isTrue);
-      expect(profile.isEmployee, isFalse);
       expect(profile.status, UserStatus.active);
       expect(profile.employeeCode, isNull);
       expect(profile.mustChangePin, isFalse);
-    });
-
-    test('isLocked returns true when lockedUntil is in the future', () {
-      final UserProfile profile = UserProfile.fromJson(<String, dynamic>{
-        ...sampleEmployeeJson,
-        'locked_until': '2026-10-15T12:15:00.000Z', // 15 min after 'now'
-        'failed_login_attempts': 5,
-      });
-
-      expect(profile.isLocked(now), isTrue);
-
-      final DateTime afterLockout = DateTime.parse('2026-10-15T12:20:00.000Z');
-      expect(profile.isLocked(afterLockout), isFalse);
     });
 
     test('identifies blocked profile status', () {

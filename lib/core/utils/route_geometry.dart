@@ -38,7 +38,13 @@ class RouteAnalysis {
   final RoutePoint? first;
   final RoutePoint? last;
 
-  int get flaggedCount => mockPoints.length + inaccuratePoints.length;
+  /// Fake-location points. This is what "flagged" means on every screen
+  /// (attendance, reports and the profile count the server's mock points).
+  int get fakeLocationCount => mockPoints.length;
+
+  /// Weak-GPS points: left out of the line like the others, but only noise, not
+  /// a warning (a phone often reports a poor fix just after duty starts).
+  int get weakGpsCount => inaccuratePoints.length;
 
   bool get hasAnythingToDraw =>
       first != null || mockPoints.isNotEmpty || inaccuratePoints.isNotEmpty;

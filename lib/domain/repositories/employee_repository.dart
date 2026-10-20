@@ -49,4 +49,27 @@ abstract class EmployeeRepository {
 
   /// Restores a blocked employee to active status.
   Future<void> unblockEmployee({required String id});
+
+  /// Gives an employee a new temporary PIN (admin only, through the
+  /// `employee-auth` Edge Function). The employee must change it at the next
+  /// sign-in and any lockout is cleared. The server applies the PIN rules and
+  /// writes the audit entry in the same step.
+  ///
+  /// Throws [ValidationException] for a PIN the rules refuse,
+  /// [UnauthorizedRoleException] if the caller is not an active admin,
+  /// [NetworkException] when offline, or [ServerException] otherwise.
+  Future<void> resetPin({required String id, required String newPin});
+
+  /// Clears the phone registered to an employee (BR-13) through the audited
+  /// `admin_clear_device` database function. It also signs the employee out of
+  /// their current phone; the next phone they sign in on becomes the registered
+  /// one.
+  ///
+  /// Returns true when a phone was registered and is now cleared, false when
+  /// none was registered (nothing changed, nothing logged).
+  ///
+  /// Throws [UnauthorizedRoleException] if the caller is not an active admin,
+  /// [ValidationException] if the employee no longer exists,
+  /// [NetworkException] when offline, or [ServerException] otherwise.
+  Future<bool> clearDevice({required String id});
 }

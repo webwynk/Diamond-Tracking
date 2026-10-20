@@ -20,12 +20,7 @@ void main() {
       } on MissingConfigException catch (e) {
         expect(
           e.missingKeys,
-          containsAll(<String>[
-            'SUPABASE_URL',
-            'SUPABASE_PUBLISHABLE_KEY',
-            'CLOUDINARY_CLOUD_NAME',
-            'CLOUDINARY_UPLOAD_PRESET',
-          ]),
+          containsAll(<String>['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY']),
         );
         // The message must guide the developer without printing any secret.
         expect(e.toString(), contains('--dart-define-from-file=env.json'));

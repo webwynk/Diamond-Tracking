@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/fake_admin_visits.dart';
 import 'support/fake_attendance.dart';
 import 'support/fake_route.dart';
 
@@ -50,6 +51,7 @@ void main() {
           // One phone clock for both: a provider may be overridden only once.
           attendanceRepositoryProvider.overrideWithValue(attendance),
           ...routeOverrides(routes),
+          adminVisitsOverride(),
         ],
         child: MaterialApp(
           theme: AppTheme.light,

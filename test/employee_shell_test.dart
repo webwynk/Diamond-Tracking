@@ -9,10 +9,14 @@ import 'package:diamond_tracking/features/home/presentation/employee_home_page.d
 import 'package:diamond_tracking/features/map/presentation/employee_map_page.dart';
 import 'package:diamond_tracking/features/profile/presentation/employee_profile_page.dart';
 import 'package:diamond_tracking/features/shell/employee_shell.dart';
+import 'package:diamond_tracking/features/visits/presentation/controllers/visit_capture_controller.dart';
 import 'package:diamond_tracking/shared/widgets/app_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/fake_duty.dart';
+import 'support/quiet_visit_sync.dart';
 
 class _OffDutyNotifier extends DutyNotifier {
   @override
@@ -48,6 +52,8 @@ void main() {
         overrides: [
           dutyControllerProvider.overrideWith(_OffDutyNotifier.new),
           authControllerProvider.overrideWith(_SignedInEmployee.new),
+          visitSyncServiceProvider.overrideWithValue(QuietVisitSync()),
+          dutyRepositoryProvider.overrideWithValue(FakeDutyRepository()),
         ],
         child: MaterialApp(theme: AppTheme.light, home: const EmployeeShell()),
       ),

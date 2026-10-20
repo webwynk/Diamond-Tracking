@@ -1,3 +1,4 @@
+import 'package:diamond_tracking/core/theme/app_colors.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/admin_employee_detail_page.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/controllers/admin_employee_list_state.dart';
@@ -7,10 +8,13 @@ import 'package:diamond_tracking/features/admin/employees/presentation/widgets/a
 import 'package:diamond_tracking/features/admin/employees/presentation/widgets/admin_employee_monthly_stats_card.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/widgets/admin_employee_quick_actions.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/widgets/admin_employee_recent_duty_card.dart';
+import 'package:diamond_tracking/features/admin/employees/presentation/widgets/admin_profile_section.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/fake_admin_visits.dart';
 import 'support/fake_attendance.dart';
 
 void main() {
@@ -28,7 +32,10 @@ void main() {
   Widget buildTestableWidget(Widget child) {
     return ProviderScope(
       // The profile reads the server; the test must not.
-      overrides: attendanceOverrides(FakeAttendanceRepository()),
+      overrides: [
+        ...attendanceOverrides(FakeAttendanceRepository()),
+        adminVisitsOverride(),
+      ],
       child: MaterialApp(
         theme: AppTheme.light,
         home: Scaffold(body: child),
@@ -46,14 +53,14 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
 
         bool backTapped = false;
-        bool moreTapped = false;
+        bool editTapped = false;
 
         await tester.pumpWidget(
           buildTestableWidget(
             AdminEmployeeDetailHeader(
               employee: sureshPatel,
               onBack: () => backTapped = true,
-              onMoreOptions: () => moreTapped = true,
+              onEdit: () => editTapped = true,
             ),
           ),
         );
@@ -75,8 +82,8 @@ void main() {
           find.byKey(const Key('pill-employee-duty-status')),
           findsOneWidget,
         );
-        // No hours are invented: only the real status is shown.
-        expect(find.text('On duty'), findsOneWidget);
+        // No hours are invented: the real status and the real start time.
+        expect(find.text('On duty · since 8:04 AM'), findsOneWidget);
         expect(find.textContaining('7h 24m'), findsNothing);
 
         // Action Icons
@@ -84,9 +91,10 @@ void main() {
         await tester.pump();
         expect(backTapped, isTrue);
 
-        await tester.tap(find.byKey(const Key('btn-employee-detail-overflow')));
+        await tester.tap(find.byKey(const Key('btn-employee-detail-edit')));
         await tester.pump();
-        expect(moreTapped, isTrue);
+        expect(editTapped, isTrue);
+        expect(find.byTooltip('Edit employee'), findsOneWidget);
       },
     );
 
@@ -97,6 +105,23 @@ void main() {
         tester.view.devicePixelRatio = 2.0;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
+
+        // 0. On duty with no known start time: just the status
+        await tester.pumpWidget(
+          buildTestableWidget(
+            const AdminEmployeeDetailHeader(
+              employee: AdminEmployeeItem(
+                id: 'emp-2',
+                name: 'Asha Patil',
+                employeeCode: 'DA-101',
+                phoneNumber: '+919820000101',
+                status: AdminEmployeeStatus.onDuty,
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(find.text('On duty'), findsOneWidget);
 
         // 1. Check needed
         final checkEmp = sureshPatel.copyWith(
@@ -150,12 +175,16 @@ void main() {
 
         bool trackTapped = false;
         bool routeTapped = false;
+        bool attendanceTapped = false;
+        bool visitsTapped = false;
 
         await tester.pumpWidget(
           buildTestableWidget(
             AdminEmployeeQuickActions(
               onTrackLive: () => trackTapped = true,
               onRouteView: () => routeTapped = true,
+              onAttendance: () => attendanceTapped = true,
+              onVisits: () => visitsTapped = true,
             ),
           ),
         );
@@ -173,6 +202,16 @@ void main() {
         await tester.tap(find.byKey(const Key('btn-quick-route-view')));
         await tester.pump();
         expect(routeTapped, isTrue);
+
+        expect(find.text('Attendance'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('btn-quick-attendance')));
+        await tester.pump();
+        expect(attendanceTapped, isTrue);
+
+        expect(find.text('Visits'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('btn-quick-visits')));
+        await tester.pump();
+        expect(visitsTapped, isTrue);
       },
     );
 
@@ -200,7 +239,7 @@ void main() {
         );
         await tester.pump();
 
-        expect(find.text('CONTACT'), findsOneWidget);
+        expect(find.text('Contact'), findsOneWidget);
         expect(find.byKey(const Key('row-contact-phone')), findsOneWidget);
         expect(find.text('Phone'), findsOneWidget);
         expect(find.text('+91 98201 44556'), findsOneWidget);
@@ -237,7 +276,7 @@ void main() {
         );
         await tester.pump();
 
-        expect(find.text('THIS MONTH'), findsOneWidget);
+        expect(find.text('This month'), findsOneWidget);
         expect(find.text('October'), findsOneWidget);
 
         // 4 Metric Blocks
@@ -364,6 +403,107 @@ void main() {
         expect(find.text('0.0 km'), findsOneWidget);
       },
     );
+
+    testWidgets('Copy puts the phone number on the clipboard and says so', (
+      tester,
+    ) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          const AdminEmployeeContactCard(
+            employee: AdminEmployeeItem(
+              id: 'emp-1',
+              name: 'Suresh Patel',
+              employeeCode: 'DA-022',
+              phoneNumber: '+91 98201 44556',
+              status: AdminEmployeeStatus.onDuty,
+              email: 'suresh.p@diamondagritech.in',
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('btn-copy-phone')));
+      await tester.pump();
+      expect(copied, '+91 98201 44556');
+      expect(find.text('Phone number copied'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('btn-copy-email')));
+      await tester.pump();
+      expect(copied, 'suresh.p@diamondagritech.in');
+      // Nothing pretends to dial or send.
+      expect(find.textContaining('Dialing'), findsNothing);
+    });
+
+    testWidgets('no email on file shows a dash and nothing to copy', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestableWidget(
+          const AdminEmployeeContactCard(employee: sureshPatel),
+        ),
+      );
+
+      expect(find.text('—'), findsOneWidget);
+      expect(find.byKey(const Key('btn-copy-email')), findsNothing);
+      expect(find.byKey(const Key('btn-copy-phone')), findsOneWidget);
+    });
+
+    testWidgets('flag chips are grey at zero and tinted only when needed', (
+      tester,
+    ) async {
+      Color chipBackground(String key) => tester
+          .widget<AdminProfileStatusChip>(find.byKey(Key(key)))
+          .background;
+
+      await tester.pumpWidget(
+        buildTestableWidget(const AdminEmployeeMonthlyStatsCard()),
+      );
+      expect(chipBackground('chip-auto-ended'), AppColors.neutral100);
+      expect(chipBackground('chip-location-flags'), AppColors.neutral100);
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          const AdminEmployeeMonthlyStatsCard(
+            autoEndedDays: 2,
+            locationFlags: 1,
+          ),
+        ),
+      );
+      expect(find.text('2 days auto-ended'), findsOneWidget);
+      expect(find.text('1 location flag'), findsOneWidget);
+      expect(chipBackground('chip-auto-ended'), AppColors.warningBg);
+      expect(chipBackground('chip-location-flags'), AppColors.errorBg);
+    });
+
+    testWidgets('while the month loads the figures are dashes, not zeros', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestableWidget(
+          const AdminEmployeeMonthlyStatsCard(isAvailable: false),
+        ),
+      );
+
+      expect(find.text('–'), findsNWidgets(4));
+      expect(find.text('0h 00m'), findsNothing);
+    });
 
     testWidgets('renders Block employee button and invokes callback', (
       tester,

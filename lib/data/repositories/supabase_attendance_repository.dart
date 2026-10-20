@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exceptions.dart';
+import '../../core/utils/failure_log.dart';
 import '../../domain/entities/admin_duty_session.dart';
 import '../../domain/repositories/attendance_repository.dart';
 import '../network_failure.dart';
@@ -82,7 +82,7 @@ class SupabaseAttendanceRepository implements AttendanceRepository {
       final value = row?['created_at'];
       return value is String ? DateTime.tryParse(value)?.toUtc() : null;
     } on Object catch (e) {
-      debugPrint('AttendanceRepository: first day unknown: $e');
+      logFailure('AttendanceRepository: first day unknown', e);
       return null;
     }
   }
@@ -102,7 +102,7 @@ class SupabaseAttendanceRepository implements AttendanceRepository {
     } catch (e, st) {
       final network = asNetworkFailure(e);
       if (network != null) throw network;
-      debugPrint('AttendanceRepository: could not $action: $e\n$st');
+      logFailure('AttendanceRepository: could not $action', e, st);
       throw ServerException('Could not $action. Please try again.');
     }
   }

@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exceptions.dart';
 import '../../core/utils/duty_time_helper.dart';
+import '../../core/utils/failure_log.dart';
 import '../../domain/entities/duty_session.dart';
 import '../../domain/entities/location_point.dart';
 import '../../domain/entities/point_ingest_result.dart';
@@ -200,6 +200,17 @@ class SupabaseDutyRepository implements DutyRepository {
     });
   }
 
+  @override
+  Future<bool> reportGpsStatus({required bool enabled}) {
+    return _run('report GPS status', () async {
+      final response = await _supabase.rpc<dynamic>(
+        'report_gps_status',
+        params: <String, dynamic>{'p_enabled': enabled},
+      );
+      return response == true;
+    });
+  }
+
   Future<T> _run<T>(String action, Future<T> Function() body) async {
     try {
       return await body();
@@ -211,7 +222,7 @@ class SupabaseDutyRepository implements DutyRepository {
       final network = asNetworkFailure(e);
       if (network != null) throw network;
       // Raw text is never shown to the employee, and no location data is logged.
-      debugPrint('DutyRepository: could not $action: ${e.runtimeType}\n$st');
+      logFailure('DutyRepository: could not $action', e, st);
       throw ServerException('Could not $action. Please try again.');
     }
   }

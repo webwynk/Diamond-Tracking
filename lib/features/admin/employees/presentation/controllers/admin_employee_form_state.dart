@@ -34,8 +34,10 @@ class AdminEmployeeFormState {
   final bool isEditMode;
   final String? existingEmployeeId;
 
-  // These mirror what the create-employee function checks, so the form never
-  // offers a Save the server is certain to refuse.
+  // These follow what the create-employee function checks, so the form never
+  // offers a Save the server is certain to refuse. The PIN rule is the same one
+  // the database applies (private.pin_problem), wrap-around runs like 890123
+  // included.
   static final RegExp _codePattern = RegExp(r'^[A-Z]{2,4}-\d{2,6}$');
   static final RegExp _phonePattern = RegExp(r'^\+?\d{10,15}$');
   static final RegExp _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');

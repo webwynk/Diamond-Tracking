@@ -118,7 +118,6 @@ void main() {
       const initial = FilterSheetState();
       expect(initial.selectedStatuses, isEmpty);
       expect(initial.selectedDutyToday, isNull);
-      expect(initial.hasActiveFilters, isFalse);
     });
 
     testWidgets('toggling status chips updates the multi-select state', (

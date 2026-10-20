@@ -79,6 +79,9 @@ class _FakeDutyRepository implements DutyRepository {
   Future<PointIngestResult> ingestLocationPoints({
     required List<LocationPoint> points,
   }) async => const PointIngestResult();
+
+  @override
+  Future<bool> reportGpsStatus({required bool enabled}) async => true;
 }
 
 class _SignedInEmployee extends AuthNotifier {

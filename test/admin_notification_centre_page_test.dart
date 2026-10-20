@@ -149,9 +149,18 @@ void main() {
           details: {'last_seen': '2026-10-17T04:00:00+00:00'},
         ),
         at(1, type: AdminNotificationType.batteryLow),
+        at(
+          8,
+          type: AdminNotificationType.accountLocked,
+          details: {'employee_code': 'DA-101', 'locked_minutes': 15},
+        ),
       ];
       await openCentre(tester);
 
+      expect(
+        find.text('Locked for 15 minutes after 5 wrong PIN tries'),
+        findsOneWidget,
+      );
       expect(find.text('Ended duty (employee was blocked)'), findsOneWidget);
       expect(find.text('Ended duty'), findsOneWidget);
       expect(find.text('Duty ended automatically at 23:00'), findsOneWidget);
@@ -598,6 +607,23 @@ void main() {
       },
     );
 
+    testWidgets('a locked account is marked read and opens nothing', (
+      tester,
+    ) async {
+      server.all = [at(1, type: AdminNotificationType.accountLocked)];
+      await openCentre(tester);
+
+      await tester.tap(find.byKey(const Key('notif-tile-1')));
+      await tester.pumpAndSettle();
+
+      expect(server.markReadCalls, [
+        [1],
+      ]);
+      expect(find.byType(AdminRouteViewPage), findsNothing);
+      expect(routes.calls, isEmpty);
+      await close(tester);
+    });
+
     testWidgets('an older notification opens the day it happened', (
       tester,
     ) async {
@@ -678,6 +704,53 @@ void main() {
       expect(find.byType(AdminRouteViewPage), findsOneWidget);
       await close(tester);
     });
+
+    testWidgets(
+      'security and operational alerts (new device, failed login, gps disabled)',
+      (tester) async {
+        server.all = [
+          at(3, type: AdminNotificationType.newDeviceLogin),
+          at(
+            2,
+            type: AdminNotificationType.failedLogin,
+            details: {'attempts': 3},
+          ),
+          at(1, type: AdminNotificationType.gpsDisabled),
+        ];
+        final container = await openCentre(tester);
+        container.listen(adminLiveMapControllerProvider, (_, _) {});
+        await settleFrames(tester);
+
+        expect(
+          find.text('Login attempt from an unregistered phone'),
+          findsOneWidget,
+        );
+        expect(find.text('3 failed PIN attempts'), findsOneWidget);
+        expect(
+          find.text('Location service turned off while on duty'),
+          findsOneWidget,
+        );
+
+        // Tapping security alert marks read without pushing route
+        await tester.tap(find.byKey(const Key('notif-tile-3')));
+        await tester.pumpAndSettle();
+        expect(server.markReadCalls, [
+          [3],
+        ]);
+        expect(find.byType(AdminRouteViewPage), findsNothing);
+
+        // Tapping GPS disabled for off-duty opens route
+        await tester.tap(find.byKey(const Key('notif-tile-1')));
+        await tester.pumpAndSettle();
+        expect(server.markReadCalls, [
+          [3],
+          [1],
+        ]);
+        expect(find.byType(AdminRouteViewPage), findsOneWidget);
+
+        await close(tester);
+      },
+    );
   });
 }
 

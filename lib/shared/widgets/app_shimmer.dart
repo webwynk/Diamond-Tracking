@@ -8,21 +8,14 @@ import '../../core/theme/app_dimens.dart';
 /// Features:
 /// - Base colour: [AppColors.neutral100] (#F1F5F9).
 /// - Highlight colour: [AppColors.neutral300] (#CBD5E1).
-/// - 1.5 s loop duration ([AppMotion.skeletonLoop]).
+/// - 1.5 s loop duration ([AppMotion.shimmer]).
 /// - Sweeps smoothly from lower left to upper right.
 /// - **Accessibility respect:** falls back to static fill when system
 ///   reduce-motion or accessible navigation is enabled.
 class AppShimmer extends StatefulWidget {
-  const AppShimmer({
-    required this.child,
-    super.key,
-    this.baseColor = AppColors.neutral100,
-    this.highlightColor = AppColors.neutral300,
-  });
+  const AppShimmer({required this.child, super.key});
 
   final Widget child;
-  final Color baseColor;
-  final Color highlightColor;
 
   @override
   State<AppShimmer> createState() => _AppShimmerState();
@@ -68,9 +61,9 @@ class _AppShimmerState extends State<AppShimmer>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: <Color>[
-                widget.baseColor,
-                widget.highlightColor,
-                widget.baseColor,
+                AppColors.neutral100,
+                AppColors.neutral300,
+                AppColors.neutral100,
               ],
               stops: const <double>[0.1, 0.5, 0.9],
               transform: _SlidingGradientTransform(slidePercent: value),

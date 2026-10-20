@@ -107,7 +107,7 @@ void main() {
       expect((await store.nextBatch()).map((p) => p.id), ['p1', 'p3']);
     });
 
-    test('rejected points are removed and counted', () async {
+    test('rejected points are removed', () async {
       for (var i = 0; i < 4; i++) {
         await store.enqueuePoint(_point('p$i', seconds: i));
       }
@@ -115,8 +115,7 @@ void main() {
       await store.discardRejectedPoints(['p0', 'p1']);
       await store.discardRejectedPoints(['p2', 'not-there']);
 
-      expect(await store.pendingPointCount(), 1);
-      expect(await store.rejectedPointsCount(), 3);
+      expect((await store.nextBatch()).map((p) => p.id), ['p3']);
     });
   });
 
@@ -144,38 +143,9 @@ void main() {
         );
       },
     );
-
-    test('points older than 30 days are purged, newer ones kept', () async {
-      final now = DateTime.utc(2026, 10, 17, 12);
-      await store.enqueuePoint(
-        LocationPoint(
-          id: 'old',
-          sessionId: 's1',
-          latitude: 20,
-          longitude: 73,
-          accuracy: 5,
-          recordedAt: now.subtract(const Duration(days: 31)),
-        ),
-      );
-      await store.enqueuePoint(
-        LocationPoint(
-          id: 'recent',
-          sessionId: 's1',
-          latitude: 20,
-          longitude: 73,
-          accuracy: 5,
-          recordedAt: now.subtract(const Duration(days: 29)),
-        ),
-      );
-
-      final removed = await store.purgeExpiredPoints(now);
-
-      expect(removed, 1);
-      expect((await store.nextBatch()).map((p) => p.id), ['recent']);
-    });
   });
 
-  group('session and pending duty-off', () {
+  group('active session', () {
     test('the active session is saved, replaced whole, and cleared', () async {
       expect(await store.activeSession(), isNull);
 
@@ -202,47 +172,19 @@ void main() {
       await store.clearActiveSession();
       expect(await store.activeSession(), isNull);
     });
-
-    test('a pending duty-off keeps the phone time, reason and note', () async {
-      expect(await store.pendingEnd(), isNull);
-
-      await store.savePendingEnd(
-        PendingSessionEnd(
-          sessionId: 's1',
-          endedAt: DateTime.utc(2026, 10, 17, 13, 0, 5, 250),
-          reason: 'normal',
-          notes: 'No signal',
-        ),
-      );
-
-      final pending = await store.pendingEnd();
-      expect(pending?.sessionId, 's1');
-      expect(pending?.endedAt, DateTime.utc(2026, 10, 17, 13, 0, 5, 250));
-      expect(pending?.reason, 'normal');
-      expect(pending?.notes, 'No signal');
-
-      await store.clearPendingEnd();
-      expect(await store.pendingEnd(), isNull);
-    });
   });
 
   test('wipeAll (sign-out) removes everything personal', () async {
     await store.enqueuePoint(_point('p'));
-    await store.discardRejectedPoints(['p']);
     await store.enqueuePoint(_point('q'));
     await store.saveActiveSession(
       ActiveTrackingSession(sessionId: 'a', employeeId: 'e1', startedAt: _base),
-    );
-    await store.savePendingEnd(
-      PendingSessionEnd(sessionId: 'a', endedAt: _base, reason: 'normal'),
     );
 
     await store.wipeAll();
 
     expect(await store.pendingPointCount(), 0);
-    expect(await store.rejectedPointsCount(), 0);
     expect(await store.activeSession(), isNull);
-    expect(await store.pendingEnd(), isNull);
   });
 
   test('data survives the app being closed and opened again', () async {
@@ -260,9 +202,6 @@ void main() {
         startedAt: _base,
       ),
     );
-    await firstStore.savePendingEnd(
-      PendingSessionEnd(sessionId: 's1', endedAt: _base, reason: 'normal'),
-    );
     await first.close();
 
     final second = TrackingDatabase(NativeDatabase(file));
@@ -271,6 +210,5 @@ void main() {
 
     expect((await secondStore.nextBatch()).single.id, 'kept');
     expect((await secondStore.activeSession())?.sessionId, 's1');
-    expect((await secondStore.pendingEnd())?.sessionId, 's1');
   });
 }

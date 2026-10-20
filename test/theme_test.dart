@@ -198,9 +198,7 @@ void main() {
         AppSpacing.x5,
         AppSpacing.x6,
         AppSpacing.x8,
-        AppSpacing.x10,
         AppSpacing.x12,
-        AppSpacing.x16,
       ]) {
         expect(v % 4, 0, reason: '$v is not a multiple of 4');
       }
@@ -216,9 +214,8 @@ void main() {
       expect(AppSizes.controlHeight, 48);
     });
 
-    test('list rows are at least 72 and the duty toggle at least 120', () {
+    test('list rows are at least 72', () {
       expect(AppSizes.listRowMinHeight, greaterThanOrEqualTo(72));
-      expect(AppSizes.dutyToggleMinHeight, greaterThanOrEqualTo(120));
     });
   });
 }

@@ -167,25 +167,21 @@ void main() {
       },
     );
 
-    test(
-      'rejected points are discarded and counted; the rest still go',
-      () async {
-        await store.enqueuePoint(_point('bad', 0));
-        await store.enqueuePoint(_point('good', 1));
-        server.ingestHandler = (points) async => const PointIngestResult(
-          confirmedIds: {'good'},
-          rejected: {'bad': 'invalid_point'},
-        );
+    test('rejected points are discarded; the rest still go', () async {
+      await store.enqueuePoint(_point('bad', 0));
+      await store.enqueuePoint(_point('good', 1));
+      server.ingestHandler = (points) async => const PointIngestResult(
+        confirmedIds: {'good'},
+        rejected: {'bad': 'invalid_point'},
+      );
 
-        final outcome = await uploader.uploadPending();
+      final outcome = await uploader.uploadPending();
 
-        expect(outcome.confirmed, 1);
-        expect(outcome.rejected, 1);
-        expect(await store.pendingPointCount(), 0);
-        expect(await store.rejectedPointsCount(), 1);
-        expect(outcome.refusedSessionIds, isEmpty);
-      },
-    );
+      expect(outcome.confirmed, 1);
+      expect(outcome.rejected, 1);
+      expect(await store.pendingPointCount(), 0);
+      expect(outcome.refusedSessionIds, isEmpty);
+    });
 
     test(
       'a refused session is reported so the tracker can stop for it',

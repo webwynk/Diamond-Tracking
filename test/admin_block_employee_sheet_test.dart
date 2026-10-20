@@ -11,6 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/employee_fixtures.dart';
+import 'support/fake_admin_visits.dart';
+import 'support/fake_attendance.dart';
 import 'support/fake_employee_repository.dart';
 
 void main() {
@@ -251,6 +253,8 @@ void main() {
           overrides: [
             fixtureEmployeeListOverride,
             fakeEmployeeRepositoryOverride(),
+            adminVisitsOverride(),
+            ...attendanceOverrides(FakeAttendanceRepository()),
           ],
         );
         addTearDown(container.dispose);
@@ -302,6 +306,8 @@ void main() {
           overrides: [
             fixtureEmployeeListOverride,
             fakeEmployeeRepositoryOverride(),
+            adminVisitsOverride(),
+            ...attendanceOverrides(FakeAttendanceRepository()),
           ],
         );
         addTearDown(container.dispose);
@@ -375,6 +381,8 @@ void main() {
             fakeEmployeeRepositoryOverride(
               FakeEmployeeRepository(error: const NetworkException()),
             ),
+            adminVisitsOverride(),
+            ...attendanceOverrides(FakeAttendanceRepository()),
           ],
         );
         addTearDown(container.dispose);

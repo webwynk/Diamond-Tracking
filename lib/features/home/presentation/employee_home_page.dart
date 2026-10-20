@@ -21,14 +21,9 @@ import '../../shell/employee_tab.dart';
 /// - Screen 07: Employee Home (Duty On / Active Foreground Tracking)
 /// - Screen 08: Employee Home (Duty Disabled Outside Operating Window)
 class EmployeeHomePage extends ConsumerStatefulWidget {
-  const EmployeeHomePage({
-    super.key,
-    this.onNavigateToNotifications,
-    this.onNavigateToProfile,
-  });
+  const EmployeeHomePage({super.key, this.onNavigateToNotifications});
 
   final VoidCallback? onNavigateToNotifications;
-  final VoidCallback? onNavigateToProfile;
 
   @override
   ConsumerState<EmployeeHomePage> createState() => _EmployeeHomePageState();
@@ -201,13 +196,9 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
         AppTopBarProfileButton(
           key: const Key('profile-action-btn'),
           onPressed: () {
-            if (widget.onNavigateToProfile != null) {
-              widget.onNavigateToProfile!();
-            } else {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const EmployeeProfilePage()),
-              );
-            }
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const EmployeeProfilePage()),
+            );
           },
         ),
       ],
@@ -507,6 +498,18 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
   }
 
   Widget _buildMicroTelemetryBanner(DutyScreenState state) {
+    // Only claim the GPS is working once a real fix has arrived this duty.
+    final hasFix = state.lastLocation != null;
+    final label = !state.isOnDuty
+        ? 'GPS STANDBY'
+        : hasFix
+        ? 'GPS ACTIVE'
+        : 'WAITING FOR GPS FIX';
+    final tone = !state.isOnDuty
+        ? AppColors.neutral400
+        : hasFix
+        ? AppColors.success
+        : AppColors.warning;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x1),
       child: Row(
@@ -519,23 +522,21 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: state.isOnDuty
-                        ? AppColors.success
-                        : AppColors.neutral400,
+                    color: tone,
                     shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    state.isOnDuty
-                        ? 'GPS ACTIVE • VERIFIED TELEMETRY'
-                        : 'GPS STANDBY',
+                    label,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.overline.copyWith(
-                      color: state.isOnDuty
+                      color: !state.isOnDuty
+                          ? AppColors.textSecondary
+                          : hasFix
                           ? AppColors.success
-                          : AppColors.textSecondary,
+                          : AppColors.warningText,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -588,7 +589,7 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
                 title: 'DISTANCE',
                 value:
                     '${DutyTimeHelper.formatDistanceKm(state.distanceKm)} km',
-                caption: state.isOnDuty ? 'GPS verified' : '0 route legs',
+                caption: state.isOnDuty ? 'From GPS points' : '0 route legs',
                 captionColor: AppColors.textSecondary,
               ),
             ),

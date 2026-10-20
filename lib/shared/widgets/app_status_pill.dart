@@ -13,9 +13,10 @@ import '../../core/theme/app_typography.dart';
 /// - 8 dp circle dot matching the status colour.
 /// - Text label in [AppTypography.label] using the status colour.
 class AppStatusPill extends StatelessWidget {
-  const AppStatusPill({required this.statusKey, super.key, this.customLabel})
+  const AppStatusPill({required this.statusKey, super.key})
     : color = null,
-      backgroundColor = null;
+      backgroundColor = null,
+      customLabel = null;
 
   const AppStatusPill.custom({
     required Color this.color,
@@ -41,8 +42,7 @@ class AppStatusPill extends StatelessWidget {
           AppStatusColors.colours[statusKey] ?? AppColors.neutral700;
       effectiveBg =
           AppStatusColors.backgrounds[statusKey] ?? AppColors.neutral100;
-      effectiveLabel =
-          customLabel ?? AppStatusColors.labels[statusKey] ?? statusKey!;
+      effectiveLabel = AppStatusColors.labels[statusKey] ?? statusKey!;
     } else {
       effectiveColor = color ?? AppColors.neutral700;
       effectiveBg = backgroundColor ?? AppColors.neutral100;

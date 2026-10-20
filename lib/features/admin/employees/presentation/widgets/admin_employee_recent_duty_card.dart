@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_dimens.dart';
 import '../../../../../core/theme/app_typography.dart';
+import 'admin_profile_section.dart';
 
 /// Represents a single completed or active duty shift history record.
 class EmployeeDutyLogRecord {
@@ -21,7 +22,8 @@ class EmployeeDutyLogRecord {
   final String distanceStr;
 }
 
-/// Screen 18 "Recent duty" Card: Section header with "View all" CTA and the session history rows.
+/// Screen 18 "Recent duty": the latest days worked, each opening that day's
+/// route, and "View all" for the attendance screen.
 class AdminEmployeeRecentDutyCard extends StatelessWidget {
   const AdminEmployeeRecentDutyCard({
     super.key,
@@ -41,123 +43,110 @@ class AdminEmployeeRecentDutyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border, width: 1.0),
+    return AdminProfileSection(
+      title: 'Recent duty',
+      trailing: AdminProfileSectionLink(
+        key: const Key('btn-recent-duty-view-all'),
+        label: 'View all',
+        onPressed: onViewAll,
       ),
-      padding: const EdgeInsets.all(AppSpacing.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 1. Header: Title "Recent duty" & "View all" Action
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Recent duty',
-                style: AppTypography.title.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              InkWell(
-                key: const Key('btn-recent-duty-view-all'),
-                onTap: onViewAll,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
-                  ),
-                  child: Text(
-                    'View all',
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.primary600,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppSpacing.x1),
-
-          // 2. Shift rows, or an honest empty message
+        children: <Widget>[
           if (logs.isEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.x4),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.x3),
               child: Text(
                 emptyText,
                 key: const Key('text-recent-duty-empty'),
-                style: AppTypography.body.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+                style: AppTypography.body.withColor(AppColors.textSecondary),
               ),
             ),
-          for (int i = 0; i < logs.length; i++) ...[
+          for (var i = 0; i < logs.length; i++) ...<Widget>[
             if (i > 0) const Divider(color: AppColors.border, height: 1),
-            _buildDutyRow(logs[i]),
+            _DutyRow(log: logs[i], onTap: () => onLogSelected?.call(logs[i])),
           ],
         ],
       ),
     );
   }
+}
 
-  Widget _buildDutyRow(EmployeeDutyLogRecord log) {
+class _DutyRow extends StatelessWidget {
+  const _DutyRow({required this.log, required this.onTap});
+
+  static const double _badge = 40;
+
+  final EmployeeDutyLogRecord log;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
       key: Key('row-recent-duty-${log.id}'),
-      onTap: () => onLogSelected?.call(log),
-      child: SizedBox(
-        height: 64,
+      onTap: onTap,
+      borderRadius: AppRadius.mdAll,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppSizes.listRowMinHeight),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Left: Date & Time Window
+          children: <Widget>[
+            Container(
+              width: _badge,
+              height: _badge,
+              decoration: const BoxDecoration(
+                color: AppColors.primary50,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.event_note_rounded,
+                size: AppSizes.iconDense,
+                color: AppColors.primary600,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.x3),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    log.dateStr,
+                    style: AppTypography.body.semiBold.withColor(
+                      AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    log.timeWindow,
+                    style: AppTypography.caption.withColor(
+                      AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.x2),
             Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
                 Text(
-                  log.dateStr,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
+                  log.durationStr,
+                  style: AppTypography.body.tabular.semiBold.withColor(
+                    AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 2),
                 Text(
-                  log.timeWindow,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.textSecondary,
+                  log.distanceStr,
+                  style: AppTypography.caption.tabular.withColor(
+                    AppColors.textSecondary,
                   ),
                 ),
               ],
             ),
-
-            // Right: Duration & Distance Covered
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  log.durationStr,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  log.distanceStr,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.textSecondary,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: AppSizes.iconDense,
+              color: AppColors.neutral400,
             ),
           ],
         ),

@@ -18,6 +18,7 @@ env.*.json
 *.crt
 key.properties
 android/key.properties
+keystore_backup/
 android/local.properties
 service-account*.json
 *service-account*.json

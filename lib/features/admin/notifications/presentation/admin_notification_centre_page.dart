@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/phone_clock.dart';
+import '../../../../domain/entities/admin_notification.dart';
 import '../../../../shared/widgets/app_badge.dart';
 import '../../../../shared/widgets/app_error_view.dart';
 import '../../../../shared/widgets/app_top_bar.dart';
@@ -52,6 +53,13 @@ class _AdminNotificationCentrePageState
     final names = ref.read(adminNotificationControllerProvider).names;
     final n = row.notification;
     notifier.markRead(n.id);
+
+    // Security alerts have no route or position to show: reading is enough.
+    if (n.type == AdminNotificationType.accountLocked ||
+        n.type == AdminNotificationType.failedLogin ||
+        n.type == AdminNotificationType.newDeviceLogin) {
+      return;
+    }
 
     final onDuty = ref
         .read(adminLiveMapControllerProvider)

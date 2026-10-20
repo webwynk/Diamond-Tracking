@@ -4,8 +4,11 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_dimens.dart';
 import '../../../../../core/theme/app_typography.dart';
 import '../../../../../core/utils/date_labels.dart';
+import 'admin_profile_section.dart';
 
-/// Screen 18 "THIS MONTH" Telemetry Card: Month dropdown, 2x2 metric grid, and diagnostic footnotes.
+/// Screen 18 "This month": a month picker, four stat tiles and two status
+/// chips. The chips are grey when there is nothing to worry about and tinted
+/// only when there is (docs/03 principle 6, calm by default).
 class AdminEmployeeMonthlyStatsCard extends StatelessWidget {
   const AdminEmployeeMonthlyStatsCard({
     super.key,
@@ -36,212 +39,186 @@ class AdminEmployeeMonthlyStatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border, width: 1.0),
+    String figure(String value) => isAvailable ? value : '–';
+
+    return AdminProfileSection(
+      title: 'This month',
+      trailing: _MonthChip(
+        label: monthName ?? DateLabels.monthName(DateTime.now()),
+        onTap: onMonthSelect,
       ),
-      padding: const EdgeInsets.all(AppSpacing.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 1. Header: Overline "THIS MONTH" & Month Selector Chip
+        children: <Widget>[
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'THIS MONTH',
-                style: AppTypography.overline.copyWith(
-                  color: AppColors.textSecondary,
-                  letterSpacing: 1.0,
+            children: <Widget>[
+              Expanded(
+                child: _StatTile(
+                  key: const Key('metric-days-worked'),
+                  icon: Icons.calendar_today_rounded,
+                  value: figure('$daysWorked'),
+                  label: 'Days worked',
                 ),
               ),
-              InkWell(
-                key: const Key('btn-employee-select-month'),
-                onTap: onMonthSelect,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                    border: Border.all(color: AppColors.neutral300, width: 1.0),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        monthName ?? DateLabels.monthName(DateTime.now()),
-                        style: AppTypography.label.copyWith(
-                          color: AppColors.neutral600,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.expand_more_rounded,
-                        size: 16,
-                        color: AppColors.neutral600,
-                      ),
-                    ],
-                  ),
+              const SizedBox(width: AppSpacing.x3),
+              Expanded(
+                child: _StatTile(
+                  key: const Key('metric-hours-worked'),
+                  icon: Icons.schedule_rounded,
+                  value: figure(hoursWorked),
+                  label: 'Hours',
                 ),
               ),
             ],
           ),
-
           const SizedBox(height: AppSpacing.x3),
-
-          // 2. 2x2 Telemetry Metric Grid
-          Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildMetricBlock(
-                      key: const Key('metric-days-worked'),
-                      value: isAvailable ? '$daysWorked' : '–',
-                      label: 'Days worked',
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.x3),
-                  Expanded(
-                    child: _buildMetricBlock(
-                      key: const Key('metric-hours-worked'),
-                      value: isAvailable ? hoursWorked : '–',
-                      label: 'Hours',
-                    ),
-                  ),
-                ],
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _StatTile(
+                  key: const Key('metric-distance-km'),
+                  icon: Icons.route_rounded,
+                  value: figure(distanceKm),
+                  label: 'Distance',
+                ),
               ),
-              const SizedBox(height: AppSpacing.x3),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildMetricBlock(
-                      key: const Key('metric-distance-km'),
-                      value: isAvailable ? distanceKm : '–',
-                      label: 'Distance',
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.x3),
-                  Expanded(
-                    child: _buildMetricBlock(
-                      key: const Key('metric-visits-count'),
-                      value: isAvailable ? '$visitsCount' : '–',
-                      label: 'Visits',
-                    ),
-                  ),
-                ],
+              const SizedBox(width: AppSpacing.x3),
+              Expanded(
+                child: _StatTile(
+                  key: const Key('metric-visits-count'),
+                  icon: Icons.storefront_rounded,
+                  value: figure('$visitsCount'),
+                  label: 'Visits',
+                ),
               ),
             ],
           ),
-
           const SizedBox(height: AppSpacing.x3),
-
-          // 3. Metric Diagnostics Footnote
-          Container(
-            padding: const EdgeInsets.only(top: AppSpacing.x3),
-            decoration: const BoxDecoration(
-              border: Border(
-                top: BorderSide(color: AppColors.border, width: 1.0),
+          Wrap(
+            spacing: AppSpacing.x2,
+            runSpacing: AppSpacing.x2,
+            children: <Widget>[
+              AdminProfileStatusChip(
+                key: const Key('chip-auto-ended'),
+                icon: Icons.timer_off_outlined,
+                label: isAvailable
+                    ? '$autoEndedDays ${autoEndedDays == 1 ? 'day' : 'days'} auto-ended'
+                    : 'auto-ended days: –',
+                background: isAvailable && autoEndedDays > 0
+                    ? AppColors.warningBg
+                    : AppColors.neutral100,
+                foreground: isAvailable && autoEndedDays > 0
+                    ? AppColors.warningText
+                    : AppColors.neutral600,
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Auto-ended days
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.warning,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      isAvailable
-                          ? '$autoEndedDays ${autoEndedDays == 1 ? 'day' : 'days'} auto-ended'
-                          : 'auto-ended days: –',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Location flags
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.error,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      isAvailable
-                          ? '$locationFlags location ${locationFlags == 1 ? 'flag' : 'flags'}'
-                          : 'location flags: –',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              AdminProfileStatusChip(
+                key: const Key('chip-location-flags'),
+                icon: Icons.wrong_location_outlined,
+                label: isAvailable
+                    ? '$locationFlags location ${locationFlags == 1 ? 'flag' : 'flags'}'
+                    : 'location flags: –',
+                background: isAvailable && locationFlags > 0
+                    ? AppColors.errorBg
+                    : AppColors.neutral100,
+                foreground: isAvailable && locationFlags > 0
+                    ? AppColors.errorText
+                    : AppColors.neutral600,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildMetricBlock({
-    required Key key,
-    required String value,
-    required String label,
-  }) {
+/// The tonal month picker on the title row, with a full touch target.
+class _MonthChip extends StatelessWidget {
+  const _MonthChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: const Key('btn-employee-select-month'),
+      onTap: onTap,
+      borderRadius: AppRadius.fullAll,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppSizes.minTouchTarget),
+        child: Center(
+          widthFactor: 1,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.x3,
+              vertical: AppSpacing.x1,
+            ),
+            decoration: const BoxDecoration(
+              color: AppColors.primary50,
+              borderRadius: AppRadius.fullAll,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  label,
+                  style: AppTypography.label.withColor(AppColors.primary700),
+                ),
+                const SizedBox(width: AppSpacing.x1),
+                const Icon(
+                  Icons.expand_more_rounded,
+                  size: AppSizes.iconDense,
+                  color: AppColors.primary700,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    super.key,
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      key: key,
       padding: const EdgeInsets.all(AppSpacing.x3),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        border: Border.all(color: AppColors.border, width: 1.0),
+        borderRadius: AppRadius.mdAll,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'DMSans',
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-              fontFeatures: [FontFeature.tabularFigures()],
-              height: 1.2,
+        children: <Widget>[
+          Icon(icon, size: AppSizes.iconDense, color: AppColors.primary600),
+          const SizedBox(height: AppSpacing.x2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: AppTypography.h2.tabular.withColor(AppColors.textPrimary),
             ),
           ),
-          const SizedBox(height: 4),
           Text(
             label,
-            style: AppTypography.caption.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.caption.withColor(AppColors.textSecondary),
           ),
         ],
       ),

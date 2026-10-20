@@ -22,9 +22,6 @@ abstract final class AppColors {
   /// Chip background, subtle fill.
   static const Color primary100 = Color(0xFFC5E1EC);
 
-  /// Borders on tinted surfaces.
-  static const Color primary200 = Color(0xFF9ECDDF);
-
   /// Disabled brand elements.
   static const Color primary300 = Color(0xFF76B9D2);
 
@@ -50,9 +47,6 @@ abstract final class AppColors {
 
   /// Headings on tinted surfaces.
   static const Color primary800 = Color(0xFF01425A);
-
-  /// Deepest brand shade.
-  static const Color primary900 = Color(0xFF002938);
 
   // ---------------------------------------------------------------------------
   // Neutrals

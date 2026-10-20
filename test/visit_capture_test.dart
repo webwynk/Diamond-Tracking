@@ -1,6 +1,5 @@
 import 'package:diamond_tracking/core/services/camera_service.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
-import 'package:diamond_tracking/data/repositories/local_visit_repository.dart';
 import 'package:diamond_tracking/domain/entities/duty_session.dart';
 import 'package:diamond_tracking/domain/entities/location_point.dart';
 import 'package:diamond_tracking/domain/entities/visit_record.dart';
@@ -12,6 +11,8 @@ import 'package:diamond_tracking/features/visits/presentation/visit_capture_shee
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/local_visit_repository.dart';
 
 /// Mock CameraService for test environment without real camera hardware.
 class MockCameraService implements CameraService {
@@ -40,62 +41,80 @@ class TestDutyNotifier extends DutyNotifier {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('VisitRecord Domain Entity & Serialization', () {
-    test('instantiates with required fields and serializes to/from map', () {
-      final now = DateTime.now().toUtc();
-      final record = VisitRecord(
-        id: 'visit-101',
-        dutySessionId: 'session-202',
-        employeeId: 'emp-303',
-        placeName: 'Shivpuri Farm',
-        placeId: 'place-404',
-        latitude: 19.9975,
-        longitude: 73.7898,
-        accuracy: 3.5,
-        distanceMeters: 450.0,
-        photoPath: '/mock/path.jpg',
-        photoSkipped: false,
-        notes: 'Checked soil moisture',
-        capturedAt: now,
-        synced: false,
-      );
+  group('VisitRecord', () {
+    final row = <String, dynamic>{
+      'id': 'visit-101',
+      'session_id': 'session-202',
+      'employee_id': 'emp-303',
+      'store_name': 'Shivpuri Farm',
+      'note': 'Checked soil moisture',
+      'latitude': 19.9975,
+      'longitude': 73.7898,
+      'accuracy': 3,
+      'captured_at': '2026-10-18T04:00:00+00:00',
+      'created_at': '2026-10-18T04:00:05+00:00',
+      'photo_public_id': 'visit-abc',
+      'photo_attached_at': '2026-10-18T04:01:00+00:00',
+      'photo_removed_at': null,
+    };
 
-      final map = record.toMap();
-      expect(map['id'], 'visit-101');
-      expect(map['place_name'], 'Shivpuri Farm');
-      expect(map['photo_skipped'], false);
-      expect(map['notes'], 'Checked soil moisture');
+    test('reads a row of public.visits', () {
+      final record = VisitRecord.fromMap(row);
 
-      final deserialized = VisitRecord.fromMap(map);
-      expect(deserialized.id, record.id);
-      expect(deserialized.placeName, record.placeName);
-      expect(deserialized.latitude, record.latitude);
-      expect(deserialized.longitude, record.longitude);
-      expect(deserialized.photoSkipped, false);
-      expect(deserialized.notes, record.notes);
+      expect(record.id, 'visit-101');
+      expect(record.sessionId, 'session-202');
+      expect(record.employeeId, 'emp-303');
+      expect(record.storeName, 'Shivpuri Farm');
+      expect(record.note, 'Checked soil moisture');
+      expect(record.latitude, 19.9975);
+      expect(record.accuracy, 3.0);
+      expect(record.capturedAt, DateTime.utc(2026, 10, 18, 4));
+      expect(record.hasRemotePhoto, isTrue);
     });
 
-    test('copyWith updates specified fields correctly', () {
+    test('a row with no photo, store name or note is a plain visit', () {
+      final record = VisitRecord.fromMap(<String, dynamic>{
+        ...row,
+        'store_name': null,
+        'note': null,
+        'photo_public_id': null,
+        'photo_attached_at': null,
+      });
+
+      expect(record.storeName, isNull);
+      expect(record.note, isNull);
+      expect(record.hasRemotePhoto, isFalse);
+      expect(record.localPhotoPath, isNull);
+    });
+
+    test('a removed photo is not a remote photo', () {
+      final record = VisitRecord.fromMap(<String, dynamic>{
+        ...row,
+        'photo_public_id': null,
+        'photo_removed_at': '2026-11-20T00:00:00+00:00',
+      });
+
+      expect(record.hasRemotePhoto, isFalse);
+      expect(record.photoRemovedAt, isNotNull);
+    });
+
+    test('copyWith changes what it is given and keeps the rest', () {
       final record = VisitRecord(
         id: 'visit-1',
-        dutySessionId: 'sess-1',
+        sessionId: 'sess-1',
         employeeId: 'emp-1',
-        placeName: 'Farm A',
+        storeName: 'Farm A',
         latitude: 20.0,
         longitude: 74.0,
         capturedAt: DateTime.now(),
       );
 
-      final updated = record.copyWith(
-        photoSkipped: true,
-        photoSkipReason: 'Extreme rain',
-        synced: true,
-      );
+      final updated = record.copyWith(synced: true, note: 'Left samples');
 
-      expect(updated.photoSkipped, true);
-      expect(updated.photoSkipReason, 'Extreme rain');
-      expect(updated.synced, true);
-      expect(updated.placeName, 'Farm A');
+      expect(updated.synced, isTrue);
+      expect(updated.note, 'Left samples');
+      expect(updated.storeName, 'Farm A');
+      expect(updated.sessionId, 'sess-1');
     });
   });
 
@@ -104,9 +123,9 @@ void main() {
       final repo = LocalVisitRepository();
       final record = VisitRecord(
         id: 'v1',
-        dutySessionId: 'session-alpha',
+        sessionId: 'session-alpha',
         employeeId: 'emp-1',
-        placeName: 'Nashik Vineyard',
+        storeName: 'Nashik Vineyard',
         latitude: 20.0,
         longitude: 73.8,
         capturedAt: DateTime.now(),
@@ -128,7 +147,7 @@ void main() {
   });
 
   group('VisitCaptureController Notifier Tests', () {
-    test('initializes visit state with place and coordinate metadata', () {
+    test('initializes visit state with store name and coordinate metadata', () {
       final container = ProviderContainer(
         overrides: [
           cameraServiceProvider.overrideWithValue(MockCameraService()),
@@ -139,20 +158,16 @@ void main() {
 
       final notifier = container.read(visitCaptureControllerProvider.notifier);
       notifier.initVisit(
-        placeName: 'Sinnar Dealer Hub',
-        placeId: 'hub-1',
+        storeName: 'Sinnar Dealer Hub',
         latitude: 19.8500,
         longitude: 73.9900,
-        distanceMeters: 320.0,
       );
 
       final state = container.read(visitCaptureControllerProvider);
-      expect(state.placeName, 'Sinnar Dealer Hub');
+      expect(state.storeName, 'Sinnar Dealer Hub');
       expect(state.latitude, 19.8500);
       expect(state.longitude, 73.9900);
-      expect(state.distanceMeters, 320.0);
       expect(state.geotagCoordinates.contains('19.8500° N'), true);
-      expect(state.photoSkipped, false);
     });
 
     test('takePhoto calls CameraService and updates photoPath', () async {
@@ -171,25 +186,44 @@ void main() {
 
       final state = container.read(visitCaptureControllerProvider);
       expect(state.photoPath, '/test/photos/field_img.jpg');
-      expect(state.photoSkipped, false);
     });
 
-    test('skipPhoto marks photoSkipped and records skip reason per BR-12', () {
+    test('skipPhoto drops a taken photo, with no reason and no flag', () async {
+      final repo = LocalVisitRepository();
       final container = ProviderContainer(
         overrides: [
-          cameraServiceProvider.overrideWithValue(MockCameraService()),
-          visitRepositoryProvider.overrideWithValue(LocalVisitRepository()),
+          cameraServiceProvider.overrideWithValue(
+            MockCameraService(mockPath: '/test/photos/field_img.jpg'),
+          ),
+          visitRepositoryProvider.overrideWithValue(repo),
         ],
       );
       addTearDown(container.dispose);
 
-      final notifier = container.read(visitCaptureControllerProvider.notifier);
-      notifier.skipPhoto('Biosecurity quarantine protocol');
+      final notifier = container.read(visitCaptureControllerProvider.notifier)
+        ..initVisit(latitude: 20.5, longitude: 73.25);
+      await notifier.takePhoto();
+      expect(
+        container.read(visitCaptureControllerProvider).photoPath,
+        '/test/photos/field_img.jpg',
+      );
 
-      final state = container.read(visitCaptureControllerProvider);
-      expect(state.photoSkipped, true);
-      expect(state.photoSkipReason, 'Biosecurity quarantine protocol');
-      expect(state.photoPath, isNull);
+      notifier.skipPhoto();
+      expect(container.read(visitCaptureControllerProvider).photoPath, isNull);
+
+      expect(
+        await notifier.saveVisit(dutySessionId: 's3', employeeId: 'e3'),
+        isTrue,
+      );
+      final stored = await repo.getVisitsForSession('s3');
+      expect(stored.single.localPhotoPath, isNull);
+
+      await notifier.takePhoto();
+      expect(
+        container.read(visitCaptureControllerProvider).photoPath,
+        '/test/photos/field_img.jpg',
+        reason: 'a photo can be taken again after skipping',
+      );
     });
 
     test('saveVisit persists record to repository and marks isSaved', () async {
@@ -204,7 +238,7 @@ void main() {
 
       final notifier = container.read(visitCaptureControllerProvider.notifier);
       notifier.initVisit(
-        placeName: 'Shivpuri Farm',
+        storeName: 'Shivpuri Farm',
         latitude: 19.9975,
         longitude: 73.7898,
       );
@@ -221,11 +255,62 @@ void main() {
 
       final stored = await repo.getVisitsForSession('sess-active');
       expect(stored.length, 1);
-      expect(stored.first.placeName, 'Shivpuri Farm');
+      expect(stored.first.storeName, 'Shivpuri Farm');
     });
   });
 
   group('Screen 10 VisitCaptureSheet Widget Tests', () {
+    testWidgets('the GPS accuracy given to the sheet is saved with the visit', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final repo = LocalVisitRepository();
+      late ProviderContainer container;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            cameraServiceProvider.overrideWithValue(MockCameraService()),
+            visitRepositoryProvider.overrideWithValue(repo),
+          ],
+          child: Consumer(
+            builder: (context, ref, _) {
+              container = ProviderScope.containerOf(context);
+              return MaterialApp(
+                theme: AppTheme.light,
+                home: const Scaffold(
+                  body: VisitCaptureSheet(
+                    dutySessionId: 'sess-acc',
+                    employeeId: 'emp-014',
+                    latitude: 19.9975,
+                    longitude: 73.7898,
+                    accuracy: 12.5,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(container.read(visitCaptureControllerProvider).accuracy, 12.5);
+
+      final saved = await container
+          .read(visitCaptureControllerProvider.notifier)
+          .saveVisit(dutySessionId: 'sess-acc', employeeId: 'emp-014');
+
+      expect(saved, isTrue);
+      expect(
+        (await repo.getVisitsForSession('sess-acc')).single.accuracy,
+        12.5,
+      );
+    });
+
     testWidgets('renders all visual elements matching HTML design reference', (
       tester,
     ) async {
@@ -247,12 +332,11 @@ void main() {
             theme: AppTheme.light,
             home: const Scaffold(
               body: VisitCaptureSheet(
-                placeName: 'Shivpuri Farm',
+                storeName: 'Shivpuri Farm',
                 dutySessionId: 'sess-100',
                 employeeId: 'emp-014',
                 latitude: 19.9975,
                 longitude: 73.7898,
-                distanceMeters: 500,
               ),
             ),
           ),
@@ -265,13 +349,13 @@ void main() {
       expect(find.text('Add visit'), findsOneWidget);
       expect(find.byKey(const Key('close-visit-sheet-btn')), findsOneWidget);
 
-      // Geofence Arrival Strip
-      expect(find.text('Shivpuri Farm'), findsOneWidget);
-      expect(find.textContaining('within 500 m'), findsOneWidget);
+      // Store strip (the name is also in the store field, so two matches)
+      expect(find.text('Shivpuri Farm'), findsNWidgets(2));
+      expect(find.textContaining('Recorded at'), findsOneWidget);
 
-      // Photo Section & Verified in-situ badge
+      // Photo section: no photo yet, so no "verified" claim
       expect(find.text('PHOTO'), findsOneWidget);
-      expect(find.text('Verified In-situ'), findsOneWidget);
+      expect(find.text('Verified In-situ'), findsNothing);
       expect(find.byKey(const Key('retake-photo-btn')), findsOneWidget);
 
       // Note Section & Counter
@@ -282,6 +366,46 @@ void main() {
       // Actions
       expect(find.byKey(const Key('save-visit-btn')), findsOneWidget);
       expect(find.byKey(const Key('skip-photo-btn')), findsOneWidget);
+    });
+
+    testWidgets('the "verified" badge appears only after a photo is taken', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            cameraServiceProvider.overrideWithValue(MockCameraService()),
+            visitRepositoryProvider.overrideWithValue(LocalVisitRepository()),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: const Scaffold(
+              body: VisitCaptureSheet(
+                dutySessionId: 'sess-badge',
+                employeeId: 'emp-014',
+                latitude: 19.9975,
+                longitude: 73.7898,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Verified In-situ'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('retake-photo-btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Verified In-situ'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('skip-photo-btn')));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('typing note updates character counter and controller state', (
@@ -305,7 +429,7 @@ void main() {
             theme: AppTheme.light,
             home: const Scaffold(
               body: VisitCaptureSheet(
-                placeName: 'Shivpuri Farm',
+                storeName: 'Shivpuri Farm',
                 dutySessionId: 'sess-100',
                 employeeId: 'emp-014',
                 latitude: 19.9975,
@@ -326,7 +450,7 @@ void main() {
       expect(find.text('24/200'), findsOneWidget);
     });
 
-    testWidgets('skip photo flow shows reason dialog and confirms skip', (
+    testWidgets('Skip photo saves the visit at once, asking for no reason', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(1080, 2400);
@@ -334,20 +458,19 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final mockCamera = MockCameraService();
       final mockRepo = LocalVisitRepository();
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            cameraServiceProvider.overrideWithValue(mockCamera),
+            cameraServiceProvider.overrideWithValue(MockCameraService()),
             visitRepositoryProvider.overrideWithValue(mockRepo),
           ],
           child: MaterialApp(
             theme: AppTheme.light,
             home: const Scaffold(
               body: VisitCaptureSheet(
-                placeName: 'Shivpuri Farm',
+                storeName: 'Shivpuri Farm',
                 dutySessionId: 'sess-100',
                 employeeId: 'emp-014',
                 latitude: 19.9975,
@@ -357,28 +480,23 @@ void main() {
           ),
         ),
       );
-
       await tester.pumpAndSettle();
 
-      // Tap Skip photo
+      // A photo was taken, then the employee changes their mind.
+      await tester.tap(find.byKey(const Key('retake-photo-btn')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('skip-photo-btn')));
       await tester.pumpAndSettle();
 
-      // Verify skip photo dialog appears with reasons
-      expect(find.text('Skip photo'), findsWidgets);
-      expect(
-        find.textContaining('BR-12 requires a mandatory reason'),
-        findsOneWidget,
-      );
-      expect(find.text('Camera hardware malfunction'), findsOneWidget);
+      // No dialog, no reason list, no "skipped" notice.
+      expect(find.text('Confirm skip'), findsNothing);
+      expect(find.textContaining('reason'), findsNothing);
+      expect(find.textContaining('Photo Skipped'), findsNothing);
 
-      // Confirm skip
-      await tester.tap(find.text('Confirm skip'));
-      await tester.pumpAndSettle();
-
-      // Photo area now shows Photo Skipped (BR-12)
-      expect(find.text('Photo Skipped (BR-12)'), findsOneWidget);
-      expect(find.text('Camera hardware malfunction'), findsOneWidget);
+      final stored = await mockRepo.getVisitsForSession('sess-100');
+      expect(stored, hasLength(1));
+      expect(stored.single.storeName, 'Shivpuri Farm');
+      expect(stored.single.localPhotoPath, isNull);
     });
 
     testWidgets('tapping Save visit records visit and closes sheet', (
@@ -403,7 +521,7 @@ void main() {
             theme: AppTheme.light,
             home: Scaffold(
               body: VisitCaptureSheet(
-                placeName: 'Shivpuri Farm',
+                storeName: 'Shivpuri Farm',
                 dutySessionId: 'sess-100',
                 employeeId: 'emp-014',
                 latitude: 19.9975,
@@ -425,7 +543,7 @@ void main() {
       expect(savedCallbackTriggered, true);
       final recorded = await mockRepo.getVisitsForSession('sess-100');
       expect(recorded.length, 1);
-      expect(recorded.first.placeName, 'Shivpuri Farm');
+      expect(recorded.first.storeName, 'Shivpuri Farm');
     });
   });
 
@@ -488,7 +606,7 @@ void main() {
 
       expect(find.byKey(const Key('close-visit-sheet-btn')), findsOneWidget);
       expect(find.byKey(const Key('visit-notes-input')), findsOneWidget);
-      // No invented place, coordinates or note
+      // No invented store name, coordinates or note
       expect(find.text('Shivpuri Farm'), findsNothing);
       expect(find.text('Field location'), findsOneWidget);
       expect(find.textContaining('20.1234'), findsWidgets);
@@ -524,7 +642,7 @@ void main() {
   });
 
   group('VisitCaptureNotifier without invented defaults', () {
-    test('starts blank: no place, note, time or position', () {
+    test('starts blank: no store name, note, time or position', () {
       final container = ProviderContainer(
         overrides: [
           cameraServiceProvider.overrideWithValue(MockCameraService()),
@@ -534,7 +652,7 @@ void main() {
       addTearDown(container.dispose);
 
       final state = container.read(visitCaptureControllerProvider);
-      expect(state.placeName, isEmpty);
+      expect(state.storeName, isEmpty);
       expect(state.note, isEmpty);
       expect(state.arrivalTime, isEmpty);
       expect(state.geotagCoordinates, isEmpty);
@@ -564,27 +682,30 @@ void main() {
       expect(await repo.getVisitsForSession('s1'), isEmpty);
     });
 
-    test('initVisit without a place records it as a field location', () async {
-      final repo = LocalVisitRepository();
-      final container = ProviderContainer(
-        overrides: [
-          cameraServiceProvider.overrideWithValue(MockCameraService()),
-          visitRepositoryProvider.overrideWithValue(repo),
-        ],
-      );
-      addTearDown(container.dispose);
+    test(
+      'a visit saved without a store name has none, and none is invented',
+      () async {
+        final repo = LocalVisitRepository();
+        final container = ProviderContainer(
+          overrides: [
+            cameraServiceProvider.overrideWithValue(MockCameraService()),
+            visitRepositoryProvider.overrideWithValue(repo),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      final notifier = container.read(visitCaptureControllerProvider.notifier)
-        ..initVisit(latitude: 20.5, longitude: 73.25);
-      expect(
-        await notifier.saveVisit(dutySessionId: 's2', employeeId: 'e2'),
-        isTrue,
-      );
+        final notifier = container.read(visitCaptureControllerProvider.notifier)
+          ..initVisit(latitude: 20.5, longitude: 73.25);
+        expect(
+          await notifier.saveVisit(dutySessionId: 's2', employeeId: 'e2'),
+          isTrue,
+        );
 
-      final stored = await repo.getVisitsForSession('s2');
-      expect(stored.single.placeName, 'Field location');
-      expect(stored.single.latitude, 20.5);
-      expect(stored.single.notes, isNull);
-    });
+        final stored = await repo.getVisitsForSession('s2');
+        expect(stored.single.storeName, isNull);
+        expect(stored.single.latitude, 20.5);
+        expect(stored.single.note, isNull);
+      },
+    );
   });
 }

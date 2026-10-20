@@ -22,10 +22,6 @@ class PinValidationResult {
   /// True when all rules pass and the confirmation matches.
   bool get isValid =>
       hasSixDigits && isNotRepeated && isNotSequential && matchesConfirmation;
-
-  /// True when the 3 standalone PIN complexity rules pass (ignoring confirmation).
-  bool get meetsComplexityRules =>
-      hasSixDigits && isNotRepeated && isNotSequential;
 }
 
 /// Enforces the business rules for 6-digit PINs per PRD F1 and Screen 04 design.

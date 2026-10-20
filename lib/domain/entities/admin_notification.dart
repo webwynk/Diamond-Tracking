@@ -8,7 +8,11 @@ enum AdminNotificationType {
   dutyAutoEnded('duty_auto_ended'),
   mockGps('mock_gps'),
   batteryLow('battery_low'),
-  noSignal('no_signal');
+  noSignal('no_signal'),
+  accountLocked('account_locked'),
+  newDeviceLogin('new_device_login'),
+  failedLogin('failed_login'),
+  gpsDisabled('gps_disabled');
 
   const AdminNotificationType(this.wire);
 
@@ -20,8 +24,15 @@ enum AdminNotificationType {
       this == dutyOn || this == dutyOff || this == dutyAutoEnded;
 
   /// Something that may need an admin to act (tracking broken, fake GPS,
-  /// battery).
-  bool get isAlert => this == mockGps || this == batteryLow || this == noSignal;
+  /// battery, an account locked by wrong PIN tries, new device, failed login, GPS off).
+  bool get isAlert =>
+      this == mockGps ||
+      this == batteryLow ||
+      this == noSignal ||
+      this == accountLocked ||
+      this == newDeviceLogin ||
+      this == failedLogin ||
+      this == gpsDisabled;
 
   /// Null for a type this app does not know (a newer server), so one unknown
   /// row never breaks the list.
@@ -42,6 +53,10 @@ enum AdminNotificationType {
     mockGps,
     batteryLow,
     noSignal,
+    accountLocked,
+    newDeviceLogin,
+    failedLogin,
+    gpsDisabled,
   ];
 }
 
@@ -65,7 +80,7 @@ class AdminNotification {
   final String? sessionId;
 
   /// Extra facts for the wording: `battery_level`, `last_seen`, `never_sent`,
-  /// `status`, `end_reason`.
+  /// `status`, `end_reason`, `employee_code`, `locked_minutes`.
   final Map<String, dynamic> details;
 
   /// When the server wrote it (UTC).

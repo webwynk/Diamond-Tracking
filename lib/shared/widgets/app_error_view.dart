@@ -14,7 +14,6 @@ import 'app_button.dart';
 /// - Headline in [AppTypography.title].
 /// - Explanation in [AppTypography.caption].
 /// - Primary retry action.
-/// - Optional secondary back action.
 class AppErrorView extends StatelessWidget {
   const AppErrorView({
     required this.onRetry,
@@ -22,16 +21,12 @@ class AppErrorView extends StatelessWidget {
     this.title = "Couldn't load this",
     this.message = 'Check your connection and try again.',
     this.icon = Icons.cloud_off_rounded,
-    this.onGoBack,
-    this.retryLabel = 'Retry',
   });
 
   final String title;
   final String message;
   final IconData icon;
   final VoidCallback onRetry;
-  final VoidCallback? onGoBack;
-  final String retryLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -70,20 +65,10 @@ class AppErrorView extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.x5),
             AppButton(
-              label: retryLabel,
+              label: 'Retry',
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded, size: 18),
             ),
-            if (onGoBack != null) ...<Widget>[
-              const SizedBox(height: AppSpacing.x2),
-              TextButton(
-                onPressed: onGoBack,
-                child: Text(
-                  'Go back',
-                  style: AppTypography.label.withColor(AppColors.textSecondary),
-                ),
-              ),
-            ],
           ],
         ),
       ),

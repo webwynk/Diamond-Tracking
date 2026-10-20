@@ -59,20 +59,6 @@ void main() {
       expect(DutyTimeHelper.isWithinDutyWindow(curfew), isFalse);
     });
 
-    test('isCurfewWarningActive activates between 22:45 and 23:00 IST', () {
-      final warning = DateTime.utc(
-        2026,
-        10,
-        15,
-        17,
-        15,
-      ); // 17:15 UTC = 22:45 IST
-      expect(DutyTimeHelper.isCurfewWarningActive(warning), isTrue);
-
-      final earlier = DateTime.utc(2026, 10, 15, 17, 14); // 22:44 IST
-      expect(DutyTimeHelper.isCurfewWarningActive(earlier), isFalse);
-    });
-
     test('formatElapsed formats duration cleanly', () {
       expect(DutyTimeHelper.formatElapsed(Duration.zero), '0h 0m');
       expect(
@@ -83,35 +69,6 @@ void main() {
   });
 
   group('LocationPoint Unit Tests', () {
-    test('isOutlier detects invalid points per PRD BR-10', () {
-      final now = DateTime.now().toUtc();
-      // Valid point
-      final valid = LocationPoint(
-        id: 'pt-1',
-        sessionId: 's-1',
-        latitude: 18.5204,
-        longitude: 73.8567,
-        accuracy: 12.0,
-        speed: 10.0, // 36 km/h
-        recordedAt: now,
-      );
-      expect(valid.isOutlier(), isFalse);
-
-      // Inaccurate point (> 100m)
-      final inaccurate = valid.copyWith(accuracy: 120.0);
-      expect(inaccurate.isOutlier(), isTrue);
-
-      // Implausible speed (> 150 km/h = 41.67 m/s)
-      final tooFast = valid.copyWith(speed: 45.0); // 162 km/h
-      expect(tooFast.isOutlier(), isTrue);
-
-      // Future timestamp
-      final futurePoint = valid.copyWith(
-        recordedAt: now.add(const Duration(minutes: 5)),
-      );
-      expect(futurePoint.isOutlier(), isTrue);
-    });
-
     test('json serialization roundtrip preserves all fields', () {
       final now = DateTime.utc(2026, 10, 15, 10, 0);
       final point = LocationPoint(
@@ -226,6 +183,44 @@ void main() {
         expect(find.text('Tap to end duty'), findsOneWidget);
         expect(find.text('Tracking active'), findsOneWidget);
         expect(find.text('Current location'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'the GPS line says it is waiting until a real fix arrives, then active',
+      (tester) async {
+        final mockRepo = FakeDutyRepository();
+        final mockTracking = FakeTrackingService();
+
+        await tester.pumpWidget(
+          buildTestWidget(mockRepo: mockRepo, mockTracking: mockTracking),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('GPS STANDBY'), findsOneWidget);
+
+        await tester.tap(find.text('Start duty'));
+        await tester.pumpAndSettle();
+
+        // On duty but no fix yet: no claim that the GPS works.
+        expect(find.text('WAITING FOR GPS FIX'), findsOneWidget);
+        expect(find.text('GPS ACTIVE'), findsNothing);
+        expect(find.textContaining('VERIFIED'), findsNothing);
+
+        mockTracking.emitPoint(
+          LocationPoint(
+            id: 'fix-1',
+            sessionId: mockTracking.startedWith!.sessionId,
+            latitude: 20.0,
+            longitude: 73.0,
+            accuracy: 8,
+            recordedAt: DateTime.now().toUtc(),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('GPS ACTIVE'), findsOneWidget);
+        expect(find.text('WAITING FOR GPS FIX'), findsNothing);
       },
     );
 

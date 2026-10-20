@@ -40,12 +40,19 @@ final trackingUploaderProvider = Provider<TrackingUploader>((ref) {
   return uploader;
 });
 
-/// Provider for the phone's durable tracking queue (points, active session,
-/// pending duty-off). Opened on first use, closed with the provider.
-final trackingQueueStoreProvider = Provider<TrackingQueueStore>((ref) {
+/// The phone's own database (GPS queue, active session, pending duty-off,
+/// waiting visits). Opened on first use, closed with the provider. One
+/// connection per isolate, shared by everything that stores on the phone.
+final trackingDatabaseProvider = Provider<TrackingDatabase>((ref) {
   final database = TrackingDatabase.onDevice();
   ref.onDispose(database.close);
-  return DriftTrackingQueueStore(database);
+  return database;
+});
+
+/// Provider for the phone's durable tracking queue (points, active session,
+/// pending duty-off).
+final trackingQueueStoreProvider = Provider<TrackingQueueStore>((ref) {
+  return DriftTrackingQueueStore(ref.watch(trackingDatabaseProvider));
 });
 
 /// Global provider for managing and observing employee duty lifecycle.

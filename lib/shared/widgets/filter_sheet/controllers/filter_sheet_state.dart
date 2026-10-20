@@ -92,12 +92,6 @@ class FilterSheetState {
   /// Display text for the chosen date preset, from the clock.
   String get selectedDateText => selectedDateRange.dateText(DateTime.now());
 
-  bool get hasActiveFilters =>
-      selectedStatuses.isNotEmpty ||
-      selectedDutyToday != null ||
-      selectedDateRange != FilterDatePreset.today ||
-      selectedSort != EmployeeSortOption.nameAsc;
-
   FilterSheetState copyWith({
     Set<EmployeeFilterStatus>? selectedStatuses,
     DutyTodayFilter? selectedDutyToday,

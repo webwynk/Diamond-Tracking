@@ -123,6 +123,16 @@ class FakeDutyRepository implements DutyRepository {
     if (handler != null) return handler(points);
     return PointIngestResult(confirmedIds: {for (final p in points) p.id});
   }
+
+  /// All GPS statuses reported via [reportGpsStatus], in order.
+  final List<bool> reportedGpsStatuses = <bool>[];
+
+  @override
+  Future<bool> reportGpsStatus({required bool enabled}) async {
+    calls.add('reportGpsStatus');
+    reportedGpsStatuses.add(enabled);
+    return true;
+  }
 }
 
 /// Test-only [TrackingService]: no GPS and no Android service. Points are

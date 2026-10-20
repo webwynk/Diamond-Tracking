@@ -10,8 +10,6 @@ class DriftTrackingQueueStore implements TrackingQueueStore {
 
   final TrackingDatabase _db;
 
-  static const String _rejectedKey = 'rejected_points';
-
   @override
   Future<void> enqueuePoint(LocationPoint point) {
     return _db.transaction(() async {
@@ -49,30 +47,9 @@ class DriftTrackingQueueStore implements TrackingQueueStore {
   }
 
   @override
-  Future<void> discardRejectedPoints(List<String> ids) {
-    if (ids.isEmpty) return Future<void>.value();
-    return _db.transaction(() async {
-      final removed = await (_db.delete(
-        _db.queuedPoints,
-      )..where((t) => t.id.isIn(ids))).go();
-      if (removed > 0) await _addToCounter(_rejectedKey, removed);
-    });
-  }
-
-  @override
-  Future<int> rejectedPointsCount() async {
-    final row = await (_db.select(
-      _db.trackingMeta,
-    )..where((t) => t.key.equals(_rejectedKey))).getSingleOrNull();
-    return row?.intValue ?? 0;
-  }
-
-  @override
-  Future<int> purgeExpiredPoints(DateTime now) {
-    final cutoff = now.toUtc().subtract(TrackingQueueStore.maxPointAge);
-    return (_db.delete(
-      _db.queuedPoints,
-    )..where((t) => t.recordedAt.isSmallerThanValue(cutoff))).go();
+  Future<void> discardRejectedPoints(List<String> ids) async {
+    if (ids.isEmpty) return;
+    await (_db.delete(_db.queuedPoints)..where((t) => t.id.isIn(ids))).go();
   }
 
   @override
@@ -110,48 +87,10 @@ class DriftTrackingQueueStore implements TrackingQueueStore {
   }
 
   @override
-  Future<void> savePendingEnd(PendingSessionEnd end) {
-    return _db
-        .into(_db.pendingEnds)
-        .insert(
-          PendingEndsCompanion.insert(
-            sessionId: end.sessionId,
-            endedAt: end.endedAt.toUtc(),
-            reason: end.reason,
-            notes: Value(end.notes),
-          ),
-          mode: InsertMode.insertOrReplace,
-        );
-  }
-
-  @override
-  Future<PendingSessionEnd?> pendingEnd() async {
-    final row =
-        await (_db.select(_db.pendingEnds)
-              ..orderBy([(t) => OrderingTerm.asc(t.endedAt)])
-              ..limit(1))
-            .getSingleOrNull();
-    if (row == null) return null;
-    return PendingSessionEnd(
-      sessionId: row.sessionId,
-      endedAt: row.endedAt.toUtc(),
-      reason: row.reason,
-      notes: row.notes,
-    );
-  }
-
-  @override
-  Future<void> clearPendingEnd() async {
-    await _db.delete(_db.pendingEnds).go();
-  }
-
-  @override
   Future<void> wipeAll() {
     return _db.transaction(() async {
       await _db.delete(_db.queuedPoints).go();
       await _db.delete(_db.activeSessions).go();
-      await _db.delete(_db.pendingEnds).go();
-      await _db.delete(_db.trackingMeta).go();
     });
   }
 
@@ -182,21 +121,6 @@ class DriftTrackingQueueStore implements TrackingQueueStore {
     await (_db.delete(
       _db.queuedPoints,
     )..where((t) => t.id.isIn(toRemove))).go();
-  }
-
-  Future<void> _addToCounter(String key, int amount) async {
-    final current = await (_db.select(
-      _db.trackingMeta,
-    )..where((t) => t.key.equals(key))).getSingleOrNull();
-    await _db
-        .into(_db.trackingMeta)
-        .insert(
-          TrackingMetaCompanion.insert(
-            key: key,
-            intValue: Value((current?.intValue ?? 0) + amount),
-          ),
-          mode: InsertMode.insertOrReplace,
-        );
   }
 
   QueuedPointsCompanion _toCompanion(LocationPoint p) {

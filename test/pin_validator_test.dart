@@ -47,12 +47,10 @@ void main() {
       expect(invalidRepeated.isValid, isFalse);
 
       final mismatch = PinValidator.validate('492815', '492816');
-      expect(mismatch.meetsComplexityRules, isTrue);
       expect(mismatch.matchesConfirmation, isFalse);
       expect(mismatch.isValid, isFalse);
 
       final valid = PinValidator.validate('492815', '492815');
-      expect(valid.meetsComplexityRules, isTrue);
       expect(valid.matchesConfirmation, isTrue);
       expect(valid.isValid, isTrue);
     });

@@ -84,6 +84,20 @@ abstract final class AdminNotificationPresenter {
         return at == null
             ? 'No location received for 10+ minutes'
             : 'No location received since ${DutyTimeHelper.formatTime(at)}';
+      case AdminNotificationType.accountLocked:
+        final minutes = n.details['locked_minutes'];
+        return minutes is num
+            ? 'Locked for ${minutes.toInt()} minutes after 5 wrong PIN tries'
+            : 'Locked after 5 wrong PIN tries';
+      case AdminNotificationType.newDeviceLogin:
+        return 'Login attempt from an unregistered phone';
+      case AdminNotificationType.failedLogin:
+        final attempts = n.details['attempts'];
+        return attempts is num
+            ? '$attempts failed PIN attempts'
+            : 'Multiple failed PIN attempts';
+      case AdminNotificationType.gpsDisabled:
+        return 'Location service turned off while on duty';
     }
   }
 
@@ -150,6 +164,30 @@ abstract final class AdminNotificationPresenter {
       case AdminNotificationType.noSignal:
         return (
           icon: Icons.signal_cellular_connected_no_internet_4_bar_rounded,
+          color: AppColors.error,
+          background: AppColors.errorBg,
+        );
+      case AdminNotificationType.accountLocked:
+        return (
+          icon: Icons.lock_clock_rounded,
+          color: AppColors.error,
+          background: AppColors.errorBg,
+        );
+      case AdminNotificationType.newDeviceLogin:
+        return (
+          icon: Icons.phonelink_erase_rounded,
+          color: AppColors.error,
+          background: AppColors.errorBg,
+        );
+      case AdminNotificationType.failedLogin:
+        return (
+          icon: Icons.password_rounded,
+          color: AppColors.warning,
+          background: AppColors.warningBg,
+        );
+      case AdminNotificationType.gpsDisabled:
+        return (
+          icon: Icons.location_off_rounded,
           color: AppColors.error,
           background: AppColors.errorBg,
         );

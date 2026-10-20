@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exceptions.dart';
+import '../../core/utils/failure_log.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/employee_repository.dart';
 import '../../features/admin/employees/presentation/controllers/admin_employee_list_state.dart';
@@ -87,6 +87,7 @@ class SupabaseEmployeeRepository implements EmployeeRepository {
         phoneNumber: employee['phone'] as String? ?? phone.trim(),
         status: AdminEmployeeStatus.offDuty,
         email: employee['contact_email'] as String?,
+        deviceRegistered: false,
       );
     });
   }
@@ -167,7 +168,38 @@ class SupabaseEmployeeRepository implements EmployeeRepository {
       isActive: !isBlocked,
       email: profile.contactEmail,
       role: profile.role,
+      deviceRegistered: profile.deviceId != null,
     );
+  }
+
+  @override
+  Future<bool> clearDevice({required String id}) {
+    return _run('clear the device binding', () async {
+      final cleared = await _client.rpc(
+        'admin_clear_device',
+        params: <String, dynamic>{'p_employee': id},
+      );
+      if (cleared is! bool) {
+        throw const ServerException(
+          'The server did not confirm the change. Check the employee before retrying.',
+        );
+      }
+      return cleared;
+    });
+  }
+
+  @override
+  Future<void> resetPin({required String id, required String newPin}) {
+    return _run('reset the PIN', () async {
+      await _client.functions.invoke(
+        'employee-auth',
+        body: <String, dynamic>{
+          'action': 'reset_pin',
+          'employee_id': id,
+          'new_pin': newPin,
+        },
+      );
+    });
   }
 
   Future<T> _run<T>(String action, Future<T> Function() body) async {
@@ -182,7 +214,7 @@ class SupabaseEmployeeRepository implements EmployeeRepository {
     } catch (e, st) {
       final network = asNetworkFailure(e);
       if (network != null) throw network;
-      debugPrint('EmployeeRepository: could not $action: $e\n$st');
+      logFailure('EmployeeRepository: could not $action', e, st);
       // Includes "Supabase not initialised". Raw text is never shown to the
       // admin; the cause is in the debug console.
       throw ServerException('Could not $action. Please try again.');
@@ -210,7 +242,7 @@ class SupabaseEmployeeRepository implements EmployeeRepository {
         );
       case 403:
         return const UnauthorizedRoleException(
-          'Only active administrators can create employees.',
+          'Only active administrators can do this.',
         );
       case 409:
         if (code == 'employee_code_taken') {
@@ -226,6 +258,8 @@ class SupabaseEmployeeRepository implements EmployeeRepository {
         return const ConflictException(
           'An employee with this code or phone number already exists.',
         );
+      case 404:
+        return const ValidationException('That employee no longer exists.');
       default:
         return ServerException('Could not $action. Please try again.');
     }
@@ -236,6 +270,9 @@ class SupabaseEmployeeRepository implements EmployeeRepository {
       return const ValidationException(
         'Employee code and role cannot be changed.',
       );
+    }
+    if (e.code == 'P0001' && e.message.contains('employee_not_found')) {
+      return const ValidationException('That employee no longer exists.');
     }
     if (e.code == '23505') {
       return const ConflictException(

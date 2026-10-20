@@ -1,91 +1,71 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exceptions.dart';
+import '../../core/services/visit_photo_vault.dart';
+import '../../core/utils/failure_log.dart';
 import '../../domain/entities/visit_record.dart';
+import '../../domain/repositories/visit_queue_store.dart';
 import '../../domain/repositories/visit_repository.dart';
 import '../network_failure.dart';
 
 /// Production implementation of [VisitRepository] integrating Supabase `public.visits`
 /// and the `visit-photos` Edge Function for Cloudinary photo proofs.
+///
+/// A visit is saved on the phone ([VisitQueueStore]) BEFORE anything is sent, so
+/// it survives a restart, a force-kill and a long time offline. It leaves the
+/// phone only when the server holds the row and the photo, or has refused it for
+/// good. Anything else (no internet, a server error, an expired sign-in) leaves
+/// it waiting for [syncPendingVisits].
 class SupabaseVisitRepository implements VisitRepository {
-  SupabaseVisitRepository([this._client, this._httpClient]);
+  SupabaseVisitRepository(
+    this._queue, [
+    this._client,
+    this._httpClient,
+    VisitPhotoVault? vault,
+    this._currentEmployeeId,
+  ]) : _vault = vault ?? DeviceVisitPhotoVault();
 
   final SupabaseClient? _client;
   final http.Client? _httpClient;
+  final VisitQueueStore _queue;
+  final VisitPhotoVault _vault;
+
+  /// Who is signed in; when null, the Supabase session says.
+  final String? Function()? _currentEmployeeId;
 
   SupabaseClient get _supabase => _client ?? Supabase.instance.client;
-  http.Client get _http => _httpClient ?? http.Client();
+  late final http.Client _http = _httpClient ?? http.Client();
 
-  final List<VisitRecord> _pendingQueue = [];
+  /// Visits being sent right now, so the save and the retry timer never send
+  /// the same one at the same time.
+  final Set<String> _inFlight = <String>{};
+  bool _syncing = false;
 
   @override
   Future<VisitRecord> recordVisit(VisitRecord visit) async {
-    return _run('record visit', () async {
-      // 1. Insert the visit record into public.visits
-      // Server trigger populates employee_id = auth.uid() and recalculates duty_sessions.visits_count
-      try {
-        await _supabase.from('visits').insert(visit.toInsertPayload());
-      } on PostgrestException catch (e) {
-        if (e.code == '23505') {
-          // Idempotent retry: duplicate visit ID is harmless
-          debugPrint('Visit ${visit.id} already exists, proceeding to photo upload.');
-        } else {
-          rethrow;
-        }
-      }
-
-      VisitRecord current = visit.copyWith(synced: true);
-
-      // 2. If photo is present, perform signed Cloudinary upload handshake
-      if (visit.localPhotoPath != null && visit.localPhotoPath!.isNotEmpty) {
-        try {
-          final publicId = await uploadVisitPhoto(
-            visitId: visit.id,
-            localPhotoPath: visit.localPhotoPath!,
-          );
-          current = current.copyWith(
-            photoPublicId: publicId,
-            photoAttachedAt: DateTime.now().toUtc(),
-          );
-        } catch (e) {
-          debugPrint('Visit photo upload failed: $e. Visit row is preserved on server.');
-          // The visit record itself was saved to public.visits; queue photo upload for retry
-          _queuePendingVisit(current);
-          return current;
-        }
-      }
-
-      return current;
-    }, onNetworkError: () {
-      // Offline fallback: queue visit locally for background sync
-      final queued = visit.copyWith(synced: false);
-      _queuePendingVisit(queued);
-      return queued;
-    });
+    final saved = await _saveOnPhone(visit);
+    final outcome = await _deliver(PendingVisit(visit: saved, rowSent: false));
+    return saved.copyWith(synced: outcome.rowSent);
   }
 
-  @override
-  Future<String?> uploadVisitPhoto({
-    required String visitId,
-    required String localPhotoPath,
-  }) async {
+  /// Sends one photo: asks the server for a signed upload, uploads straight to
+  /// Cloudinary, then tells the server it arrived (docs/10).
+  Future<void> _sendPhoto(String visitId, String localPhotoPath) {
     return _run('upload visit photo', () async {
       // Step A: Request signed upload parameters from Edge Function
       final signResponse = await _supabase.functions.invoke(
         'visit-photos',
-        body: <String, dynamic>{
-          'action': 'sign',
-          'visit_id': visitId,
-        },
+        body: <String, dynamic>{'action': 'sign', 'visit_id': visitId},
       );
 
       final signData = signResponse.data;
       if (signData is! Map) {
-        throw const ServerException('Invalid signing response from visit-photos function.');
+        throw const ServerException(
+          'Invalid signing response from visit-photos function.',
+        );
       }
 
       final uploadUrl = signData['upload_url'] as String?;
@@ -93,8 +73,13 @@ class SupabaseVisitRepository implements VisitRepository {
       final signature = signData['signature'] as String?;
       final params = signData['params'] as Map?;
 
-      if (uploadUrl == null || apiKey == null || signature == null || params == null) {
-        throw const ServerException('Incomplete signature parameters for photo upload.');
+      if (uploadUrl == null ||
+          apiKey == null ||
+          signature == null ||
+          params == null) {
+        throw const ServerException(
+          'Incomplete signature parameters for photo upload.',
+        );
       }
 
       // Step B: Upload directly to Cloudinary using signed parameters
@@ -108,111 +93,161 @@ class SupabaseVisitRepository implements VisitRepository {
         }
       });
 
-      if (File(localPhotoPath).existsSync()) {
-        request.files.add(
-          await http.MultipartFile.fromPath('file', localPhotoPath),
-        );
-      } else {
-        request.files.add(
-          http.MultipartFile.fromString(
-            'file',
-            'mock_in_situ_photo_content',
-            filename: 'visit_photo.jpg',
-          ),
+      if (!File(localPhotoPath).existsSync()) {
+        throw const ValidationException(
+          'The photo file is no longer on the phone.',
         );
       }
+      request.files.add(
+        await http.MultipartFile.fromPath('file', localPhotoPath),
+      );
 
       final streamedResponse = await _http.send(request);
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode != 200 && response.statusCode != 201) {
-        throw ServerException(
-          'Cloudinary upload rejected with status ${response.statusCode}: ${response.body}',
-        );
+        final status = response.statusCode;
+        // A 4xx means this photo will never be accepted as sent; anything else
+        // (5xx, 408, 429) may work on a later try.
+        if (status >= 400 && status < 500 && status != 408 && status != 429) {
+          throw ValidationException(
+            'Cloudinary refused the photo (status $status).',
+          );
+        }
+        throw ServerException('Cloudinary upload failed with status $status.');
       }
 
       // Step C: Confirm upload with Edge Function
       final confirmResponse = await _supabase.functions.invoke(
         'visit-photos',
-        body: <String, dynamic>{
-          'action': 'confirm',
-          'visit_id': visitId,
-        },
+        body: <String, dynamic>{'action': 'confirm', 'visit_id': visitId},
       );
 
       final confirmData = confirmResponse.data;
       if (confirmData is! Map || confirmData['status'] != 'attached') {
-        throw const ServerException('Server failed to confirm photo attachment.');
+        throw const ServerException(
+          'Server failed to confirm photo attachment.',
+        );
       }
-
-      final publicId = 'visit-${visitId.toLowerCase()}';
-      _removeFromPendingQueue(visitId);
-      return publicId;
     });
   }
 
-  @override
-  Future<List<VisitRecord>> getVisitsForSession(String sessionId) async {
-    return _run('fetch visits for session', () async {
-      final response = await _supabase
-          .from('visits')
-          .select()
-          .eq('session_id', sessionId)
-          .order('captured_at', ascending: true);
-
-      final list = (response as List)
-          .map((row) => VisitRecord.fromMap(row as Map<String, dynamic>))
-          .toList();
-
-      // Merge any pending local visits for this session
-      final pendingForSession =
-          _pendingQueue.where((v) => v.sessionId == sessionId && !list.any((r) => r.id == v.id));
-      list.addAll(pendingForSession);
-
-      return list;
-    });
-  }
-
-  @override
-  Future<List<VisitRecord>> getUnsyncedVisits() async {
-    return List.unmodifiable(_pendingQueue);
-  }
-
-  @override
-  Future<void> markVisitSynced(String visitId) async {
-    _removeFromPendingQueue(visitId);
-  }
-
+  /// Sends the signed-in employee's waiting visits, oldest first. A visit the
+  /// server refuses for good is dropped; the first failure that may pass (no
+  /// internet, a server error) ends the pass, and the next pass tries again.
   @override
   Future<void> syncPendingVisits() async {
-    final pending = List<VisitRecord>.from(_pendingQueue);
-    for (final visit in pending) {
-      try {
-        await recordVisit(visit);
-      } catch (e) {
-        debugPrint('Could not sync pending visit ${visit.id}: $e');
+    final employeeId =
+        _currentEmployeeId?.call() ?? _supabase.auth.currentUser?.id;
+    if (employeeId == null || _syncing) return;
+    _syncing = true;
+    try {
+      for (final entry in await _queue.pendingFor(employeeId)) {
+        if (_inFlight.contains(entry.visit.id)) continue;
+        try {
+          final outcome = await _deliver(entry);
+          if (!outcome.done) break;
+        } on AppException {
+          // Refused for good and already forgotten: go on to the next one.
+        }
       }
+    } finally {
+      _syncing = false;
     }
   }
 
-  void _queuePendingVisit(VisitRecord visit) {
-    final index = _pendingQueue.indexWhere((v) => v.id == visit.id);
-    if (index != -1) {
-      _pendingQueue[index] = visit;
-    } else {
-      _pendingQueue.add(visit);
+  /// Puts the visit on the phone first. Throws when it cannot be kept there,
+  /// so the employee is never told "saved" for a visit that exists nowhere.
+  Future<VisitRecord> _saveOnPhone(VisitRecord visit) async {
+    String? keptPhoto;
+    try {
+      final source = visit.localPhotoPath;
+      if (source != null) keptPhoto = await _vault.keep(source, visit.id);
+      final saved = VisitRecord(
+        id: visit.id,
+        sessionId: visit.sessionId,
+        employeeId: visit.employeeId,
+        storeName: visit.storeName,
+        note: visit.note,
+        latitude: visit.latitude,
+        longitude: visit.longitude,
+        accuracy: visit.accuracy,
+        capturedAt: visit.capturedAt,
+        localPhotoPath: keptPhoto,
+      );
+      await _queue.enqueue(saved);
+      return saved;
+    } on Object catch (e, st) {
+      if (keptPhoto != null) await _vault.discard(keptPhoto);
+      logFailure('VisitRepository: could not save visit on phone', e, st);
+      throw const ServerException(
+        'Could not save the visit on this phone. Check that it has free storage.',
+      );
     }
   }
 
-  void _removeFromPendingQueue(String visitId) {
-    _pendingQueue.removeWhere((v) => v.id == visitId);
+  /// Sends what is still unsent for one visit.
+  ///
+  /// Returns `done` when the server holds everything (the entry is then gone
+  /// from the phone) and `rowSent` when at least the visit row is confirmed.
+  /// A failure that may pass leaves the entry waiting and returns `done: false`.
+  /// A refusal of the row for good removes the entry and is thrown.
+  Future<({bool done, bool rowSent})> _deliver(PendingVisit entry) async {
+    final visit = entry.visit;
+    var rowSent = entry.rowSent;
+    _inFlight.add(visit.id);
+    try {
+      if (!rowSent) {
+        await _insertRow(visit);
+        await _queue.markRowSent(visit.id);
+        rowSent = true;
+      }
+      final photo = visit.localPhotoPath;
+      if (photo != null) {
+        try {
+          await _sendPhoto(visit.id, photo);
+        } on AppException catch (e) {
+          // A photo the server will never take is dropped; the visit stays.
+          if (e is! ValidationException && e is! ConflictException) rethrow;
+          logFailure(
+            'VisitRepository: photo dropped for ${visit.id}',
+            e,
+          );
+        }
+      }
+      await _forget(visit);
+      return (done: true, rowSent: true);
+    } on AppException catch (e) {
+      if (!rowSent &&
+          (e is ValidationException || e is AccountBlockedException)) {
+        await _forget(visit);
+        rethrow;
+      }
+      return (done: false, rowSent: rowSent);
+    } finally {
+      _inFlight.remove(visit.id);
+    }
   }
 
-  Future<T> _run<T>(
-    String action,
-    Future<T> Function() body, {
-    T Function()? onNetworkError,
-  }) async {
+  Future<void> _insertRow(VisitRecord visit) {
+    return _run('record visit', () async {
+      try {
+        await _supabase.from('visits').insert(visit.toInsertPayload());
+      } on PostgrestException catch (e) {
+        // The same visit sent twice (same id) is harmless.
+        if (e.code != '23505') rethrow;
+      }
+    });
+  }
+
+  /// Removes the entry and the phone's copy of its photo.
+  Future<void> _forget(VisitRecord visit) async {
+    await _queue.remove(visit.id);
+    final photo = visit.localPhotoPath;
+    if (photo != null) await _vault.discard(photo);
+  }
+
+  Future<T> _run<T>(String action, Future<T> Function() body) async {
     try {
       return await body();
     } on AppException {
@@ -223,11 +258,8 @@ class SupabaseVisitRepository implements VisitRepository {
       throw _translateFunction(e, action);
     } catch (e, st) {
       final network = asNetworkFailure(e);
-      if (network != null) {
-        if (onNetworkError != null) return onNetworkError();
-        throw network;
-      }
-      debugPrint('VisitRepository: could not $action: ${e.runtimeType}\n$st');
+      if (network != null) throw network;
+      logFailure('VisitRepository: could not $action', e, st);
       throw ServerException('Could not $action. Please try again.');
     }
   }
@@ -263,17 +295,27 @@ class SupabaseVisitRepository implements VisitRepository {
     final error = details is Map ? details['error']?.toString() : null;
     switch (error) {
       case 'unauthenticated':
-        return const UnauthorizedRoleException('Your session has expired. Sign in again.');
+        return const UnauthorizedRoleException(
+          'Your session has expired. Sign in again.',
+        );
       case 'forbidden':
-        return const UnauthorizedRoleException('Only the employee who made the visit may upload its photo.');
+        return const UnauthorizedRoleException(
+          'Only the employee who made the visit may upload its photo.',
+        );
       case 'visit_not_found':
         return const ValidationException('Visit not found.');
       case 'photo_already_attached':
-        return const ConflictException('A photo is already attached to this visit.');
+        return const ConflictException(
+          'A photo is already attached to this visit.',
+        );
       case 'visit_too_old':
-        return const ValidationException('Visits older than 14 days cannot accept photo uploads.');
+        return const ValidationException(
+          'Visits older than 14 days cannot accept photo uploads.',
+        );
       case 'photo_rejected':
-        return const ValidationException('Photo format or size was rejected by the server.');
+        return const ValidationException(
+          'Photo format or size was rejected by the server.',
+        );
       default:
         return ServerException('Could not $action. Please try again.');
     }

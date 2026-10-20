@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_admin_activity.dart';
+import 'support/fake_auth.dart';
 import 'support/fake_employee_repository.dart';
 import 'support/fake_live_locations.dart';
 import 'support/fake_notification_repository.dart';
@@ -188,6 +189,7 @@ void main() {
             ...liveMapOverrides(live, roster),
             activityOverride(FakeAdminActivityRepository()),
             notificationOverride(FakeNotificationRepository()),
+            signedInAdminOverride(),
           ],
           child: MaterialApp(theme: AppTheme.light, home: const AdminShell()),
         ),

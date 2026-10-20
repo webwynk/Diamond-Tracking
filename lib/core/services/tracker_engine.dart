@@ -76,6 +76,15 @@ class TrackerEngine {
   static const Duration movingInterval = Duration(seconds: 25);
   static const Duration stationaryInterval = Duration(minutes: 3);
 
+  /// Right after tracking starts the phone often reports a poor first fix (the
+  /// GPS is still locking, or it hands back its last known place). Until the
+  /// first point is recorded, fixes worse than [goodFixAccuracy] metres are
+  /// skipped, for at most [warmUpLimit]; after that whatever arrives is
+  /// recorded, so tracking never waits on a bad signal for good. A fake
+  /// location is never skipped (BR-9: recorded and flagged, never dropped).
+  static const double goodFixAccuracy = 50.0;
+  static const Duration warmUpLimit = Duration(seconds: 30);
+
   final TrackingQueueStore _queue;
   final TrackingUploader _uploader;
   final Future<bool> Function(String sessionId) _isSessionOpen;
@@ -88,6 +97,7 @@ class TrackerEngine {
   ActiveTrackingSession? _session;
   DateTime? _lastRecordedAt;
   TrackerFix? _lastRecordedFix;
+  DateTime? _trackingSince;
   bool _stopping = false;
   bool _signInNoticeSent = false;
 
@@ -131,6 +141,7 @@ class TrackerEngine {
     _stopping = false;
     _lastRecordedAt = null;
     _lastRecordedFix = null;
+    _trackingSince = serverNow;
     return true;
   }
 
@@ -140,6 +151,7 @@ class TrackerEngine {
     if (session == null || _stopping) return;
 
     final at = serverNow();
+    if (_isStillWarmingUp(fix, at)) return;
     if (!_shouldRecord(fix, at)) return;
 
     int? battery;
@@ -220,6 +232,15 @@ class TrackerEngine {
     await _queue.clearActiveSession();
     _session = null;
     _onStopped(reason);
+  }
+
+  /// True while waiting for a good first fix: nothing recorded yet, the fix is
+  /// weak and not a fake location, and [warmUpLimit] has not passed.
+  bool _isStillWarmingUp(TrackerFix fix, DateTime at) {
+    final since = _trackingSince;
+    if (_lastRecordedAt != null || since == null) return false;
+    if (fix.isMock || fix.accuracy <= goodFixAccuracy) return false;
+    return at.difference(since) < warmUpLimit;
   }
 
   bool _shouldRecord(TrackerFix fix, DateTime at) {

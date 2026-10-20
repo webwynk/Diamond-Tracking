@@ -39,8 +39,9 @@ class AdminMapPreviewCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.neutral200, width: 1),
+        boxShadow: AppElevation.card,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -48,30 +49,46 @@ class AdminMapPreviewCard extends StatelessWidget {
           InkWell(
             onTap: onViewMap,
             child: Container(
-              height: 56,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
+              constraints: const BoxConstraints(minHeight: 56),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.x4,
+                vertical: AppSpacing.x2,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary600,
-                          shape: BoxShape.circle,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary50,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.my_location_rounded,
+                            size: 16,
+                            color: AppColors.primary600,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: AppSpacing.x2),
-                      Text(
-                        'Live map',
-                        style: AppTypography.title.copyWith(
-                          color: AppColors.textPrimary,
+                        const SizedBox(width: AppSpacing.x2),
+                        Flexible(
+                          child: Text(
+                            'Live map',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.title.copyWith(
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: AppSpacing.x2),
                   Row(
                     children: [
                       Text(

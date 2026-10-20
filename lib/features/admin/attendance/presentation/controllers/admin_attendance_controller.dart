@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../core/errors/app_exceptions.dart';
 import '../../../../../core/utils/duty_time_helper.dart';
+import '../../../../../core/utils/failure_log.dart';
 import '../../../../../core/utils/phone_clock.dart';
 import '../../../../../data/repositories/supabase_attendance_repository.dart';
 import '../../../../../domain/entities/attendance_month.dart';
@@ -135,7 +135,7 @@ class AdminAttendanceNotifier extends Notifier<AdminAttendanceState> {
       );
     } catch (e, st) {
       if (ticket != _request || _stopped) return;
-      debugPrint('AdminAttendance: could not load: $e\n$st');
+      logFailure('AdminAttendance: could not load', e, st);
       state = state.copyWith(
         load: AttendanceLoad.failed,
         errorMessage: 'Could not load the attendance. Please try again.',

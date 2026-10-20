@@ -2,24 +2,23 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exceptions.dart';
+import '../../core/utils/failure_log.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../network_failure.dart';
 
 /// Supabase implementation of [AuthRepository].
 ///
-/// Handles employee PIN-based authentication via internal synthetic emails,
-/// admin email/password login, device binding checks, and PIN updates.
+/// Employees sign in through the `employee-auth` Edge Function: the server
+/// checks the PIN, counts wrong tries (5 lock the account for 15 minutes) and
+/// hands back a session. The app never sends a PIN to Supabase Auth itself.
+/// Admins sign in with email and password. Device binding is checked after
+/// either, through a database function.
 class SupabaseAuthRepository implements AuthRepository {
   final SupabaseClient _client;
 
   SupabaseAuthRepository({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client;
-
-  /// Internal synthetic email format mapping employee codes to Supabase Auth accounts.
-  static String formatEmployeeEmail(String code) {
-    final clean = code.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '');
-    return '$clean@staff.diamondagritech.internal';
-  }
 
   @override
   Future<UserProfile?> getCurrentProfile() async {
@@ -58,14 +57,19 @@ class SupabaseAuthRepository implements AuthRepository {
       );
     }
 
-    final email = formatEmployeeEmail(cleanCode);
-
     try {
-      // 1. Authenticate with Supabase Auth
-      final response = await _client.auth.signInWithPassword(
-        email: email,
-        password: cleanPin,
-      );
+      // 1. The server checks the PIN and the lockout, and returns a session.
+      final data = await _employeeAuth(<String, dynamic>{
+        'action': 'login',
+        'employee_code': cleanCode,
+        'pin': cleanPin,
+      });
+      final session = data['session'];
+      final refreshToken = session is Map ? session['refresh_token'] : null;
+      if (refreshToken is! String || refreshToken.isEmpty) {
+        throw const ServerException('Sign-in failed. Please try again.');
+      }
+      final response = await _client.auth.setSession(refreshToken);
 
       final user = response.user;
       if (user == null) {
@@ -118,16 +122,19 @@ class SupabaseAuthRepository implements AuthRepository {
 
       return profile;
     } on AuthException catch (e) {
-      if (e.statusCode == '429' ||
-          e.message.toLowerCase().contains('rate limit')) {
-        throw const AccountLockedException();
+      if (e.code == 'user_banned') throw const AccountBlockedException();
+      if (e.statusCode == '429') {
+        throw const AccountLockedException(
+          message: 'Too many sign-in tries. Wait a few minutes and try again.',
+        );
       }
-      throw const InvalidCredentialsException(
-        'Incorrect employee code or PIN.',
-      );
-    } catch (e) {
+      throw const ServerException('Sign-in failed. Please try again.');
+    } catch (e, st) {
       if (e is AppException) rethrow;
-      throw ServerException('Sign-in failed: $e');
+      final network = asNetworkFailure(e);
+      if (network != null) throw network;
+      logFailure('AuthRepository: employee sign-in failed', e, st);
+      throw const ServerException('Sign-in failed. Please try again.');
     }
   }
 
@@ -188,32 +195,105 @@ class SupabaseAuthRepository implements AuthRepository {
       }
 
       return profile;
-    } on AuthException {
+    } on AuthException catch (e) {
+      if (e.code == 'user_banned') {
+        throw const AccountBlockedException(
+          'Your administrator account has been blocked. Contact system admin.',
+        );
+      }
       throw const InvalidCredentialsException('Incorrect email or password.');
-    } catch (e) {
+    } catch (e, st) {
       if (e is AppException) rethrow;
-      throw ServerException('Admin sign-in failed: $e');
+      final network = asNetworkFailure(e);
+      if (network != null) throw network;
+      logFailure('AuthRepository: admin sign-in failed', e, st);
+      throw const ServerException('Sign-in failed. Please try again.');
     }
   }
 
   @override
   Future<void> changePin({required String newPin}) async {
     try {
-      // 1. Update Supabase Auth user password
-      await _client.auth.updateUser(UserAttributes(password: newPin));
-
-      // 2. Mark must_change_pin = false via secure RPC
-      final success = await _client.rpc('complete_pin_change');
-      if (success != true) {
-        throw const ServerException(
-          'Failed to complete PIN change on database.',
-        );
-      }
-    } on AuthException catch (e) {
-      throw ServerException('Failed to update PIN: ${e.message}');
-    } catch (e) {
+      // The server checks the PIN rules, stores the new PIN and clears
+      // "must change PIN" in one step. Only allowed at the forced first change.
+      await _employeeAuth(<String, dynamic>{
+        'action': 'change_pin',
+        'new_pin': newPin,
+      });
+    } catch (e, st) {
       if (e is AppException) rethrow;
-      throw ServerException('PIN change failed: $e');
+      final network = asNetworkFailure(e);
+      if (network != null) throw network;
+      logFailure('AuthRepository: PIN change failed', e, st);
+      throw const ServerException(
+        'Could not change the PIN. Please try again.',
+      );
+    }
+  }
+
+  /// Calls the `employee-auth` function and turns its refusals into the app's
+  /// own errors. Nothing from the server's reply is shown as it is.
+  Future<Map<String, dynamic>> _employeeAuth(Map<String, dynamic> body) async {
+    try {
+      final response = await _client.functions.invoke(
+        'employee-auth',
+        body: body,
+      );
+      final data = response.data;
+      if (data is Map) return Map<String, dynamic>.from(data);
+      throw const ServerException('Sign-in failed. Please try again.');
+    } on FunctionException catch (e) {
+      throw _translateEmployeeAuth(e);
+    }
+  }
+
+  AppException _translateEmployeeAuth(FunctionException e) {
+    final details = e.details;
+    final code = details is Map ? details['error'] : null;
+    switch (e.status) {
+      case 0:
+        return const NetworkException();
+      case 400:
+        final fields = details is Map ? details['fields'] : null;
+        if (fields is Map && fields['pin'] is String) {
+          return ValidationException(fields['pin'] as String);
+        }
+        return const ValidationException(
+          'Please check what you typed and try again.',
+        );
+      case 401:
+        if (code == 'invalid_credentials') {
+          return const InvalidCredentialsException(
+            'Incorrect employee code or PIN.',
+          );
+        }
+        return const UnauthorizedRoleException(
+          'Your session has expired. Sign in again.',
+        );
+      case 403:
+        if (code == 'account_blocked') return const AccountBlockedException();
+        if (code == 'pin_change_not_allowed') {
+          return const ValidationException(
+            'Your PIN cannot be changed here. Contact the office.',
+          );
+        }
+        return const UnauthorizedRoleException(
+          'You do not have permission to do this.',
+        );
+      case 429:
+        final seconds = details is Map ? details['retry_after_seconds'] : null;
+        final wait = seconds is num && seconds > 0
+            ? Duration(seconds: seconds.ceil())
+            : const Duration(minutes: 15);
+        final minutes = (wait.inSeconds / 60).ceil();
+        return AccountLockedException(
+          message:
+              'Too many wrong tries. Try again in $minutes '
+              '${minutes == 1 ? 'minute' : 'minutes'}.',
+          lockedUntil: DateTime.now().add(wait),
+        );
+      default:
+        return const ServerException('Sign-in failed. Please try again.');
     }
   }
 

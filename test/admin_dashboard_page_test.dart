@@ -1,15 +1,20 @@
 import 'package:diamond_tracking/core/errors/app_exceptions.dart';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/domain/entities/admin_activity_event.dart';
+import 'package:diamond_tracking/domain/entities/live_position.dart';
 import 'package:diamond_tracking/domain/entities/user_profile.dart';
 import 'package:diamond_tracking/domain/repositories/live_location_repository.dart';
 import 'package:diamond_tracking/domain/repositories/notification_repository.dart';
 import 'package:diamond_tracking/features/admin/dashboard/presentation/admin_dashboard_page.dart';
+import 'package:diamond_tracking/features/admin/dashboard/presentation/controllers/admin_attention.dart';
 import 'package:diamond_tracking/features/admin/dashboard/presentation/widgets/admin_map_preview_card.dart';
 import 'package:diamond_tracking/features/admin/dashboard/presentation/widgets/admin_profile_sheet.dart';
 import 'package:diamond_tracking/features/admin/dashboard/presentation/widgets/admin_recent_activity_card.dart';
 import 'package:diamond_tracking/features/admin/dashboard/presentation/widgets/admin_stat_card.dart';
+import 'package:diamond_tracking/features/admin/employees/presentation/admin_employee_form_page.dart';
 import 'package:diamond_tracking/features/admin/employees/presentation/controllers/admin_employee_list_state.dart';
+import 'package:diamond_tracking/features/admin/map/presentation/controllers/admin_live_map_controller.dart';
+import 'package:diamond_tracking/features/admin/map/presentation/controllers/admin_live_map_state.dart';
 import 'package:diamond_tracking/features/admin/shell/admin_tab.dart';
 import 'package:diamond_tracking/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:diamond_tracking/features/auth/presentation/controllers/auth_state.dart';
@@ -19,6 +24,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_admin_activity.dart';
+import 'support/fake_auth.dart';
 import 'support/fake_employee_repository.dart';
 import 'support/fake_live_locations.dart';
 import 'support/fake_notification_repository.dart';
@@ -128,13 +134,21 @@ void main() {
   Future<void> closePage(WidgetTester tester) =>
       tester.pumpWidget(const SizedBox());
 
-  /// The big number inside the stat card labelled [label].
+  /// The big number inside the status tile labelled [label].
   Finder valueOf(String label, String value) => find.descendant(
     of: find.ancestor(
       of: find.text(label),
       matching: find.byType(AdminStatCard),
     ),
     matching: find.text(value),
+  );
+
+  /// The headline "On duty now" figure in the hero.
+  Finder onDutyNow(String value) => find.byWidgetPredicate(
+    (w) =>
+        w is Text &&
+        w.key == const Key('dashboard-on-duty-count') &&
+        w.data == value,
   );
 
   group('Screen 14 AdminDashboardPage header', () {
@@ -176,8 +190,10 @@ void main() {
       threePeople();
       await pumpPage(tester, settle: false);
 
+      // The four 2x2 telemetry status tiles (ON DUTY, OFF DUTY, NO UPDATE, NEEDS CHECK).
       expect(find.byType(AdminStatCard), findsNWidgets(4));
       expect(find.text('–'), findsNWidgets(4));
+      expect(find.byKey(const Key('dashboard-of-total')), findsNothing);
       expect(find.text('0'), findsNothing);
 
       await settleFrames(tester);
@@ -194,7 +210,8 @@ void main() {
       // 3 on duty (fresh, stale and flagged all count as on duty), 1 quiet,
       // 1 flagged. Off duty: the 6 active staff minus the 3 on duty. The
       // blocked person is not counted.
-      expect(valueOf('ON DUTY', '3'), findsOneWidget);
+      expect(onDutyNow('3'), findsOneWidget);
+      expect(find.text('of 6 active'), findsOneWidget);
       expect(valueOf('OFF DUTY', '3'), findsOneWidget);
       expect(valueOf('NO UPDATE', '1'), findsOneWidget);
       expect(valueOf('NEEDS CHECK', '1'), findsOneWidget);
@@ -206,7 +223,8 @@ void main() {
     ) async {
       await pumpPage(tester);
 
-      expect(valueOf('ON DUTY', '0'), findsOneWidget);
+      expect(onDutyNow('0'), findsOneWidget);
+      expect(find.text('of 6 active'), findsOneWidget);
       expect(valueOf('NO UPDATE', '0'), findsOneWidget);
       expect(valueOf('NEEDS CHECK', '0'), findsOneWidget);
       // Every active employee is off duty (6); the blocked one is excluded.
@@ -218,12 +236,12 @@ void main() {
       tester,
     ) async {
       await pumpPage(tester);
-      expect(valueOf('ON DUTY', '0'), findsOneWidget);
+      expect(onDutyNow('0'), findsOneWidget);
 
       live.emit(LivePositionChanged(livePosition('e-asha')));
       await tester.pump(const Duration(seconds: 1));
 
-      expect(valueOf('ON DUTY', '1'), findsOneWidget);
+      expect(onDutyNow('1'), findsOneWidget);
       expect(valueOf('OFF DUTY', '5'), findsOneWidget);
       await closePage(tester);
     });
@@ -237,7 +255,9 @@ void main() {
       await closePage(tester);
     });
 
-    testWidgets('every stat card opens the Team tab', (tester) async {
+    testWidgets('every status tile opens the Team tab, the hero the Map tab', (
+      tester,
+    ) async {
       await pumpPage(tester);
 
       final container = ProviderScope.containerOf(
@@ -246,12 +266,17 @@ void main() {
       final tab = container.listen(adminTabProvider, (_, _) {});
       addTearDown(tab.close);
 
-      for (final label in ['ON DUTY', 'OFF DUTY', 'NO UPDATE', 'NEEDS CHECK']) {
+      for (final label in ['OFF DUTY', 'NO UPDATE', 'NEEDS CHECK']) {
         container.read(adminTabProvider.notifier).select(AdminTab.home);
         await tester.tap(find.text(label));
         await tester.pump();
         expect(tab.read(), AdminTab.team, reason: label);
       }
+
+      container.read(adminTabProvider.notifier).select(AdminTab.home);
+      await tester.tap(find.byKey(const Key('dashboard-on-duty')));
+      await tester.pump();
+      expect(tab.read(), AdminTab.map, reason: 'On duty now');
       await closePage(tester);
     });
   });
@@ -264,7 +289,13 @@ void main() {
       await pumpPage(tester);
 
       expect(find.byType(AdminMapPreviewCard), findsOneWidget);
-      expect(find.text('Live map'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AdminMapPreviewCard),
+          matching: find.text('Live map'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('No one is on duty'), findsNothing);
       expect(find.byKey(const Key('preview-officer-e-asha')), findsOneWidget);
       expect(find.text('Asha Patil'), findsOneWidget);
@@ -327,7 +358,7 @@ void main() {
       final tab = container.listen(adminTabProvider, (_, _) {});
       addTearDown(tab.close);
 
-      await tester.tap(find.text('Ravi Kumar'));
+      await tester.tap(find.byKey(const Key('preview-officer-e-ravi')));
       await tester.pump();
 
       expect(tab.read(), AdminTab.map);
@@ -499,7 +530,7 @@ void main() {
 
     expect(live.fetchCount, greaterThan(liveLoads));
     expect(activity.fetchCount, greaterThan(activityLoads));
-    expect(valueOf('ON DUTY', '3'), findsOneWidget);
+    expect(onDutyNow('3'), findsOneWidget);
     await closePage(tester);
   });
 
@@ -641,6 +672,254 @@ void main() {
 
       expect(profileTapped, isTrue);
       await closePage(tester);
+    });
+  });
+
+  group('operational header and telemetry', () {
+    testWidgets('shows the operational date in header', (tester) async {
+      await pumpPage(tester);
+
+      expect(find.byKey(const Key('dashboard-date')), findsOneWidget);
+      expect(find.textContaining('${DateTime.now().year}'), findsOneWidget);
+      await closePage(tester);
+    });
+
+    testWidgets('shows how many of the active people are on duty', (
+      tester,
+    ) async {
+      threePeople();
+      await pumpPage(tester);
+
+      expect(find.text('of 6 active'), findsOneWidget);
+      expect(onDutyNow('3'), findsOneWidget);
+      await closePage(tester);
+    });
+
+    testWidgets('says whether the live feed is connected', (tester) async {
+      await pumpPage(tester);
+
+      Finder pill(String word) => find.descendant(
+        of: find.byKey(const Key('dashboard-connection')),
+        matching: find.text(word),
+      );
+
+      live.emit(const LiveConnectionChanged(connected: true));
+      await tester.pump();
+      expect(pill('Live'), findsOneWidget);
+
+      live.emit(const LiveConnectionChanged(connected: false));
+      await tester.pump();
+      expect(pill('Offline'), findsOneWidget);
+      await closePage(tester);
+    });
+  });
+
+  group('needs attention', () {
+    testWidgets('lists fake GPS, then gone quiet, then low battery, once each', (
+      tester,
+    ) async {
+      live.positions = [
+        livePosition('e-asha', battery: 80),
+        livePosition('e-ravi', ago: const Duration(minutes: 9)),
+        livePosition('e-meena', isMock: true, battery: 5),
+        livePosition('e-sunil', battery: 9),
+      ];
+      await pumpPage(tester);
+
+      expect(find.byKey(const Key('dashboard-attention')), findsOneWidget);
+      expect(find.byKey(const Key('attention-count')), findsOneWidget);
+      expect(find.text('3'), findsWidgets);
+      // Meena is flagged AND low on battery: one row, the more serious reason.
+      expect(find.text('Fake GPS flagged'), findsOneWidget);
+      expect(find.text('No update · 9 min ago'), findsOneWidget);
+      expect(find.text('Battery 9%'), findsOneWidget);
+      expect(find.text('Battery 5%'), findsNothing);
+      // Someone fresh with a good battery is not listed.
+      expect(find.byKey(const Key('attention-row-e-asha')), findsNothing);
+      // Order: flagged, quiet, low battery.
+      final meena = tester
+          .getTopLeft(find.byKey(const Key('attention-row-e-meena')))
+          .dy;
+      final ravi = tester
+          .getTopLeft(find.byKey(const Key('attention-row-e-ravi')))
+          .dy;
+      final sunil = tester
+          .getTopLeft(find.byKey(const Key('attention-row-e-sunil')))
+          .dy;
+      expect(meena, lessThan(ravi));
+      expect(ravi, lessThan(sunil));
+      await closePage(tester);
+    });
+
+    testWidgets('is not shown when everyone is fine or the load failed', (
+      tester,
+    ) async {
+      live.positions = [livePosition('e-asha'), livePosition('e-ravi')];
+      await pumpPage(tester);
+      expect(find.byKey(const Key('dashboard-attention')), findsNothing);
+      await closePage(tester);
+
+      live.error = const NetworkException();
+      await pumpPage(tester);
+      expect(find.byKey(const Key('dashboard-attention')), findsNothing);
+      await closePage(tester);
+    });
+
+    testWidgets('a missing battery reading is never "low"', (tester) async {
+      live.positions = [livePosition('e-asha', battery: null)];
+      await pumpPage(tester);
+
+      expect(find.byKey(const Key('dashboard-attention')), findsNothing);
+      await closePage(tester);
+    });
+
+    testWidgets('tapping a person opens the Map tab on them', (tester) async {
+      threePeople();
+      await pumpPage(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AdminDashboardPage)),
+      );
+      final tab = container.listen(adminTabProvider, (_, _) {});
+      addTearDown(tab.close);
+
+      await tester.tap(find.byKey(const Key('attention-row-e-meena')));
+      await tester.pump();
+
+      expect(tab.read(), AdminTab.map);
+      expect(container.read(liveMapFocusProvider), 'e-meena');
+      await closePage(tester);
+    });
+
+    testWidgets('shows three people and counts the rest', (tester) async {
+      live.positions = [
+        livePosition('e-asha', isMock: true),
+        livePosition('e-ravi', isMock: true),
+        livePosition('e-meena', isMock: true),
+        livePosition('e-sunil', isMock: true),
+        livePosition('e-leena', isMock: true),
+      ];
+      await pumpPage(tester);
+
+      expect(find.text('+2 more'), findsOneWidget);
+      await closePage(tester);
+    });
+  });
+
+  group('quick actions', () {
+    testWidgets('open the Map, Team and Reports tabs', (tester) async {
+      await pumpPage(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AdminDashboardPage)),
+      );
+      final tab = container.listen(adminTabProvider, (_, _) {});
+      addTearDown(tab.close);
+
+      for (final entry in {
+        'quick-live-map': AdminTab.map,
+        'quick-team': AdminTab.team,
+        'quick-reports': AdminTab.reports,
+      }.entries) {
+        container.read(adminTabProvider.notifier).select(AdminTab.home);
+        await tester.tap(find.byKey(Key(entry.key)));
+        await tester.pump();
+        expect(tab.read(), entry.value, reason: entry.key);
+      }
+      await closePage(tester);
+    });
+
+    testWidgets('Add employee opens the new-employee form', (tester) async {
+      await pumpPage(tester);
+
+      await tester.tap(find.byKey(const Key('quick-add-employee')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AdminEmployeeFormPage), findsOneWidget);
+      await closePage(tester);
+    });
+  });
+
+  group('small screens', () {
+    testWidgets('nothing overflows at 320 dp wide with 150% text', (
+      tester,
+    ) async {
+      live.positions = [
+        livePosition('e-asha'),
+        livePosition('e-ravi', ago: const Duration(minutes: 9)),
+        livePosition('e-meena', isMock: true),
+      ];
+      tester.view.physicalSize = const Size(640, 1400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...liveMapOverrides(live, roster),
+            activityOverride(activity),
+            notificationOverride(notifications),
+            signedInAdminOverride(),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(1.5)),
+              child: child!,
+            ),
+            home: const AdminDashboardPage(),
+          ),
+        ),
+      );
+      await settleFrames(tester);
+
+      expect(tester.takeException(), isNull);
+      // Scroll to the bottom: the last card must lay out too.
+      await tester.drag(
+        find.byType(SingleChildScrollView),
+        const Offset(0, -3000),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      await closePage(tester);
+    });
+  });
+
+  group('attentionItems', () {
+    LiveOfficer officer(
+      String id,
+      String name,
+      LiveStatus status,
+      int? battery,
+    ) => LiveOfficer(
+      id: id,
+      name: name,
+      employeeCode: 'DA-$id',
+      phoneNumber: '',
+      position: livePosition(id, battery: battery),
+      status: status,
+      lastSeen: '2 min ago',
+    );
+
+    test('orders by reason, then by name, and drops people who are fine', () {
+      final items = attentionItems([
+        officer('1', 'Zed', LiveStatus.stale, 80),
+        officer('2', 'Amy', LiveStatus.stale, 80),
+        officer('3', 'Bob', LiveStatus.suspect, 80),
+        officer('4', 'Cat', LiveStatus.active, 14),
+        officer('5', 'Dan', LiveStatus.active, 15),
+        officer('6', 'Eve', LiveStatus.active, null),
+      ]);
+
+      expect(items.map((i) => i.officer.name), ['Bob', 'Amy', 'Zed', 'Cat']);
+      expect(items.map((i) => i.reason), [
+        AttentionReason.fakeGps,
+        AttentionReason.noUpdate,
+        AttentionReason.noUpdate,
+        AttentionReason.lowBattery,
+      ]);
+      expect(items.last.text, 'Battery 14%');
     });
   });
 }

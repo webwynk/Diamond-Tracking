@@ -34,6 +34,17 @@ abstract final class AppTypography {
     FontVariation('wght', 700),
   ];
 
+  /// 48/52 Bold. The one headline number on a screen (the admin Home's "On
+  /// duty now"). Use with tabular figures.
+  static const TextStyle displayLarge = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 48,
+    height: 52 / 48,
+    fontWeight: FontWeight.w700,
+    fontVariations: _w700,
+    color: AppColors.textPrimary,
+  );
+
   /// 32/40 Bold. The km and hours figures on the duty screen.
   static const TextStyle display = TextStyle(
     fontFamily: fontFamily,
@@ -153,6 +164,13 @@ extension AppTextStyleX on TextStyle {
   /// proportional figures visibly shifts every second.
   TextStyle get tabular =>
       copyWith(fontFeatures: const <FontFeature>[FontFeature.tabularFigures()]);
+
+  /// SemiBold (600). Sets the variable font's `wght` axis as well as the
+  /// weight, because `fontWeight` alone is imprecise on DM Sans (section 3).
+  TextStyle get semiBold => copyWith(
+    fontWeight: FontWeight.w600,
+    fontVariations: const <FontVariation>[FontVariation('wght', 600)],
+  );
 
   /// Recolour without restating the rest of the style.
   TextStyle withColor(Color color) => copyWith(color: color);

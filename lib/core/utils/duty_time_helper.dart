@@ -42,12 +42,6 @@ abstract final class DutyTimeHelper {
     return hour >= 8 && hour < 23;
   }
 
-  /// Returns whether curfew is imminent (between 22:45 and 23:00 IST per PRD BR-3).
-  static bool isCurfewWarningActive([DateTime? time]) {
-    final ist = time != null ? toIst(time) : nowIst;
-    return ist.hour == 22 && ist.minute >= 45;
-  }
-
   /// Returns a user-friendly explanation when the duty window is disabled (Screen 08).
   static String getDutyDisabledReason([DateTime? time]) {
     final ist = time != null ? toIst(time) : nowIst;

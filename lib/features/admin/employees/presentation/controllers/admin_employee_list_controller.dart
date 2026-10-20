@@ -157,6 +157,7 @@ class AdminEmployeeListNotifier extends Notifier<AdminEmployeeListState> {
           locationName: e.locationName,
           email: updated.email,
           role: e.role,
+          deviceRegistered: e.deviceRegistered,
         );
       }).toList(),
     );
@@ -186,6 +187,7 @@ class AdminEmployeeListNotifier extends Notifier<AdminEmployeeListState> {
           locationName: 'Blocked ($reason)',
           email: e.email,
           role: e.role,
+          deviceRegistered: e.deviceRegistered,
         );
       }).toList(),
     );
@@ -206,8 +208,27 @@ class AdminEmployeeListNotifier extends Notifier<AdminEmployeeListState> {
           distanceTodayKm: e.distanceTodayKm,
           email: e.email,
           role: e.role,
+          deviceRegistered: e.deviceRegistered,
         );
       }).toList(),
     );
+  }
+
+  /// Clears the registered phone of [employeeId] on the server first; the
+  /// roster changes only once the server confirms. Returns what the server
+  /// said: true if a phone was cleared, false if none was registered. Throws
+  /// the repository's `AppException` on failure so the caller can show it.
+  Future<bool> clearDevice({required String employeeId}) async {
+    final cleared = await ref
+        .read(employeeRepositoryProvider)
+        .clearDevice(id: employeeId);
+    state = state.copyWith(
+      employees: state.employees
+          .map(
+            (e) => e.id == employeeId ? e.copyWith(deviceRegistered: false) : e,
+          )
+          .toList(),
+    );
+    return cleared;
   }
 }

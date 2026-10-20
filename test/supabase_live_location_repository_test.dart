@@ -4,6 +4,7 @@ import 'package:diamond_tracking/domain/repositories/live_location_repository.da
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
+import 'flutter_test_config.dart';
 import 'support/mock_supabase.dart';
 
 /// These tests drive the real [SupabaseLiveLocationRepository] and the real
@@ -131,6 +132,8 @@ void main() {
   group('watch', () {
     test('a channel that cannot be opened is reported as not connected, '
         'not thrown into the zone', () async {
+      // This test is about the missing client, so the guard is told.
+      expectStrayClient();
       // No injected client and Supabase is not initialised, so opening the
       // channel fails. This used to reach the zone as an uncaught error.
       final events = await SupabaseLiveLocationRepository()

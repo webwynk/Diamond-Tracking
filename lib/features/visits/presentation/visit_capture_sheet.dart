@@ -24,22 +24,20 @@ class VisitCaptureSheet extends ConsumerStatefulWidget {
     required this.employeeId,
     required this.latitude,
     required this.longitude,
-    this.placeName,
+    this.accuracy,
     this.storeName,
-    this.placeId,
-    this.distanceMeters,
     this.initialNote,
     this.onSaved,
   });
 
   final String dutySessionId;
   final String employeeId;
-  final String? placeName;
   final String? storeName;
-  final String? placeId;
   final double latitude;
   final double longitude;
-  final double? distanceMeters;
+
+  /// How close the GPS fix is, in metres. Kept with the visit as evidence.
+  final double? accuracy;
   final String? initialNote;
   final VoidCallback? onSaved;
 
@@ -50,10 +48,8 @@ class VisitCaptureSheet extends ConsumerStatefulWidget {
     required String employeeId,
     required double latitude,
     required double longitude,
-    String? placeName,
+    double? accuracy,
     String? storeName,
-    String? placeId,
-    double? distanceMeters,
     String? initialNote,
     VoidCallback? onSaved,
   }) {
@@ -65,12 +61,10 @@ class VisitCaptureSheet extends ConsumerStatefulWidget {
       builder: (context) => VisitCaptureSheet(
         dutySessionId: dutySessionId,
         employeeId: employeeId,
-        placeName: placeName ?? storeName,
-        storeName: storeName ?? placeName,
-        placeId: placeId,
+        storeName: storeName,
         latitude: latitude,
         longitude: longitude,
-        distanceMeters: distanceMeters,
+        accuracy: accuracy,
         initialNote: initialNote,
         onSaved: onSaved,
       ),
@@ -94,13 +88,13 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
 
     // Initialize visit state after first build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(visitCaptureControllerProvider.notifier).initVisit(
+      ref
+          .read(visitCaptureControllerProvider.notifier)
+          .initVisit(
             storeName: initialStore,
-            placeName: widget.placeName ?? initialStore,
-            placeId: widget.placeId,
             latitude: widget.latitude,
             longitude: widget.longitude,
-            distanceMeters: widget.distanceMeters,
+            accuracy: widget.accuracy,
             initialNote: widget.initialNote,
           );
       final currentNote = ref.read(visitCaptureControllerProvider).note;
@@ -115,98 +109,11 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
     super.dispose();
   }
 
-  void _showSkipPhotoDialog() {
-    final reasons = [
-      'Camera hardware malfunction',
-      'Restricted agricultural facility',
-      'Low lighting or extreme weather',
-      'Biosecurity quarantine protocol',
-    ];
-
-    String selectedReason = reasons.first;
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            backgroundColor: AppColors.neutral0,
-            shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
-            title: const Text('Skip photo', style: AppTypography.title),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Rule BR-12 requires a mandatory reason when skipping in-situ photo proof.',
-                    style: AppTypography.caption,
-                  ),
-                  const SizedBox(height: AppSpacing.x3),
-                  ...reasons.map((r) {
-                    final isSelected = r == selectedReason;
-                    return InkWell(
-                      onTap: () {
-                        setDialogState(() => selectedReason = r);
-                      },
-                      borderRadius: AppRadius.smAll,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.x2,
-                          horizontal: AppSpacing.x1,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              isSelected
-                                  ? Icons.radio_button_checked
-                                  : Icons.radio_button_off,
-                              size: 18,
-                              color: isSelected
-                                  ? AppColors.primary600
-                                  : AppColors.neutral400,
-                            ),
-                            const SizedBox(width: AppSpacing.x2),
-                            Expanded(
-                              child: Text(
-                                r,
-                                style: AppTypography.body.withColor(
-                                  isSelected
-                                      ? AppColors.textPrimary
-                                      : AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogCtx).pop(),
-                child: Text(
-                  'Cancel',
-                  style: AppTypography.label.withColor(AppColors.textSecondary),
-                ),
-              ),
-              AppButton(
-                label: 'Confirm skip',
-                onPressed: () {
-                  ref
-                      .read(visitCaptureControllerProvider.notifier)
-                      .skipPhoto(selectedReason);
-                  Navigator.of(dialogCtx).pop();
-                },
-              ),
-            ],
-          );
-        },
-      ),
-    );
+  /// Saves the visit without a photo. No reason is asked and no flag is set
+  /// (PRD F10, BR-12).
+  Future<void> _handleSkip() async {
+    ref.read(visitCaptureControllerProvider.notifier).skipPhoto();
+    await _handleSave();
   }
 
   Future<void> _handleSave() async {
@@ -320,9 +227,9 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            state.placeName.isEmpty
+                            state.storeName.isEmpty
                                 ? 'Field location'
-                                : state.placeName,
+                                : state.storeName,
                             style: AppTypography.body.copyWith(
                               fontWeight: FontWeight.w600,
                               fontVariations: const [
@@ -333,9 +240,7 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            state.distanceMeters == null
-                                ? 'Recorded at ${state.arrivalTime}'
-                                : 'You arrived at ${state.arrivalTime} · within ${state.distanceMeters!.toInt()} m',
+                            'Recorded at ${state.arrivalTime}',
                             style: AppTypography.caption,
                           ),
                         ],
@@ -400,7 +305,9 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  if (!state.photoSkipped)
+                  // Only once a real photo exists: until then nothing here
+                  // may suggest the visit is verified.
+                  if (state.photoPath != null)
                     Row(
                       children: [
                         const Icon(
@@ -435,36 +342,8 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // Photo content / Mock field / Skipped indicator
-                    if (state.photoSkipped)
-                      Container(
-                        color: AppColors.warningBg.withValues(alpha: 0.3),
-                        padding: const EdgeInsets.all(AppSpacing.x4),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.no_photography_outlined,
-                              size: 40,
-                              color: AppColors.warning,
-                            ),
-                            const SizedBox(height: AppSpacing.x2),
-                            Text(
-                              'Photo Skipped (BR-12)',
-                              style: AppTypography.title.withColor(
-                                AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.x1),
-                            Text(
-                              state.photoSkipReason ?? 'No reason provided',
-                              textAlign: TextAlign.center,
-                              style: AppTypography.caption,
-                            ),
-                          ],
-                        ),
-                      )
-                    else if (state.photoPath != null &&
+                    // The photo taken, or a field placeholder until there is one
+                    if (state.photoPath != null &&
                         File(state.photoPath!).existsSync())
                       Image.file(
                         File(state.photoPath!),
@@ -477,111 +356,109 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
                       const _FarmFieldPlaceholder(),
 
                     // Retake / Take Camera Button (Top-Right)
-                    if (!state.photoSkipped)
-                      Positioned(
-                        top: AppSpacing.x3,
-                        right: AppSpacing.x3,
-                        child: InkWell(
-                          key: const Key('retake-photo-btn'),
-                          onTap: () {
-                            ref
-                                .read(visitCaptureControllerProvider.notifier)
-                                .takePhoto();
-                          },
-                          borderRadius: BorderRadius.circular(18),
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: AppColors.neutral0,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.neutral900.withValues(
-                                  alpha: 0.10,
-                                ),
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x14000000),
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.flip_camera_ios,
-                              size: 20,
-                              color: AppColors.neutral600,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    // Geotag Chip Overlay (Bottom-Left)
-                    if (!state.photoSkipped)
-                      Positioned(
-                        bottom: AppSpacing.x3,
-                        left: AppSpacing.x3,
+                    Positioned(
+                      top: AppSpacing.x3,
+                      right: AppSpacing.x3,
+                      child: InkWell(
+                        key: const Key('retake-photo-btn'),
+                        onTap: () {
+                          ref
+                              .read(visitCaptureControllerProvider.notifier)
+                              .takePhoto();
+                        },
+                        borderRadius: BorderRadius.circular(18),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
-                            color: AppColors.neutral900.withValues(alpha: 0.70),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.schedule,
-                                    size: 13,
-                                    color: AppColors.primary300,
-                                  ),
-                                  const SizedBox(width: AppSpacing.x1),
-                                  Text(
-                                    state.geotagTimestamp,
-                                    style: const TextStyle(
-                                      fontFamily: AppTypography.fontFamily,
-                                      fontSize: 11,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                ],
+                            color: AppColors.neutral0,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.neutral900.withValues(
+                                alpha: 0.10,
                               ),
-                              const SizedBox(height: 2),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.satellite_alt,
-                                    size: 13,
-                                    color: AppColors.successBg,
-                                  ),
-                                  const SizedBox(width: AppSpacing.x1),
-                                  Text(
-                                    state.geotagCoordinates,
-                                    style: const TextStyle(
-                                      fontFamily: 'monospace',
-                                      fontSize: 12,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w500,
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
-                                ],
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x14000000),
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
                               ),
                             ],
                           ),
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.flip_camera_ios,
+                            size: 20,
+                            color: AppColors.neutral600,
+                          ),
                         ),
                       ),
+                    ),
+
+                    // Geotag Chip Overlay (Bottom-Left): the real fix and time
+                    Positioned(
+                      bottom: AppSpacing.x3,
+                      left: AppSpacing.x3,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.neutral900.withValues(alpha: 0.70),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.schedule,
+                                  size: 13,
+                                  color: AppColors.primary300,
+                                ),
+                                const SizedBox(width: AppSpacing.x1),
+                                Text(
+                                  state.geotagTimestamp,
+                                  style: const TextStyle(
+                                    fontFamily: AppTypography.fontFamily,
+                                    fontSize: 11,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.satellite_alt,
+                                  size: 13,
+                                  color: AppColors.successBg,
+                                ),
+                                const SizedBox(width: AppSpacing.x1),
+                                Text(
+                                  state.geotagCoordinates,
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 12,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -665,27 +542,26 @@ class _VisitCaptureSheetState extends ConsumerState<VisitCaptureSheet> {
               ),
               const SizedBox(height: AppSpacing.x2),
 
-              if (!state.photoSkipped)
-                SizedBox(
-                  width: double.infinity,
-                  height: AppSizes.controlHeight,
-                  child: TextButton(
-                    key: const Key('skip-photo-btn'),
-                    onPressed: _showSkipPhotoDialog,
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: AppRadius.mdAll,
-                      ),
+              SizedBox(
+                width: double.infinity,
+                height: AppSizes.controlHeight,
+                child: TextButton(
+                  key: const Key('skip-photo-btn'),
+                  onPressed: state.isSaving ? null : _handleSkip,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: AppRadius.mdAll,
                     ),
-                    child: Text(
-                      'Skip photo',
-                      style: AppTypography.label.withColor(
-                        AppColors.textSecondary,
-                      ),
+                  ),
+                  child: Text(
+                    'Skip photo',
+                    style: AppTypography.label.withColor(
+                      AppColors.textSecondary,
                     ),
                   ),
                 ),
+              ),
             ],
           ),
         ),
@@ -750,16 +626,17 @@ class _FarmFieldPainter extends CustomPainter {
 
     // Lush green agricultural crop rows
     final fieldPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Color(0xFF388E3C), // Vibrant green crop rows
-          Color(0xFF1B5E20), // Rich deep foliage
-        ],
-      ).createShader(
-        Rect.fromLTWH(0, size.height * 0.4, size.width, size.height * 0.6),
-      );
+      ..shader =
+          const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF388E3C), // Vibrant green crop rows
+              Color(0xFF1B5E20), // Rich deep foliage
+            ],
+          ).createShader(
+            Rect.fromLTWH(0, size.height * 0.4, size.width, size.height * 0.6),
+          );
 
     canvas.drawRect(
       Rect.fromLTWH(0, size.height * 0.4, size.width, size.height * 0.6),

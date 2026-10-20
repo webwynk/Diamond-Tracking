@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_empty_state.dart';
 import '../../../shared/widgets/app_error_view.dart';
 import '../../../shared/widgets/app_top_bar.dart';
 import 'controllers/duty_history_controller.dart';
@@ -93,19 +93,16 @@ class MyDutyHistoryPage extends ConsumerWidget {
                     ),
                   )
                 else if (historyState.items.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
+                  const Padding(
+                    padding: EdgeInsets.symmetric(
                       horizontal: AppSpacing.x4,
                       vertical: AppSpacing.x8,
                     ),
-                    child: Center(
-                      child: Text(
-                        'No duty history records found for this period.',
-                        style: AppTypography.body.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                    child: AppEmptyState(
+                      icon: Icons.history_rounded,
+                      title: 'No duty history',
+                      description:
+                          'No duty history records found for this period.',
                     ),
                   )
                 else

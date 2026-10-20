@@ -38,26 +38,31 @@ class ActiveSessions extends Table {
   Set<Column> get primaryKey => {sessionId};
 }
 
-/// A duty-off waiting to be told to the server.
-@DataClassName('PendingEndRow')
-class PendingEnds extends Table {
+/// A visit saved on the phone and not yet fully confirmed by the server. The id
+/// is generated on the phone, so a retried send is recognised as a duplicate.
+/// The entry is deleted once the server holds the row and, if there is one, the
+/// photo ([rowSent] true and [photoPath] null).
+@DataClassName('PendingVisitRow')
+@TableIndex(name: 'idx_pending_visits_captured', columns: {#capturedAt})
+class PendingVisits extends Table {
+  TextColumn get id => text()();
   TextColumn get sessionId => text()();
-  DateTimeColumn get endedAt => dateTime()();
-  TextColumn get reason => text()();
-  TextColumn get notes => text().nullable()();
+  TextColumn get employeeId => text()();
+  TextColumn get storeName => text().nullable()();
+  TextColumn get note => text().nullable()();
+  RealColumn get latitude => real()();
+  RealColumn get longitude => real()();
+  RealColumn get accuracy => real().nullable()();
+  DateTimeColumn get capturedAt => dateTime()();
+
+  /// The phone's own copy of the photo; null when there is none (or it is sent).
+  TextColumn get photoPath => text().nullable()();
+
+  /// The server has confirmed the visit row.
+  BoolColumn get rowSent => boolean().withDefault(const Constant(false))();
 
   @override
-  Set<Column> get primaryKey => {sessionId};
-}
-
-/// Small named counters (for example how many points were rejected).
-@DataClassName('MetaRow')
-class TrackingMeta extends Table {
-  TextColumn get key => text()();
-  IntColumn get intValue => integer().withDefault(const Constant(0))();
-
-  @override
-  Set<Column> get primaryKey => {key};
+  Set<Column> get primaryKey => {id};
 }
 
 /// Runs once per connection, in whichever isolate drift opens it.
@@ -67,9 +72,7 @@ void _configureConnection(CommonDatabase database) {
     ..execute('PRAGMA busy_timeout = 5000;');
 }
 
-@DriftDatabase(
-  tables: [QueuedPoints, ActiveSessions, PendingEnds, TrackingMeta],
-)
+@DriftDatabase(tables: [QueuedPoints, ActiveSessions, PendingVisits])
 class TrackingDatabase extends _$TrackingDatabase {
   TrackingDatabase(super.executor);
 
@@ -87,5 +90,20 @@ class TrackingDatabase extends _$TrackingDatabase {
       );
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
+
+  /// Version 2 adds [PendingVisits]. Version 3 drops two tables nothing used
+  /// any more, `pending_ends` and `tracking_meta`. Neither upgrade touches the
+  /// GPS queue already on an installed phone.
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) await m.createTable(pendingVisits);
+      if (from < 3) {
+        await m.database.customStatement('DROP TABLE IF EXISTS pending_ends');
+        await m.database.customStatement('DROP TABLE IF EXISTS tracking_meta');
+      }
+    },
+  );
 }

@@ -22,16 +22,9 @@ import '../../visits/presentation/visit_capture_sheet.dart';
 /// HUD, re-centering GPS controls, and the quick "Add visit" action sheet.
 /// Adheres strictly to PRD F5 and docs/07-MAPLIBRE-BEST-PRACTICES.md.
 class EmployeeMapPage extends ConsumerStatefulWidget {
-  const EmployeeMapPage({
-    super.key,
-    this.onAddVisitPressed,
-    this.initialLatitude = MapConstants.defaultLatitude,
-    this.initialLongitude = MapConstants.defaultLongitude,
-  });
+  const EmployeeMapPage({super.key, this.onAddVisitPressed});
 
   final VoidCallback? onAddVisitPressed;
-  final double initialLatitude;
-  final double initialLongitude;
 
   @override
   ConsumerState<EmployeeMapPage> createState() => _EmployeeMapPageState();
@@ -86,6 +79,7 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
       employeeId: session.employeeId,
       latitude: location.latitude,
       longitude: location.longitude,
+      accuracy: location.accuracy,
     );
     if (saved == true && mounted) {
       ref.read(dutyControllerProvider.notifier).refresh();
@@ -203,8 +197,11 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
     return MapLibreMap(
       key: ValueKey(_currentStyle),
       styleString: _currentStyle,
-      initialCameraPosition: CameraPosition(
-        target: LatLng(widget.initialLatitude, widget.initialLongitude),
+      initialCameraPosition: const CameraPosition(
+        target: LatLng(
+          MapConstants.defaultLatitude,
+          MapConstants.defaultLongitude,
+        ),
         zoom: MapConstants.defaultZoom,
       ),
       onMapCreated: _onMapCreated,
@@ -237,7 +234,7 @@ class _EmployeeMapPageState extends ConsumerState<EmployeeMapPage> {
             ),
             const SizedBox(height: 2),
             Text(
-              'OpenFreeMap Tiles (${MapConstants.defaultLatitude}, ${MapConstants.defaultLongitude})',
+              '${MapConstants.providerName} Tiles (${MapConstants.defaultLatitude}, ${MapConstants.defaultLongitude})',
               style: AppTypography.caption.withColor(AppColors.textSecondary),
             ),
           ],

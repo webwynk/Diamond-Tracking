@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exceptions.dart';
 import '../../core/utils/duty_time_helper.dart';
+import '../../core/utils/failure_log.dart';
 import '../../domain/entities/admin_duty_session.dart';
 import '../../domain/entities/report_data.dart';
 import '../../domain/repositories/report_repository.dart';
@@ -176,7 +176,7 @@ class SupabaseReportRepository implements ReportRepository {
     } catch (e, st) {
       final network = asNetworkFailure(e);
       if (network != null) throw network;
-      debugPrint('ReportRepository: could not $action: $e\n$st');
+      logFailure('ReportRepository: could not $action', e, st);
       throw ServerException('Could not $action. Please try again.');
     }
   }

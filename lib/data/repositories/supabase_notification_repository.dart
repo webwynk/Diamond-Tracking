@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exceptions.dart';
+import '../../core/utils/failure_log.dart';
 import '../../domain/entities/admin_notification.dart';
 import '../../domain/repositories/notification_repository.dart';
 import '../network_failure.dart';
@@ -129,7 +129,7 @@ class SupabaseNotificationRepository implements NotificationRepository {
           // An exception thrown from onListen would reach the zone as an
           // uncaught error. Say "not connected" instead; the feed still
           // reloads on a timer.
-          debugPrint('NotificationRepository: could not open the channel: $e');
+          logFailure('NotificationRepository: could not open the channel', e);
           emit(const NotificationConnectionChanged(connected: false));
         }
       },
@@ -158,7 +158,7 @@ class SupabaseNotificationRepository implements NotificationRepository {
     } catch (e, st) {
       final network = asNetworkFailure(e);
       if (network != null) throw network;
-      debugPrint('NotificationRepository: could not $action: $e\n$st');
+      logFailure('NotificationRepository: could not $action', e, st);
       throw ServerException('Could not $action. Please try again.');
     }
   }

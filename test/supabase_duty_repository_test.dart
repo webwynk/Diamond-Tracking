@@ -322,4 +322,40 @@ void main() {
       );
     });
   });
+
+  group('reportGpsStatus', () {
+    test('sends p_enabled to RPC and returns true on success', () async {
+      final repository = repositoryAnswering((_) => jsonResponse(true));
+
+      final result = await repository.reportGpsStatus(enabled: false);
+
+      expect(requests.single.method, 'POST');
+      expect(requests.single.url.path, '/rest/v1/rpc/report_gps_status');
+      expect(bodyOf(requests.single), <String, Object>{'p_enabled': false});
+      expect(result, isTrue);
+    });
+
+    test('offline is a NetworkException', () async {
+      final repository = SupabaseDutyRepository(MockSupabase.offline().client);
+
+      await expectLater(
+        repository.reportGpsStatus(enabled: false),
+        throwsA(isA<NetworkException>()),
+      );
+    });
+
+    test('unauthenticated call translates to UnauthorizedRoleException', () async {
+      final repository = repositoryAnswering(
+        (_) => jsonResponse({
+          'code': '42501',
+          'message': 'unauthenticated',
+        }, 401),
+      );
+
+      await expectLater(
+        repository.reportGpsStatus(enabled: false),
+        throwsA(isA<UnauthorizedRoleException>()),
+      );
+    });
+  });
 }

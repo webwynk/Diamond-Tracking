@@ -95,16 +95,8 @@ class UserProfile {
   final String? blockedReason;
   final String? blockedBy;
 
-  bool get isAdmin => role == UserRole.admin;
-  bool get isEmployee => role == UserRole.employee;
   bool get isActive => status == UserStatus.active;
   bool get isBlocked => status == UserStatus.blocked;
-
-  /// Check whether the account is currently rate-limited/locked.
-  bool isLocked([DateTime? now]) {
-    final DateTime current = now ?? DateTime.now();
-    return lockedUntil != null && lockedUntil!.isAfter(current);
-  }
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

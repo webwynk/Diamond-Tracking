@@ -43,4 +43,9 @@ abstract class DutyRepository {
   Future<PointIngestResult> ingestLocationPoints({
     required List<LocationPoint> points,
   });
+
+  /// Reports the device's GPS status (enabled or disabled) to the server during duty.
+  /// If [enabled] is false and an active duty session exists, this immediately
+  /// triggers an operational alert (`gps_disabled`) to admins.
+  Future<bool> reportGpsStatus({required bool enabled});
 }

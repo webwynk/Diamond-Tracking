@@ -17,6 +17,7 @@ class RouteSummary {
     required this.dutyDuration,
     required this.visitsCount,
     required this.flaggedPoints,
+    required this.weakGpsPoints,
     required this.jumpCount,
     required this.shiftTimeRange,
     this.distanceKm,
@@ -32,8 +33,13 @@ class RouteSummary {
   final Duration dutyDuration;
   final int visitsCount;
 
-  /// Mock-flagged and low-accuracy points (left out of the line).
+  /// Fake-location points (left out of the line). "Flagged" means this and
+  /// only this, the same as on the attendance and report screens.
   final int flaggedPoints;
+
+  /// Points with a weak GPS signal (left out of the line). Information, not a
+  /// warning.
+  final int weakGpsPoints;
 
   /// Impossible jumps the line is broken at.
   final int jumpCount;
@@ -69,7 +75,8 @@ class RouteSummary {
       distanceKm: distance,
       dutyDuration: duration,
       visitsCount: visits,
-      flaggedPoints: analysis.flaggedCount,
+      flaggedPoints: analysis.fakeLocationCount,
+      weakGpsPoints: analysis.weakGpsCount,
       jumpCount: analysis.jumpCount,
       shiftTimeRange: range,
       endNote: last.isOpen

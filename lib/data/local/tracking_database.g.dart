@@ -994,12 +994,21 @@ class ActiveSessionsCompanion extends UpdateCompanion<ActiveSessionRow> {
   }
 }
 
-class $PendingEndsTable extends PendingEnds
-    with TableInfo<$PendingEndsTable, PendingEndRow> {
+class $PendingVisitsTable extends PendingVisits
+    with TableInfo<$PendingVisitsTable, PendingVisitRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $PendingEndsTable(this.attachedDatabase, [this._alias]);
+  $PendingVisitsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _sessionIdMeta = const VerificationMeta(
     'sessionId',
   );
@@ -1011,49 +1020,138 @@ class $PendingEndsTable extends PendingEnds
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _endedAtMeta = const VerificationMeta(
-    'endedAt',
+  static const VerificationMeta _employeeIdMeta = const VerificationMeta(
+    'employeeId',
   );
   @override
-  late final GeneratedColumn<DateTime> endedAt = GeneratedColumn<DateTime>(
-    'ended_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
-  @override
-  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
-    'reason',
+  late final GeneratedColumn<String> employeeId = GeneratedColumn<String>(
+    'employee_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  static const VerificationMeta _storeNameMeta = const VerificationMeta(
+    'storeName',
+  );
   @override
-  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
-    'notes',
+  late final GeneratedColumn<String> storeName = GeneratedColumn<String>(
+    'store_name',
     aliasedName,
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
-  List<GeneratedColumn> get $columns => [sessionId, endedAt, reason, notes];
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _latitudeMeta = const VerificationMeta(
+    'latitude',
+  );
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+    'latitude',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _longitudeMeta = const VerificationMeta(
+    'longitude',
+  );
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+    'longitude',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accuracyMeta = const VerificationMeta(
+    'accuracy',
+  );
+  @override
+  late final GeneratedColumn<double> accuracy = GeneratedColumn<double>(
+    'accuracy',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _capturedAtMeta = const VerificationMeta(
+    'capturedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> capturedAt = GeneratedColumn<DateTime>(
+    'captured_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _photoPathMeta = const VerificationMeta(
+    'photoPath',
+  );
+  @override
+  late final GeneratedColumn<String> photoPath = GeneratedColumn<String>(
+    'photo_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _rowSentMeta = const VerificationMeta(
+    'rowSent',
+  );
+  @override
+  late final GeneratedColumn<bool> rowSent = GeneratedColumn<bool>(
+    'row_sent',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("row_sent" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sessionId,
+    employeeId,
+    storeName,
+    note,
+    latitude,
+    longitude,
+    accuracy,
+    capturedAt,
+    photoPath,
+    rowSent,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'pending_ends';
+  static const String $name = 'pending_visits';
   @override
   VerificationContext validateIntegrity(
-    Insertable<PendingEndRow> instance, {
+    Insertable<PendingVisitRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
     if (data.containsKey('session_id')) {
       context.handle(
         _sessionIdMeta,
@@ -1062,212 +1160,439 @@ class $PendingEndsTable extends PendingEnds
     } else if (isInserting) {
       context.missing(_sessionIdMeta);
     }
-    if (data.containsKey('ended_at')) {
+    if (data.containsKey('employee_id')) {
       context.handle(
-        _endedAtMeta,
-        endedAt.isAcceptableOrUnknown(data['ended_at']!, _endedAtMeta),
+        _employeeIdMeta,
+        employeeId.isAcceptableOrUnknown(data['employee_id']!, _employeeIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_endedAtMeta);
+      context.missing(_employeeIdMeta);
     }
-    if (data.containsKey('reason')) {
+    if (data.containsKey('store_name')) {
       context.handle(
-        _reasonMeta,
-        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+        _storeNameMeta,
+        storeName.isAcceptableOrUnknown(data['store_name']!, _storeNameMeta),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('latitude')) {
+      context.handle(
+        _latitudeMeta,
+        latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta),
       );
     } else if (isInserting) {
-      context.missing(_reasonMeta);
+      context.missing(_latitudeMeta);
     }
-    if (data.containsKey('notes')) {
+    if (data.containsKey('longitude')) {
       context.handle(
-        _notesMeta,
-        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+        _longitudeMeta,
+        longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_longitudeMeta);
+    }
+    if (data.containsKey('accuracy')) {
+      context.handle(
+        _accuracyMeta,
+        accuracy.isAcceptableOrUnknown(data['accuracy']!, _accuracyMeta),
+      );
+    }
+    if (data.containsKey('captured_at')) {
+      context.handle(
+        _capturedAtMeta,
+        capturedAt.isAcceptableOrUnknown(data['captured_at']!, _capturedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_capturedAtMeta);
+    }
+    if (data.containsKey('photo_path')) {
+      context.handle(
+        _photoPathMeta,
+        photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta),
+      );
+    }
+    if (data.containsKey('row_sent')) {
+      context.handle(
+        _rowSentMeta,
+        rowSent.isAcceptableOrUnknown(data['row_sent']!, _rowSentMeta),
       );
     }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {sessionId};
+  Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  PendingEndRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+  PendingVisitRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return PendingEndRow(
+    return PendingVisitRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
       sessionId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}session_id'],
       )!,
-      endedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}ended_at'],
-      )!,
-      reason: attachedDatabase.typeMapping.read(
+      employeeId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}reason'],
+        data['${effectivePrefix}employee_id'],
       )!,
-      notes: attachedDatabase.typeMapping.read(
+      storeName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}notes'],
+        data['${effectivePrefix}store_name'],
       ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      latitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}latitude'],
+      )!,
+      longitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}longitude'],
+      )!,
+      accuracy: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}accuracy'],
+      ),
+      capturedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}captured_at'],
+      )!,
+      photoPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_path'],
+      ),
+      rowSent: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}row_sent'],
+      )!,
     );
   }
 
   @override
-  $PendingEndsTable createAlias(String alias) {
-    return $PendingEndsTable(attachedDatabase, alias);
+  $PendingVisitsTable createAlias(String alias) {
+    return $PendingVisitsTable(attachedDatabase, alias);
   }
 }
 
-class PendingEndRow extends DataClass implements Insertable<PendingEndRow> {
+class PendingVisitRow extends DataClass implements Insertable<PendingVisitRow> {
+  final String id;
   final String sessionId;
-  final DateTime endedAt;
-  final String reason;
-  final String? notes;
-  const PendingEndRow({
+  final String employeeId;
+  final String? storeName;
+  final String? note;
+  final double latitude;
+  final double longitude;
+  final double? accuracy;
+  final DateTime capturedAt;
+
+  /// The phone's own copy of the photo; null when there is none (or it is sent).
+  final String? photoPath;
+
+  /// The server has confirmed the visit row.
+  final bool rowSent;
+  const PendingVisitRow({
+    required this.id,
     required this.sessionId,
-    required this.endedAt,
-    required this.reason,
-    this.notes,
+    required this.employeeId,
+    this.storeName,
+    this.note,
+    required this.latitude,
+    required this.longitude,
+    this.accuracy,
+    required this.capturedAt,
+    this.photoPath,
+    required this.rowSent,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
     map['session_id'] = Variable<String>(sessionId);
-    map['ended_at'] = Variable<DateTime>(endedAt);
-    map['reason'] = Variable<String>(reason);
-    if (!nullToAbsent || notes != null) {
-      map['notes'] = Variable<String>(notes);
+    map['employee_id'] = Variable<String>(employeeId);
+    if (!nullToAbsent || storeName != null) {
+      map['store_name'] = Variable<String>(storeName);
     }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['latitude'] = Variable<double>(latitude);
+    map['longitude'] = Variable<double>(longitude);
+    if (!nullToAbsent || accuracy != null) {
+      map['accuracy'] = Variable<double>(accuracy);
+    }
+    map['captured_at'] = Variable<DateTime>(capturedAt);
+    if (!nullToAbsent || photoPath != null) {
+      map['photo_path'] = Variable<String>(photoPath);
+    }
+    map['row_sent'] = Variable<bool>(rowSent);
     return map;
   }
 
-  PendingEndsCompanion toCompanion(bool nullToAbsent) {
-    return PendingEndsCompanion(
+  PendingVisitsCompanion toCompanion(bool nullToAbsent) {
+    return PendingVisitsCompanion(
+      id: Value(id),
       sessionId: Value(sessionId),
-      endedAt: Value(endedAt),
-      reason: Value(reason),
-      notes: notes == null && nullToAbsent
+      employeeId: Value(employeeId),
+      storeName: storeName == null && nullToAbsent
           ? const Value.absent()
-          : Value(notes),
+          : Value(storeName),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      latitude: Value(latitude),
+      longitude: Value(longitude),
+      accuracy: accuracy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accuracy),
+      capturedAt: Value(capturedAt),
+      photoPath: photoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoPath),
+      rowSent: Value(rowSent),
     );
   }
 
-  factory PendingEndRow.fromJson(
+  factory PendingVisitRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return PendingEndRow(
+    return PendingVisitRow(
+      id: serializer.fromJson<String>(json['id']),
       sessionId: serializer.fromJson<String>(json['sessionId']),
-      endedAt: serializer.fromJson<DateTime>(json['endedAt']),
-      reason: serializer.fromJson<String>(json['reason']),
-      notes: serializer.fromJson<String?>(json['notes']),
+      employeeId: serializer.fromJson<String>(json['employeeId']),
+      storeName: serializer.fromJson<String?>(json['storeName']),
+      note: serializer.fromJson<String?>(json['note']),
+      latitude: serializer.fromJson<double>(json['latitude']),
+      longitude: serializer.fromJson<double>(json['longitude']),
+      accuracy: serializer.fromJson<double?>(json['accuracy']),
+      capturedAt: serializer.fromJson<DateTime>(json['capturedAt']),
+      photoPath: serializer.fromJson<String?>(json['photoPath']),
+      rowSent: serializer.fromJson<bool>(json['rowSent']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
       'sessionId': serializer.toJson<String>(sessionId),
-      'endedAt': serializer.toJson<DateTime>(endedAt),
-      'reason': serializer.toJson<String>(reason),
-      'notes': serializer.toJson<String?>(notes),
+      'employeeId': serializer.toJson<String>(employeeId),
+      'storeName': serializer.toJson<String?>(storeName),
+      'note': serializer.toJson<String?>(note),
+      'latitude': serializer.toJson<double>(latitude),
+      'longitude': serializer.toJson<double>(longitude),
+      'accuracy': serializer.toJson<double?>(accuracy),
+      'capturedAt': serializer.toJson<DateTime>(capturedAt),
+      'photoPath': serializer.toJson<String?>(photoPath),
+      'rowSent': serializer.toJson<bool>(rowSent),
     };
   }
 
-  PendingEndRow copyWith({
+  PendingVisitRow copyWith({
+    String? id,
     String? sessionId,
-    DateTime? endedAt,
-    String? reason,
-    Value<String?> notes = const Value.absent(),
-  }) => PendingEndRow(
+    String? employeeId,
+    Value<String?> storeName = const Value.absent(),
+    Value<String?> note = const Value.absent(),
+    double? latitude,
+    double? longitude,
+    Value<double?> accuracy = const Value.absent(),
+    DateTime? capturedAt,
+    Value<String?> photoPath = const Value.absent(),
+    bool? rowSent,
+  }) => PendingVisitRow(
+    id: id ?? this.id,
     sessionId: sessionId ?? this.sessionId,
-    endedAt: endedAt ?? this.endedAt,
-    reason: reason ?? this.reason,
-    notes: notes.present ? notes.value : this.notes,
+    employeeId: employeeId ?? this.employeeId,
+    storeName: storeName.present ? storeName.value : this.storeName,
+    note: note.present ? note.value : this.note,
+    latitude: latitude ?? this.latitude,
+    longitude: longitude ?? this.longitude,
+    accuracy: accuracy.present ? accuracy.value : this.accuracy,
+    capturedAt: capturedAt ?? this.capturedAt,
+    photoPath: photoPath.present ? photoPath.value : this.photoPath,
+    rowSent: rowSent ?? this.rowSent,
   );
-  PendingEndRow copyWithCompanion(PendingEndsCompanion data) {
-    return PendingEndRow(
+  PendingVisitRow copyWithCompanion(PendingVisitsCompanion data) {
+    return PendingVisitRow(
+      id: data.id.present ? data.id.value : this.id,
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
-      endedAt: data.endedAt.present ? data.endedAt.value : this.endedAt,
-      reason: data.reason.present ? data.reason.value : this.reason,
-      notes: data.notes.present ? data.notes.value : this.notes,
+      employeeId: data.employeeId.present
+          ? data.employeeId.value
+          : this.employeeId,
+      storeName: data.storeName.present ? data.storeName.value : this.storeName,
+      note: data.note.present ? data.note.value : this.note,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
+      accuracy: data.accuracy.present ? data.accuracy.value : this.accuracy,
+      capturedAt: data.capturedAt.present
+          ? data.capturedAt.value
+          : this.capturedAt,
+      photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
+      rowSent: data.rowSent.present ? data.rowSent.value : this.rowSent,
     );
   }
 
   @override
   String toString() {
-    return (StringBuffer('PendingEndRow(')
+    return (StringBuffer('PendingVisitRow(')
+          ..write('id: $id, ')
           ..write('sessionId: $sessionId, ')
-          ..write('endedAt: $endedAt, ')
-          ..write('reason: $reason, ')
-          ..write('notes: $notes')
+          ..write('employeeId: $employeeId, ')
+          ..write('storeName: $storeName, ')
+          ..write('note: $note, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('accuracy: $accuracy, ')
+          ..write('capturedAt: $capturedAt, ')
+          ..write('photoPath: $photoPath, ')
+          ..write('rowSent: $rowSent')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(sessionId, endedAt, reason, notes);
+  int get hashCode => Object.hash(
+    id,
+    sessionId,
+    employeeId,
+    storeName,
+    note,
+    latitude,
+    longitude,
+    accuracy,
+    capturedAt,
+    photoPath,
+    rowSent,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is PendingEndRow &&
+      (other is PendingVisitRow &&
+          other.id == this.id &&
           other.sessionId == this.sessionId &&
-          other.endedAt == this.endedAt &&
-          other.reason == this.reason &&
-          other.notes == this.notes);
+          other.employeeId == this.employeeId &&
+          other.storeName == this.storeName &&
+          other.note == this.note &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude &&
+          other.accuracy == this.accuracy &&
+          other.capturedAt == this.capturedAt &&
+          other.photoPath == this.photoPath &&
+          other.rowSent == this.rowSent);
 }
 
-class PendingEndsCompanion extends UpdateCompanion<PendingEndRow> {
+class PendingVisitsCompanion extends UpdateCompanion<PendingVisitRow> {
+  final Value<String> id;
   final Value<String> sessionId;
-  final Value<DateTime> endedAt;
-  final Value<String> reason;
-  final Value<String?> notes;
+  final Value<String> employeeId;
+  final Value<String?> storeName;
+  final Value<String?> note;
+  final Value<double> latitude;
+  final Value<double> longitude;
+  final Value<double?> accuracy;
+  final Value<DateTime> capturedAt;
+  final Value<String?> photoPath;
+  final Value<bool> rowSent;
   final Value<int> rowid;
-  const PendingEndsCompanion({
+  const PendingVisitsCompanion({
+    this.id = const Value.absent(),
     this.sessionId = const Value.absent(),
-    this.endedAt = const Value.absent(),
-    this.reason = const Value.absent(),
-    this.notes = const Value.absent(),
+    this.employeeId = const Value.absent(),
+    this.storeName = const Value.absent(),
+    this.note = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.accuracy = const Value.absent(),
+    this.capturedAt = const Value.absent(),
+    this.photoPath = const Value.absent(),
+    this.rowSent = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  PendingEndsCompanion.insert({
+  PendingVisitsCompanion.insert({
+    required String id,
     required String sessionId,
-    required DateTime endedAt,
-    required String reason,
-    this.notes = const Value.absent(),
+    required String employeeId,
+    this.storeName = const Value.absent(),
+    this.note = const Value.absent(),
+    required double latitude,
+    required double longitude,
+    this.accuracy = const Value.absent(),
+    required DateTime capturedAt,
+    this.photoPath = const Value.absent(),
+    this.rowSent = const Value.absent(),
     this.rowid = const Value.absent(),
-  }) : sessionId = Value(sessionId),
-       endedAt = Value(endedAt),
-       reason = Value(reason);
-  static Insertable<PendingEndRow> custom({
+  }) : id = Value(id),
+       sessionId = Value(sessionId),
+       employeeId = Value(employeeId),
+       latitude = Value(latitude),
+       longitude = Value(longitude),
+       capturedAt = Value(capturedAt);
+  static Insertable<PendingVisitRow> custom({
+    Expression<String>? id,
     Expression<String>? sessionId,
-    Expression<DateTime>? endedAt,
-    Expression<String>? reason,
-    Expression<String>? notes,
+    Expression<String>? employeeId,
+    Expression<String>? storeName,
+    Expression<String>? note,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
+    Expression<double>? accuracy,
+    Expression<DateTime>? capturedAt,
+    Expression<String>? photoPath,
+    Expression<bool>? rowSent,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
+      if (id != null) 'id': id,
       if (sessionId != null) 'session_id': sessionId,
-      if (endedAt != null) 'ended_at': endedAt,
-      if (reason != null) 'reason': reason,
-      if (notes != null) 'notes': notes,
+      if (employeeId != null) 'employee_id': employeeId,
+      if (storeName != null) 'store_name': storeName,
+      if (note != null) 'note': note,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (accuracy != null) 'accuracy': accuracy,
+      if (capturedAt != null) 'captured_at': capturedAt,
+      if (photoPath != null) 'photo_path': photoPath,
+      if (rowSent != null) 'row_sent': rowSent,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
-  PendingEndsCompanion copyWith({
+  PendingVisitsCompanion copyWith({
+    Value<String>? id,
     Value<String>? sessionId,
-    Value<DateTime>? endedAt,
-    Value<String>? reason,
-    Value<String?>? notes,
+    Value<String>? employeeId,
+    Value<String?>? storeName,
+    Value<String?>? note,
+    Value<double>? latitude,
+    Value<double>? longitude,
+    Value<double?>? accuracy,
+    Value<DateTime>? capturedAt,
+    Value<String?>? photoPath,
+    Value<bool>? rowSent,
     Value<int>? rowid,
   }) {
-    return PendingEndsCompanion(
+    return PendingVisitsCompanion(
+      id: id ?? this.id,
       sessionId: sessionId ?? this.sessionId,
-      endedAt: endedAt ?? this.endedAt,
-      reason: reason ?? this.reason,
-      notes: notes ?? this.notes,
+      employeeId: employeeId ?? this.employeeId,
+      storeName: storeName ?? this.storeName,
+      note: note ?? this.note,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      accuracy: accuracy ?? this.accuracy,
+      capturedAt: capturedAt ?? this.capturedAt,
+      photoPath: photoPath ?? this.photoPath,
+      rowSent: rowSent ?? this.rowSent,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1275,17 +1600,38 @@ class PendingEndsCompanion extends UpdateCompanion<PendingEndRow> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
     if (sessionId.present) {
       map['session_id'] = Variable<String>(sessionId.value);
     }
-    if (endedAt.present) {
-      map['ended_at'] = Variable<DateTime>(endedAt.value);
+    if (employeeId.present) {
+      map['employee_id'] = Variable<String>(employeeId.value);
     }
-    if (reason.present) {
-      map['reason'] = Variable<String>(reason.value);
+    if (storeName.present) {
+      map['store_name'] = Variable<String>(storeName.value);
     }
-    if (notes.present) {
-      map['notes'] = Variable<String>(notes.value);
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
+    if (accuracy.present) {
+      map['accuracy'] = Variable<double>(accuracy.value);
+    }
+    if (capturedAt.present) {
+      map['captured_at'] = Variable<DateTime>(capturedAt.value);
+    }
+    if (photoPath.present) {
+      map['photo_path'] = Variable<String>(photoPath.value);
+    }
+    if (rowSent.present) {
+      map['row_sent'] = Variable<bool>(rowSent.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1295,219 +1641,18 @@ class PendingEndsCompanion extends UpdateCompanion<PendingEndRow> {
 
   @override
   String toString() {
-    return (StringBuffer('PendingEndsCompanion(')
+    return (StringBuffer('PendingVisitsCompanion(')
+          ..write('id: $id, ')
           ..write('sessionId: $sessionId, ')
-          ..write('endedAt: $endedAt, ')
-          ..write('reason: $reason, ')
-          ..write('notes: $notes, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $TrackingMetaTable extends TrackingMeta
-    with TableInfo<$TrackingMetaTable, MetaRow> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $TrackingMetaTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _keyMeta = const VerificationMeta('key');
-  @override
-  late final GeneratedColumn<String> key = GeneratedColumn<String>(
-    'key',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _intValueMeta = const VerificationMeta(
-    'intValue',
-  );
-  @override
-  late final GeneratedColumn<int> intValue = GeneratedColumn<int>(
-    'int_value',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  @override
-  List<GeneratedColumn> get $columns => [key, intValue];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'tracking_meta';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<MetaRow> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('key')) {
-      context.handle(
-        _keyMeta,
-        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_keyMeta);
-    }
-    if (data.containsKey('int_value')) {
-      context.handle(
-        _intValueMeta,
-        intValue.isAcceptableOrUnknown(data['int_value']!, _intValueMeta),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {key};
-  @override
-  MetaRow map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return MetaRow(
-      key: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}key'],
-      )!,
-      intValue: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}int_value'],
-      )!,
-    );
-  }
-
-  @override
-  $TrackingMetaTable createAlias(String alias) {
-    return $TrackingMetaTable(attachedDatabase, alias);
-  }
-}
-
-class MetaRow extends DataClass implements Insertable<MetaRow> {
-  final String key;
-  final int intValue;
-  const MetaRow({required this.key, required this.intValue});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['key'] = Variable<String>(key);
-    map['int_value'] = Variable<int>(intValue);
-    return map;
-  }
-
-  TrackingMetaCompanion toCompanion(bool nullToAbsent) {
-    return TrackingMetaCompanion(key: Value(key), intValue: Value(intValue));
-  }
-
-  factory MetaRow.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return MetaRow(
-      key: serializer.fromJson<String>(json['key']),
-      intValue: serializer.fromJson<int>(json['intValue']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'key': serializer.toJson<String>(key),
-      'intValue': serializer.toJson<int>(intValue),
-    };
-  }
-
-  MetaRow copyWith({String? key, int? intValue}) =>
-      MetaRow(key: key ?? this.key, intValue: intValue ?? this.intValue);
-  MetaRow copyWithCompanion(TrackingMetaCompanion data) {
-    return MetaRow(
-      key: data.key.present ? data.key.value : this.key,
-      intValue: data.intValue.present ? data.intValue.value : this.intValue,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('MetaRow(')
-          ..write('key: $key, ')
-          ..write('intValue: $intValue')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(key, intValue);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is MetaRow &&
-          other.key == this.key &&
-          other.intValue == this.intValue);
-}
-
-class TrackingMetaCompanion extends UpdateCompanion<MetaRow> {
-  final Value<String> key;
-  final Value<int> intValue;
-  final Value<int> rowid;
-  const TrackingMetaCompanion({
-    this.key = const Value.absent(),
-    this.intValue = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  TrackingMetaCompanion.insert({
-    required String key,
-    this.intValue = const Value.absent(),
-    this.rowid = const Value.absent(),
-  }) : key = Value(key);
-  static Insertable<MetaRow> custom({
-    Expression<String>? key,
-    Expression<int>? intValue,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (key != null) 'key': key,
-      if (intValue != null) 'int_value': intValue,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  TrackingMetaCompanion copyWith({
-    Value<String>? key,
-    Value<int>? intValue,
-    Value<int>? rowid,
-  }) {
-    return TrackingMetaCompanion(
-      key: key ?? this.key,
-      intValue: intValue ?? this.intValue,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (key.present) {
-      map['key'] = Variable<String>(key.value);
-    }
-    if (intValue.present) {
-      map['int_value'] = Variable<int>(intValue.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('TrackingMetaCompanion(')
-          ..write('key: $key, ')
-          ..write('intValue: $intValue, ')
+          ..write('employeeId: $employeeId, ')
+          ..write('storeName: $storeName, ')
+          ..write('note: $note, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('accuracy: $accuracy, ')
+          ..write('capturedAt: $capturedAt, ')
+          ..write('photoPath: $photoPath, ')
+          ..write('rowSent: $rowSent, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1519,11 +1664,14 @@ abstract class _$TrackingDatabase extends GeneratedDatabase {
   $TrackingDatabaseManager get managers => $TrackingDatabaseManager(this);
   late final $QueuedPointsTable queuedPoints = $QueuedPointsTable(this);
   late final $ActiveSessionsTable activeSessions = $ActiveSessionsTable(this);
-  late final $PendingEndsTable pendingEnds = $PendingEndsTable(this);
-  late final $TrackingMetaTable trackingMeta = $TrackingMetaTable(this);
+  late final $PendingVisitsTable pendingVisits = $PendingVisitsTable(this);
   late final Index idxQueuedPointsRecorded = Index(
     'idx_queued_points_recorded',
     'CREATE INDEX idx_queued_points_recorded ON queued_points (recorded_at)',
+  );
+  late final Index idxPendingVisitsCaptured = Index(
+    'idx_pending_visits_captured',
+    'CREATE INDEX idx_pending_visits_captured ON pending_visits (captured_at)',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -1532,9 +1680,9 @@ abstract class _$TrackingDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     queuedPoints,
     activeSessions,
-    pendingEnds,
-    trackingMeta,
+    pendingVisits,
     idxQueuedPointsRecorded,
+    idxPendingVisitsCaptured,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -2078,328 +2226,313 @@ typedef $$ActiveSessionsTableProcessedTableManager =
       ActiveSessionRow,
       PrefetchHooks Function()
     >;
-typedef $$PendingEndsTableCreateCompanionBuilder =
-    PendingEndsCompanion Function({
+typedef $$PendingVisitsTableCreateCompanionBuilder =
+    PendingVisitsCompanion Function({
+      required String id,
       required String sessionId,
-      required DateTime endedAt,
-      required String reason,
-      Value<String?> notes,
+      required String employeeId,
+      Value<String?> storeName,
+      Value<String?> note,
+      required double latitude,
+      required double longitude,
+      Value<double?> accuracy,
+      required DateTime capturedAt,
+      Value<String?> photoPath,
+      Value<bool> rowSent,
       Value<int> rowid,
     });
-typedef $$PendingEndsTableUpdateCompanionBuilder =
-    PendingEndsCompanion Function({
+typedef $$PendingVisitsTableUpdateCompanionBuilder =
+    PendingVisitsCompanion Function({
+      Value<String> id,
       Value<String> sessionId,
-      Value<DateTime> endedAt,
-      Value<String> reason,
-      Value<String?> notes,
+      Value<String> employeeId,
+      Value<String?> storeName,
+      Value<String?> note,
+      Value<double> latitude,
+      Value<double> longitude,
+      Value<double?> accuracy,
+      Value<DateTime> capturedAt,
+      Value<String?> photoPath,
+      Value<bool> rowSent,
       Value<int> rowid,
     });
 
-class $$PendingEndsTableFilterComposer
-    extends Composer<_$TrackingDatabase, $PendingEndsTable> {
-  $$PendingEndsTableFilterComposer({
+class $$PendingVisitsTableFilterComposer
+    extends Composer<_$TrackingDatabase, $PendingVisitsTable> {
+  $$PendingVisitsTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get sessionId => $composableBuilder(
     column: $table.sessionId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get endedAt => $composableBuilder(
-    column: $table.endedAt,
+  ColumnFilters<String> get employeeId => $composableBuilder(
+    column: $table.employeeId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get reason => $composableBuilder(
-    column: $table.reason,
+  ColumnFilters<String> get storeName => $composableBuilder(
+    column: $table.storeName,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get notes => $composableBuilder(
-    column: $table.notes,
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get accuracy => $composableBuilder(
+    column: $table.accuracy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get capturedAt => $composableBuilder(
+    column: $table.capturedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoPath => $composableBuilder(
+    column: $table.photoPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get rowSent => $composableBuilder(
+    column: $table.rowSent,
     builder: (column) => ColumnFilters(column),
   );
 }
 
-class $$PendingEndsTableOrderingComposer
-    extends Composer<_$TrackingDatabase, $PendingEndsTable> {
-  $$PendingEndsTableOrderingComposer({
+class $$PendingVisitsTableOrderingComposer
+    extends Composer<_$TrackingDatabase, $PendingVisitsTable> {
+  $$PendingVisitsTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get sessionId => $composableBuilder(
     column: $table.sessionId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get endedAt => $composableBuilder(
-    column: $table.endedAt,
+  ColumnOrderings<String> get employeeId => $composableBuilder(
+    column: $table.employeeId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get reason => $composableBuilder(
-    column: $table.reason,
+  ColumnOrderings<String> get storeName => $composableBuilder(
+    column: $table.storeName,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get notes => $composableBuilder(
-    column: $table.notes,
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get accuracy => $composableBuilder(
+    column: $table.accuracy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get capturedAt => $composableBuilder(
+    column: $table.capturedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get photoPath => $composableBuilder(
+    column: $table.photoPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get rowSent => $composableBuilder(
+    column: $table.rowSent,
     builder: (column) => ColumnOrderings(column),
   );
 }
 
-class $$PendingEndsTableAnnotationComposer
-    extends Composer<_$TrackingDatabase, $PendingEndsTable> {
-  $$PendingEndsTableAnnotationComposer({
+class $$PendingVisitsTableAnnotationComposer
+    extends Composer<_$TrackingDatabase, $PendingVisitsTable> {
+  $$PendingVisitsTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
   GeneratedColumn<String> get sessionId =>
       $composableBuilder(column: $table.sessionId, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get endedAt =>
-      $composableBuilder(column: $table.endedAt, builder: (column) => column);
+  GeneratedColumn<String> get employeeId => $composableBuilder(
+    column: $table.employeeId,
+    builder: (column) => column,
+  );
 
-  GeneratedColumn<String> get reason =>
-      $composableBuilder(column: $table.reason, builder: (column) => column);
+  GeneratedColumn<String> get storeName =>
+      $composableBuilder(column: $table.storeName, builder: (column) => column);
 
-  GeneratedColumn<String> get notes =>
-      $composableBuilder(column: $table.notes, builder: (column) => column);
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
+
+  GeneratedColumn<double> get accuracy =>
+      $composableBuilder(column: $table.accuracy, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get capturedAt => $composableBuilder(
+    column: $table.capturedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get photoPath =>
+      $composableBuilder(column: $table.photoPath, builder: (column) => column);
+
+  GeneratedColumn<bool> get rowSent =>
+      $composableBuilder(column: $table.rowSent, builder: (column) => column);
 }
 
-class $$PendingEndsTableTableManager
+class $$PendingVisitsTableTableManager
     extends
         RootTableManager<
           _$TrackingDatabase,
-          $PendingEndsTable,
-          PendingEndRow,
-          $$PendingEndsTableFilterComposer,
-          $$PendingEndsTableOrderingComposer,
-          $$PendingEndsTableAnnotationComposer,
-          $$PendingEndsTableCreateCompanionBuilder,
-          $$PendingEndsTableUpdateCompanionBuilder,
+          $PendingVisitsTable,
+          PendingVisitRow,
+          $$PendingVisitsTableFilterComposer,
+          $$PendingVisitsTableOrderingComposer,
+          $$PendingVisitsTableAnnotationComposer,
+          $$PendingVisitsTableCreateCompanionBuilder,
+          $$PendingVisitsTableUpdateCompanionBuilder,
           (
-            PendingEndRow,
+            PendingVisitRow,
             BaseReferences<
               _$TrackingDatabase,
-              $PendingEndsTable,
-              PendingEndRow
+              $PendingVisitsTable,
+              PendingVisitRow
             >,
           ),
-          PendingEndRow,
+          PendingVisitRow,
           PrefetchHooks Function()
         > {
-  $$PendingEndsTableTableManager(_$TrackingDatabase db, $PendingEndsTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$PendingEndsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$PendingEndsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$PendingEndsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> sessionId = const Value.absent(),
-                Value<DateTime> endedAt = const Value.absent(),
-                Value<String> reason = const Value.absent(),
-                Value<String?> notes = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => PendingEndsCompanion(
-                sessionId: sessionId,
-                endedAt: endedAt,
-                reason: reason,
-                notes: notes,
-                rowid: rowid,
-              ),
-          createCompanionCallback:
-              ({
-                required String sessionId,
-                required DateTime endedAt,
-                required String reason,
-                Value<String?> notes = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => PendingEndsCompanion.insert(
-                sessionId: sessionId,
-                endedAt: endedAt,
-                reason: reason,
-                notes: notes,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$PendingEndsTable, PendingEndRow>(table),
-                  BaseReferences<
-                    _$TrackingDatabase,
-                    $PendingEndsTable,
-                    PendingEndRow
-                  >(db, table, e),
-                ),
-              )
-              .toList(),
-          prefetchHooksCallback: null,
-        ),
-      );
-}
-
-typedef $$PendingEndsTableProcessedTableManager =
-    ProcessedTableManager<
-      _$TrackingDatabase,
-      $PendingEndsTable,
-      PendingEndRow,
-      $$PendingEndsTableFilterComposer,
-      $$PendingEndsTableOrderingComposer,
-      $$PendingEndsTableAnnotationComposer,
-      $$PendingEndsTableCreateCompanionBuilder,
-      $$PendingEndsTableUpdateCompanionBuilder,
-      (
-        PendingEndRow,
-        BaseReferences<_$TrackingDatabase, $PendingEndsTable, PendingEndRow>,
-      ),
-      PendingEndRow,
-      PrefetchHooks Function()
-    >;
-typedef $$TrackingMetaTableCreateCompanionBuilder =
-    TrackingMetaCompanion Function({
-      required String key,
-      Value<int> intValue,
-      Value<int> rowid,
-    });
-typedef $$TrackingMetaTableUpdateCompanionBuilder =
-    TrackingMetaCompanion Function({
-      Value<String> key,
-      Value<int> intValue,
-      Value<int> rowid,
-    });
-
-class $$TrackingMetaTableFilterComposer
-    extends Composer<_$TrackingDatabase, $TrackingMetaTable> {
-  $$TrackingMetaTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get key => $composableBuilder(
-    column: $table.key,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get intValue => $composableBuilder(
-    column: $table.intValue,
-    builder: (column) => ColumnFilters(column),
-  );
-}
-
-class $$TrackingMetaTableOrderingComposer
-    extends Composer<_$TrackingDatabase, $TrackingMetaTable> {
-  $$TrackingMetaTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get key => $composableBuilder(
-    column: $table.key,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get intValue => $composableBuilder(
-    column: $table.intValue,
-    builder: (column) => ColumnOrderings(column),
-  );
-}
-
-class $$TrackingMetaTableAnnotationComposer
-    extends Composer<_$TrackingDatabase, $TrackingMetaTable> {
-  $$TrackingMetaTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get key =>
-      $composableBuilder(column: $table.key, builder: (column) => column);
-
-  GeneratedColumn<int> get intValue =>
-      $composableBuilder(column: $table.intValue, builder: (column) => column);
-}
-
-class $$TrackingMetaTableTableManager
-    extends
-        RootTableManager<
-          _$TrackingDatabase,
-          $TrackingMetaTable,
-          MetaRow,
-          $$TrackingMetaTableFilterComposer,
-          $$TrackingMetaTableOrderingComposer,
-          $$TrackingMetaTableAnnotationComposer,
-          $$TrackingMetaTableCreateCompanionBuilder,
-          $$TrackingMetaTableUpdateCompanionBuilder,
-          (
-            MetaRow,
-            BaseReferences<_$TrackingDatabase, $TrackingMetaTable, MetaRow>,
-          ),
-          MetaRow,
-          PrefetchHooks Function()
-        > {
-  $$TrackingMetaTableTableManager(
+  $$PendingVisitsTableTableManager(
     _$TrackingDatabase db,
-    $TrackingMetaTable table,
+    $PendingVisitsTable table,
   ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$TrackingMetaTableFilterComposer($db: db, $table: table),
+              $$PendingVisitsTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$TrackingMetaTableOrderingComposer($db: db, $table: table),
+              $$PendingVisitsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$TrackingMetaTableAnnotationComposer($db: db, $table: table),
+              $$PendingVisitsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<String> key = const Value.absent(),
-                Value<int> intValue = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String> sessionId = const Value.absent(),
+                Value<String> employeeId = const Value.absent(),
+                Value<String?> storeName = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<double> latitude = const Value.absent(),
+                Value<double> longitude = const Value.absent(),
+                Value<double?> accuracy = const Value.absent(),
+                Value<DateTime> capturedAt = const Value.absent(),
+                Value<String?> photoPath = const Value.absent(),
+                Value<bool> rowSent = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => TrackingMetaCompanion(
-                key: key,
-                intValue: intValue,
+              }) => PendingVisitsCompanion(
+                id: id,
+                sessionId: sessionId,
+                employeeId: employeeId,
+                storeName: storeName,
+                note: note,
+                latitude: latitude,
+                longitude: longitude,
+                accuracy: accuracy,
+                capturedAt: capturedAt,
+                photoPath: photoPath,
+                rowSent: rowSent,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                required String key,
-                Value<int> intValue = const Value.absent(),
+                required String id,
+                required String sessionId,
+                required String employeeId,
+                Value<String?> storeName = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                required double latitude,
+                required double longitude,
+                Value<double?> accuracy = const Value.absent(),
+                required DateTime capturedAt,
+                Value<String?> photoPath = const Value.absent(),
+                Value<bool> rowSent = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => TrackingMetaCompanion.insert(
-                key: key,
-                intValue: intValue,
+              }) => PendingVisitsCompanion.insert(
+                id: id,
+                sessionId: sessionId,
+                employeeId: employeeId,
+                storeName: storeName,
+                note: note,
+                latitude: latitude,
+                longitude: longitude,
+                accuracy: accuracy,
+                capturedAt: capturedAt,
+                photoPath: photoPath,
+                rowSent: rowSent,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$TrackingMetaTable, MetaRow>(table),
+                  e.readTable<$PendingVisitsTable, PendingVisitRow>(table),
                   BaseReferences<
                     _$TrackingDatabase,
-                    $TrackingMetaTable,
-                    MetaRow
+                    $PendingVisitsTable,
+                    PendingVisitRow
                   >(db, table, e),
                 ),
               )
@@ -2409,21 +2542,25 @@ class $$TrackingMetaTableTableManager
       );
 }
 
-typedef $$TrackingMetaTableProcessedTableManager =
+typedef $$PendingVisitsTableProcessedTableManager =
     ProcessedTableManager<
       _$TrackingDatabase,
-      $TrackingMetaTable,
-      MetaRow,
-      $$TrackingMetaTableFilterComposer,
-      $$TrackingMetaTableOrderingComposer,
-      $$TrackingMetaTableAnnotationComposer,
-      $$TrackingMetaTableCreateCompanionBuilder,
-      $$TrackingMetaTableUpdateCompanionBuilder,
+      $PendingVisitsTable,
+      PendingVisitRow,
+      $$PendingVisitsTableFilterComposer,
+      $$PendingVisitsTableOrderingComposer,
+      $$PendingVisitsTableAnnotationComposer,
+      $$PendingVisitsTableCreateCompanionBuilder,
+      $$PendingVisitsTableUpdateCompanionBuilder,
       (
-        MetaRow,
-        BaseReferences<_$TrackingDatabase, $TrackingMetaTable, MetaRow>,
+        PendingVisitRow,
+        BaseReferences<
+          _$TrackingDatabase,
+          $PendingVisitsTable,
+          PendingVisitRow
+        >,
       ),
-      MetaRow,
+      PendingVisitRow,
       PrefetchHooks Function()
     >;
 
@@ -2434,8 +2571,6 @@ class $TrackingDatabaseManager {
       $$QueuedPointsTableTableManager(_db, _db.queuedPoints);
   $$ActiveSessionsTableTableManager get activeSessions =>
       $$ActiveSessionsTableTableManager(_db, _db.activeSessions);
-  $$PendingEndsTableTableManager get pendingEnds =>
-      $$PendingEndsTableTableManager(_db, _db.pendingEnds);
-  $$TrackingMetaTableTableManager get trackingMeta =>
-      $$TrackingMetaTableTableManager(_db, _db.trackingMeta);
+  $$PendingVisitsTableTableManager get pendingVisits =>
+      $$PendingVisitsTableTableManager(_db, _db.pendingVisits);
 }

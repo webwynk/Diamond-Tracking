@@ -3,7 +3,6 @@ import 'package:diamond_tracking/features/admin/dashboard/presentation/admin_das
 import 'package:diamond_tracking/features/admin/employees/presentation/admin_employee_list_page.dart';
 import 'package:diamond_tracking/features/admin/map/presentation/admin_live_map_page.dart';
 import 'package:diamond_tracking/features/admin/notifications/presentation/admin_notification_centre_page.dart';
-import 'package:diamond_tracking/features/admin/places/presentation/admin_places_page.dart';
 import 'package:diamond_tracking/features/admin/reports/presentation/admin_reports_page.dart';
 import 'package:diamond_tracking/features/admin/shell/admin_shell.dart';
 import 'package:diamond_tracking/features/admin/shell/admin_tab.dart';
@@ -13,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_admin_activity.dart';
+import 'support/fake_auth.dart';
 import 'support/fake_employee_repository.dart';
 import 'support/fake_live_locations.dart';
 import 'support/fake_notification_repository.dart';
@@ -27,6 +27,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          signedInAdminOverride(),
           // The Home and the live map read the server; the test must not.
           ...liveMapOverrides(
             FakeLiveLocationRepository(),
@@ -42,12 +43,12 @@ void main() {
   }
 
   group('AdminShell', () {
-    testWidgets('opens on Home with a five-item bottom bar', (tester) async {
+    testWidgets('opens on Home with a four-item bottom bar', (tester) async {
       await pumpShell(tester);
 
       expect(find.byType(AdminDashboardPage), findsOneWidget);
       expect(find.byType(AppBottomNavigationBar), findsOneWidget);
-      for (final label in const ['home', 'map', 'team', 'places', 'reports']) {
+      for (final label in const ['home', 'map', 'team', 'reports']) {
         expect(find.byKey(Key('nav-$label')), findsOneWidget);
       }
     });
@@ -73,7 +74,6 @@ void main() {
       final pages = <String, Type>{
         'map': AdminLiveMapPage,
         'team': AdminEmployeeListPage,
-        'places': AdminPlacesPage,
         'reports': AdminReportsPage,
         'home': AdminDashboardPage,
       };
@@ -137,17 +137,17 @@ void main() {
     ) async {
       await pumpShell(tester);
 
-      await tester.tap(find.byKey(const Key('nav-places')));
+      await tester.tap(find.byKey(const Key('nav-reports')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.byType(AdminPlacesPage), findsOneWidget);
+      expect(find.byType(AdminReportsPage), findsOneWidget);
 
       await tester.binding.handlePopRoute();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(AdminDashboardPage), findsOneWidget);
-      expect(find.byType(AdminPlacesPage), findsNothing);
+      expect(find.byType(AdminReportsPage), findsNothing);
     });
   });
 }

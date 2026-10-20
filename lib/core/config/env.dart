@@ -6,7 +6,8 @@
 ///
 /// What is deliberately ABSENT, and must stay absent:
 ///   - the Supabase database password
-///   - the Cloudinary API key and secret (Edge Function secrets only)
+///   - any Cloudinary value (cloud name, API key, secret): photo uploads are
+///     signed by the `visit-photos` Edge Function, which holds them all
 ///   - any map credential (MapLibre + OpenFreeMap need none)
 ///
 /// See docs/05-SECURITY.md.
@@ -21,7 +22,10 @@ abstract final class Env {
   const Env._();
 
   /// Supabase project URL, e.g. `https://<ref>.supabase.co`.
-  static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const String supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://bljroionzwxxsgmyituh.supabase.co',
+  );
 
   /// Supabase publishable (anon) key.
   ///
@@ -29,24 +33,21 @@ abstract final class Env {
   /// data. See docs/05-SECURITY.md.
   static const String supabasePublishableKey = String.fromEnvironment(
     'SUPABASE_PUBLISHABLE_KEY',
+    defaultValue: 'sb_publishable_gjevBoMgBQ1y-HD-Y6sZUw_qDYE-W_h',
   );
 
-  /// Cloudinary cloud name. Not a secret.
-  static const String cloudinaryCloudName = String.fromEnvironment(
-    'CLOUDINARY_CLOUD_NAME',
-  );
-
-  /// Cloudinary upload preset name. Not a secret once uploads are signed.
-  static const String cloudinaryUploadPreset = String.fromEnvironment(
-    'CLOUDINARY_UPLOAD_PRESET',
+  /// Optional MapTiler API key for high-detail vector street maps.
+  ///
+  /// If omitted or blank, the application automatically falls back to OpenFreeMap.
+  static const String maptilerApiKey = String.fromEnvironment(
+    'MAPTILER_API_KEY',
+    defaultValue: 'zuYstC2JiIBcQzOWdGxM',
   );
 
   /// Every key that must be present, with its value, for validation.
   static const Map<String, String> _required = <String, String>{
     'SUPABASE_URL': supabaseUrl,
     'SUPABASE_PUBLISHABLE_KEY': supabasePublishableKey,
-    'CLOUDINARY_CLOUD_NAME': cloudinaryCloudName,
-    'CLOUDINARY_UPLOAD_PRESET': cloudinaryUploadPreset,
   };
 
   /// Throws [MissingConfigException] if any key is absent or blank.

@@ -156,28 +156,33 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                       child: Row(
                         children: <Widget>[
                           Flexible(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Text(
-                                  title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTypography.h3.copyWith(
-                                    color: titleColor,
-                                  ),
-                                ),
-                                if (subtitle != null)
+                            // The bar is a fixed height, so its title and subtitle
+                            // grow with the user's text size only up to 120%.
+                            child: MediaQuery.withClampedTextScaling(
+                              maxScaleFactor: 1.2,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
                                   Text(
-                                    subtitle!,
+                                    title,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: AppTypography.caption.copyWith(
-                                      color: subtitleColor,
+                                    style: AppTypography.h3.copyWith(
+                                      color: titleColor,
                                     ),
                                   ),
-                              ],
+                                  if (subtitle != null)
+                                    Text(
+                                      subtitle!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.caption.copyWith(
+                                        color: subtitleColor,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                           if (titleTrailing != null) ...<Widget>[
@@ -213,7 +218,6 @@ class AppTopBarIconButton extends StatelessWidget {
     this.badgeCount = 0,
     this.badgeColor = AppColors.error,
     this.badgeTextColor = AppColors.neutral0,
-    this.showDot = false,
   });
 
   final IconData icon;
@@ -224,9 +228,6 @@ class AppTopBarIconButton extends StatelessWidget {
   final int badgeCount;
   final Color badgeColor;
   final Color badgeTextColor;
-
-  /// Shows a small alert dot instead of a count.
-  final bool showDot;
 
   @override
   Widget build(BuildContext context) {
@@ -244,21 +245,6 @@ class AppTopBarIconButton extends StatelessWidget {
                 badgeCount,
                 backgroundColor: badgeColor,
                 textColor: badgeTextColor,
-              ),
-            ),
-          )
-        else if (showDot)
-          Positioned(
-            top: 10,
-            right: 10,
-            child: IgnorePointer(
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.error,
-                  shape: BoxShape.circle,
-                ),
               ),
             ),
           ),

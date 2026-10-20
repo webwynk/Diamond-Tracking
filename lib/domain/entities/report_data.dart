@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'admin_duty_session.dart';
 import 'attendance_period.dart';
 
-/// The reports an admin can export. The visit and geofence logs wait for visit
-/// and place data.
+/// The reports an admin can export. The visit log waits for its own build step
+/// (there are no places or geofences).
 enum ReportKind {
   dailyDetail('daily_detail'),
   employeeSummary('employee_summary'),

@@ -24,6 +24,7 @@ class AdminEmployeeItem {
     this.locationName,
     this.email,
     this.role = UserRole.employee,
+    this.deviceRegistered,
   });
 
   final String id;
@@ -38,6 +39,10 @@ class AdminEmployeeItem {
   final String? locationName;
   final String? email;
   final UserRole role;
+
+  /// Whether a phone is registered to this employee (BR-13). Null when it is
+  /// not known, so nothing is claimed that the server did not say.
+  final bool? deviceRegistered;
 
   /// Generates clean two-letter monogram initials (e.g., "Suresh Patel" -> "SP").
   String get initials {
@@ -62,6 +67,7 @@ class AdminEmployeeItem {
     String? locationName,
     String? email,
     UserRole? role,
+    bool? deviceRegistered,
   }) {
     return AdminEmployeeItem(
       id: id ?? this.id,
@@ -76,6 +82,7 @@ class AdminEmployeeItem {
       locationName: locationName ?? this.locationName,
       email: email ?? this.email,
       role: role ?? this.role,
+      deviceRegistered: deviceRegistered ?? this.deviceRegistered,
     );
   }
 }

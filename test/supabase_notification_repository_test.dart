@@ -7,6 +7,7 @@ import 'package:diamond_tracking/domain/repositories/notification_repository.dar
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
+import 'flutter_test_config.dart';
 import 'support/mock_supabase.dart';
 
 /// These tests drive the real [SupabaseNotificationRepository] and the real
@@ -64,7 +65,15 @@ void main() {
           reason: 'one extra row says whether more exist',
         );
         expect(body['p_unread_only'], isTrue);
-        expect(body['p_types'], ['mock_gps', 'battery_low', 'no_signal']);
+        expect(body['p_types'], [
+          'mock_gps',
+          'battery_low',
+          'no_signal',
+          'account_locked',
+          'new_device_login',
+          'failed_login',
+          'gps_disabled',
+        ]);
         expect(body['p_employees'], ['e1', 'e2']);
       },
     );
@@ -127,8 +136,10 @@ void main() {
       'a type this app does not know is skipped but cannot stall paging',
       () async {
         final repository = repositoryAnswering(
-          (r) =>
-              jsonResponse(<Object>[_row(5, type: 'geofence_enter'), _row(4)]),
+          (r) => jsonResponse(<Object>[
+            _row(5, type: 'some_future_type'),
+            _row(4),
+          ]),
         );
 
         final page = await repository.fetchPage(limit: 1);
@@ -264,6 +275,8 @@ void main() {
     test(
       'a channel that cannot be opened is reported as not connected, not thrown into the zone',
       () async {
+        // This test is about the missing client, so the guard is told.
+        expectStrayClient();
         // No injected client and Supabase is not initialised, so opening the
         // channel fails. This used to reach the zone as an uncaught error.
         final event = await SupabaseNotificationRepository()

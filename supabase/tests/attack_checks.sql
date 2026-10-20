@@ -194,10 +194,16 @@ begin
   if v_count = 0 then perform pg_temp.note('PASS  E2 cannot update E1 session'); v_pass := v_pass + 1;
   else perform pg_temp.note('FAIL  E2 updated E1 session'); v_fail := v_fail + 1; end if;
 
-  update public.profiles set role = 'admin' where id = v_e2;
-  get diagnostics v_count = row_count;
-  if v_count = 0 then perform pg_temp.note('PASS  E2 cannot promote self to admin'); v_pass := v_pass + 1;
-  else perform pg_temp.note('FAIL  E2 changed own profile role'); v_fail := v_fail + 1; end if;
+  -- Refused either way: no row matches (row-level security) or the column is
+  -- not updatable by this role at all (migration 20261020010000).
+  begin
+    update public.profiles set role = 'admin' where id = v_e2;
+    get diagnostics v_count = row_count;
+    if v_count = 0 then perform pg_temp.note('PASS  E2 cannot promote self to admin'); v_pass := v_pass + 1;
+    else perform pg_temp.note('FAIL  E2 changed own profile role'); v_fail := v_fail + 1; end if;
+  exception when insufficient_privilege then
+    perform pg_temp.note('PASS  E2 cannot promote self to admin (permission denied)'); v_pass := v_pass + 1;
+  end;
 
   ---------------------------------------------------------------------------
   -- Employee ONE attacks their own record

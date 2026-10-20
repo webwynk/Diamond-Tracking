@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exceptions.dart';
+import '../../core/utils/failure_log.dart';
 import '../../domain/entities/live_position.dart';
 import '../../domain/repositories/live_location_repository.dart';
 import '../network_failure.dart';
@@ -79,7 +79,7 @@ class SupabaseLiveLocationRepository implements LiveLocationRepository {
           // An exception thrown from onListen would reach the zone as an
           // uncaught error. Say "not connected" instead; the listener still
           // reloads the full list on a timer.
-          debugPrint('LiveLocationRepository: could not open the channel: $e');
+          logFailure('LiveLocationRepository: could not open the channel', e);
           emit(const LiveConnectionChanged(connected: false));
         }
       },
@@ -108,7 +108,7 @@ class SupabaseLiveLocationRepository implements LiveLocationRepository {
     } catch (e, st) {
       final network = asNetworkFailure(e);
       if (network != null) throw network;
-      debugPrint('LiveLocationRepository: could not $action: $e\n$st');
+      logFailure('LiveLocationRepository: could not $action', e, st);
       throw ServerException('Could not $action. Please try again.');
     }
   }

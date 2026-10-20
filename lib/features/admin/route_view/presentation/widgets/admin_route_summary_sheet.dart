@@ -30,6 +30,7 @@ class AdminRouteSummarySheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final distance = summary.distanceKm;
     final flagged = summary.flaggedPoints;
+    final weakGps = summary.weakGpsPoints;
     return Container(
       key: const Key('route-summary-sheet'),
       decoration: const BoxDecoration(
@@ -170,42 +171,29 @@ class AdminRouteSummarySheet extends StatelessWidget {
               ],
             ),
 
-            // Flags, explained in words.
+            // Real warnings (fake location, impossible jumps), in words.
             if (flagged > 0 || summary.jumpCount > 0) ...<Widget>[
               const SizedBox(height: AppSpacing.x3),
-              Container(
+              _banner(
                 key: const Key('route-flag-note'),
-                decoration: BoxDecoration(
-                  color: AppColors.errorBg,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(
-                    color: AppColors.error.withValues(alpha: 0.25),
-                    width: 1,
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.x3,
-                  vertical: 10,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    const Icon(
-                      Icons.warning_amber_rounded,
-                      color: AppColors.error,
-                      size: 18,
-                    ),
-                    const SizedBox(width: AppSpacing.x2),
-                    Expanded(
-                      child: Text(
-                        _flagNote(),
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.neutral900,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                background: AppColors.errorBg,
+                border: AppColors.error.withValues(alpha: 0.25),
+                icon: Icons.warning_amber_rounded,
+                iconColour: AppColors.error,
+                text: _flagNote(),
+              ),
+            ],
+
+            // A weak GPS signal is noise, not a warning: calm and neutral.
+            if (weakGps > 0) ...<Widget>[
+              const SizedBox(height: AppSpacing.x3),
+              _banner(
+                key: const Key('route-weak-gps-note'),
+                background: AppColors.neutral50,
+                border: AppColors.neutral200,
+                icon: Icons.info_outline_rounded,
+                iconColour: AppColors.neutral500,
+                text: _weakGpsNote(),
               ),
             ],
 
@@ -223,10 +211,9 @@ class AdminRouteSummarySheet extends StatelessWidget {
                         : AppColors.statusBlocked,
                     showCurrent ? 'Now' : 'End',
                   ),
-                  if (flagged > 0) ...<Widget>[
+                  if (flagged > 0)
                     _legend(AppColors.statusSuspect, 'Fake location'),
-                    _legend(AppColors.statusStale, 'Low accuracy'),
-                  ],
+                  if (weakGps > 0) _legend(AppColors.statusStale, 'Weak GPS'),
                 ],
               ),
             ],
@@ -239,7 +226,7 @@ class AdminRouteSummarySheet extends StatelessWidget {
   String _flagNote() {
     final parts = <String>[
       if (summary.flaggedPoints > 0)
-        '${summary.flaggedPoints} flagged '
+        '${summary.flaggedPoints} fake-location '
             '${summary.flaggedPoints == 1 ? 'point is' : 'points are'} '
             'left out of the route and the distance',
       if (summary.jumpCount > 0)
@@ -247,6 +234,50 @@ class AdminRouteSummarySheet extends StatelessWidget {
             '${summary.jumpCount == 1 ? 'jump' : 'jumps'} not drawn as travel',
     ];
     return '${parts.join('. ')}.';
+  }
+
+  String _weakGpsNote() {
+    final n = summary.weakGpsPoints;
+    return '$n weak GPS ${n == 1 ? 'reading was' : 'readings were'} left out '
+        'of the route and the distance. This is normal, for example just '
+        'after duty starts or indoors.';
+  }
+
+  Widget _banner({
+    required Key key,
+    required Color background,
+    required Color border,
+    required IconData icon,
+    required Color iconColour,
+    required String text,
+  }) {
+    return Container(
+      key: key,
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: border, width: 1),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.x3,
+        vertical: 10,
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, color: iconColour, size: 18),
+          const SizedBox(width: AppSpacing.x2),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTypography.caption.copyWith(
+                color: AppColors.neutral900,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _legend(Color colour, String label) {

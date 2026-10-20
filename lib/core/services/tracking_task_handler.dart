@@ -34,6 +34,9 @@ class TrackingTaskHandler extends TaskHandler {
   TrackingUploader? _uploader;
   TrackerEngine? _engine;
   StreamSubscription<Position>? _positions;
+  SupabaseDutyRepository? _repository;
+  DateTime? _lastGpsDisabledAlertTime;
+  bool _lastReportedGpsEnabled = true;
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
@@ -51,6 +54,7 @@ class TrackingTaskHandler extends TaskHandler {
       _database = database;
       final queue = DriftTrackingQueueStore(database);
       final repository = SupabaseDutyRepository();
+      _repository = repository;
       final uploader = TrackingUploader(queue: queue, ingestor: repository);
       _uploader = uploader;
       final battery = Battery();
@@ -99,6 +103,7 @@ class TrackingTaskHandler extends TaskHandler {
       uploader.start();
 
       _listenToGps();
+      unawaited(_checkGpsAndHeartbeat());
     } catch (error) {
       debugPrint('Tracker: could not start (${error.runtimeType})');
       await FlutterForegroundTask.stopService();
@@ -108,9 +113,65 @@ class TrackingTaskHandler extends TaskHandler {
   @override
   void onRepeatEvent(DateTime timestamp) {
     unawaited(_engine?.tick());
+    unawaited(_checkGpsAndHeartbeat());
+  }
+
+  Future<void> _checkGpsAndHeartbeat() async {
+    if (!(_engine?.isTracking ?? false)) return;
+
+    final locationEnabled = await Geolocator.isLocationServiceEnabled();
+    final permission = await Geolocator.checkPermission();
+    final hasPermission =
+        permission != LocationPermission.denied &&
+        permission != LocationPermission.deniedForever;
+
+    if (!locationEnabled || !hasPermission) {
+      if (_positions != null) {
+        await _positions?.cancel();
+        _positions = null;
+      }
+      await _reportGpsStatus(false);
+      return;
+    }
+
     // GPS switched off and on again, or a permission restored: the position
     // stream ends when it fails, so start listening again.
-    if (_positions == null && (_engine?.isTracking ?? false)) _listenToGps();
+    if (_positions == null) {
+      _listenToGps();
+      await _reportGpsStatus(true);
+    }
+  }
+
+  Future<void> _reportGpsStatus(bool enabled) async {
+    final repository = _repository;
+    if (repository == null) return;
+
+    if (enabled) {
+      if (!_lastReportedGpsEnabled) {
+        _lastReportedGpsEnabled = true;
+        _lastGpsDisabledAlertTime = null;
+        try {
+          await repository.reportGpsStatus(enabled: true);
+        } catch (_) {}
+      }
+      return;
+    }
+
+    // Rate limit reporting when GPS remains disabled (server deduplicates at 5 min,
+    // client deduplicates at 4 min to prevent redundant network hits every 15 s).
+    final now = DateTime.now();
+    if (_lastGpsDisabledAlertTime != null &&
+        now.difference(_lastGpsDisabledAlertTime!) < const Duration(minutes: 4)) {
+      return;
+    }
+    _lastGpsDisabledAlertTime = now;
+    _lastReportedGpsEnabled = false;
+
+    try {
+      await repository.reportGpsStatus(enabled: false);
+    } catch (e) {
+      debugPrint('Tracker: could not report GPS disabled (${e.runtimeType})');
+    }
   }
 
   @override
@@ -118,6 +179,7 @@ class TrackingTaskHandler extends TaskHandler {
     await _positions?.cancel();
     _positions = null;
     _engine?.stop();
+    _repository = null;
 
     final uploader = _uploader;
     if (uploader != null) {
@@ -135,32 +197,35 @@ class TrackingTaskHandler extends TaskHandler {
     final engine = _engine;
     if (engine == null) return;
 
-    _positions =
-        Geolocator.getPositionStream(
-          locationSettings: AndroidSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: 0,
-            intervalDuration: const Duration(seconds: 30),
-            // The service has no screen, so Google's "turn on location
-            // accuracy" prompt can never be shown: with the fused provider a
-            // phone whose location accuracy setting is off would fail here
-            // forever. The platform LocationManager has no such prompt (and
-            // also works on phones without Google services).
-            forceLocationManager: true,
-          ),
-        ).listen(
-          (position) => unawaited(engine.handleFix(_toFix(position))),
-          // A GPS error (permission revoked, GPS switched off) ends the stream
-          // but must not crash the service: it is restarted on the next check
-          // (onRepeatEvent). The admin-side "tracking broken" signal is a later
-          // step; until then the gap in the route is the evidence.
-          onError: (Object error) {
-            debugPrint('Tracker: GPS stream error (${error.runtimeType})');
-            unawaited(_positions?.cancel());
-            _positions = null;
-          },
-          cancelOnError: true,
-        );
+    try {
+      _positions =
+          Geolocator.getPositionStream(
+            locationSettings: AndroidSettings(
+              accuracy: LocationAccuracy.high,
+              distanceFilter: 0,
+              intervalDuration: const Duration(seconds: 30),
+              // The service has no screen, so Google's "turn on location
+              // accuracy" prompt can never be shown: with the fused provider a
+              // phone whose location accuracy setting is off would fail here
+              // forever. The platform LocationManager has no such prompt (and
+              // also works on phones without Google services).
+              forceLocationManager: true,
+            ),
+          ).listen(
+            (position) => unawaited(engine.handleFix(_toFix(position))),
+            onError: (Object error) {
+              debugPrint('Tracker: GPS stream error (${error.runtimeType})');
+              unawaited(_positions?.cancel());
+              _positions = null;
+              unawaited(_reportGpsStatus(false));
+            },
+            cancelOnError: true,
+          );
+    } catch (error) {
+      debugPrint('Tracker: could not start GPS stream (${error.runtimeType})');
+      _positions = null;
+      unawaited(_reportGpsStatus(false));
+    }
   }
 
   TrackerFix _toFix(Position position) {

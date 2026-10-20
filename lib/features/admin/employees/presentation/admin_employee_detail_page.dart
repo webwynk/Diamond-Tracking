@@ -3,32 +3,43 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
+import '../../../../domain/entities/visit_record.dart';
 import '../../attendance/presentation/admin_attendance_page.dart';
 import '../../attendance/presentation/controllers/admin_attendance_controller.dart';
 import '../../attendance/presentation/controllers/admin_attendance_state.dart';
 import '../../map/presentation/controllers/admin_live_map_controller.dart';
 import '../../route_view/presentation/admin_route_view_page.dart';
 import '../../shell/admin_tab.dart';
+import '../../visits/presentation/admin_visit_details_page.dart';
+import '../../visits/presentation/admin_visits_page.dart';
+import '../../visits/presentation/controllers/admin_visits_controller.dart';
+import '../../visits/presentation/widgets/admin_visits_card.dart';
 import 'admin_employee_form_page.dart';
 import 'controllers/admin_employee_list_controller.dart';
 import 'controllers/admin_employee_list_state.dart';
 import 'widgets/admin_block_employee_sheet.dart';
+import 'widgets/admin_clear_device_sheet.dart';
 import 'widgets/admin_employee_block_action_button.dart';
+import 'widgets/admin_employee_clear_device_button.dart';
 import 'widgets/admin_employee_contact_card.dart';
 import 'widgets/admin_employee_detail_header.dart';
 import 'widgets/admin_employee_monthly_stats_card.dart';
 import 'widgets/admin_employee_quick_actions.dart';
 import 'widgets/admin_employee_recent_duty_card.dart';
+import 'widgets/admin_employee_reset_pin_button.dart';
+import 'widgets/admin_reset_pin_sheet.dart';
 
 /// Screen 18 — Employee Detail (Admin).
 ///
-/// Full profile and operational telemetry of a single field staff member:
-/// - 170+ dp curved hero header with avatar, name, employee ID, and duty status
-/// - Quick action buttons: "Track live" (Screen 15/16) and "Route view" (Screen 23)
-/// - Contact details card (Phone, Email, Joined date)
-/// - "THIS MONTH" telemetry card with 2x2 metric grid and audit footnotes
-/// - "Recent duty" session log history card with "View all" link (Screen 22)
-/// - Danger zone "Block employee" action button (Screen 20)
+/// One employee at a glance, top to bottom:
+/// - the identity hero: avatar, name, code and duty status, with Edit;
+/// - the action bar floating over its edge: Track live (Screen 15/16), Route
+///   view (Screen 23), Attendance (Screen 22) and Visits (PRD F10);
+/// - "This month": days, hours, km, visits, auto-ended days, location flags;
+/// - "Recent duty", each day opening its route;
+/// - "Visits", the latest three;
+/// - "Contact", phone and email with Copy;
+/// - "Block employee" (Screen 20).
 class AdminEmployeeDetailPage extends ConsumerWidget {
   const AdminEmployeeDetailPage({
     super.key,
@@ -36,18 +47,14 @@ class AdminEmployeeDetailPage extends ConsumerWidget {
     this.onBack,
     this.onTrackLive,
     this.onRouteView,
-    this.onRecentDutyViewAll,
-    this.onBlockEmployee,
-    this.onMoreOptions,
+    this.onEdit,
   });
 
   final AdminEmployeeItem employee;
   final VoidCallback? onBack;
   final VoidCallback? onTrackLive;
   final VoidCallback? onRouteView;
-  final VoidCallback? onRecentDutyViewAll;
-  final VoidCallback? onBlockEmployee;
-  final VoidCallback? onMoreOptions;
+  final VoidCallback? onEdit;
 
   /// Shows this employee on the live map: closes the profile, opens the Map
   /// tab, and asks the map to zoom to them. Someone who is not on duty has no
@@ -95,56 +102,78 @@ class AdminEmployeeDetailPage extends ConsumerWidget {
     );
   }
 
+  void _openVisits(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AdminVisitsPage(
+          employeeId: employee.id,
+          employeeName: employee.name,
+          employeeCode: employee.employeeCode,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final visits = ref.watch(adminVisitsControllerProvider(employee.id));
     final attendance = ref.watch(
       adminAttendanceControllerProvider(employee.id),
     );
+    // The roster is the live copy: it changes when a phone is cleared here.
+    final deviceRegistered =
+        ref.watch(
+          adminEmployeeListControllerProvider.select(
+            (list) => list.employees
+                .where((e) => e.id == employee.id)
+                .firstOrNull
+                ?.deviceRegistered,
+          ),
+        ) ??
+        employee.deviceRegistered;
+    void openVisit(VisitRecord visit) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              AdminVisitDetailsPage(visit: visit, employeeName: employee.name),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
         child: Column(
-          children: [
-            // 1. Curved Hero Header (170+ dp, rounded bottom corners)
+          children: <Widget>[
             AdminEmployeeDetailHeader(
               employee: employee,
               onBack: onBack ?? () => Navigator.of(context).maybePop(),
-              onMoreOptions:
-                  onMoreOptions ??
-                  () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            AdminEmployeeFormPage(employee: employee),
-                      ),
-                    );
-                  },
+              onEdit:
+                  onEdit ??
+                  () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => AdminEmployeeFormPage(employee: employee),
+                    ),
+                  ),
             ),
-
-            // 2. Body Content (Overlaps header by 24 dp)
+            // The body starts over the hero's edge; the translate leaves the
+            // same height free at the bottom, which the last gap absorbs.
             Transform.translate(
-              offset: const Offset(0, -24),
+              offset: const Offset(0, -AdminEmployeeDetailHeader.overlap),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
+                padding: AppSpacing.screen,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Section 1: Quick Action Controls
+                  children: <Widget>[
                     AdminEmployeeQuickActions(
                       onTrackLive:
                           onTrackLive ?? () => _trackLive(context, ref),
                       onRouteView: onRouteView ?? () => _openRoute(context),
+                      onAttendance: () => _openAttendance(context),
+                      onVisits: () => _openVisits(context),
                     ),
-
                     const SizedBox(height: AppSpacing.x4),
-
-                    // Section 2: CONTACT Card
-                    AdminEmployeeContactCard(employee: employee),
-
-                    const SizedBox(height: AppSpacing.x4),
-
-                    // Section 3: THIS MONTH Telemetry Card
                     AdminEmployeeMonthlyStatsCard(
                       monthName: attendance.selectedMonth.split(' ').first,
                       isAvailable: attendance.isLoaded,
@@ -156,10 +185,7 @@ class AdminEmployeeDetailPage extends ConsumerWidget {
                       locationFlags: attendance.metrics.flagsCount,
                       onMonthSelect: () => _openAttendance(context),
                     ),
-
                     const SizedBox(height: AppSpacing.x4),
-
-                    // Section 4: Recent Duty Log Card
                     AdminEmployeeRecentDutyCard(
                       logs: [
                         for (final day
@@ -181,47 +207,30 @@ class AdminEmployeeDetailPage extends ConsumerWidget {
                         AttendanceLoad.failed => "Couldn't load recent duty.",
                         AttendanceLoad.loaded => 'No duty recorded this month.',
                       },
-                      onViewAll:
-                          onRecentDutyViewAll ?? () => _openAttendance(context),
+                      onViewAll: () => _openAttendance(context),
                       onLogSelected: (log) => _openRoute(context, log.id),
                     ),
-
-                    const SizedBox(height: AppSpacing.x5),
-
-                    // Section 5: Danger Action: Block Employee
-                    AdminEmployeeBlockActionButton(
-                      onBlockPressed:
-                          onBlockEmployee ??
-                          () async {
-                            final confirmed =
-                                await AdminBlockEmployeeSheet.show(
-                                  context,
-                                  employee: employee,
-                                  onConfirmBlock: (reason) async {
-                                    await ref
-                                        .read(
-                                          adminEmployeeListControllerProvider
-                                              .notifier,
-                                        )
-                                        .blockEmployee(
-                                          employeeId: employee.id,
-                                          reason: reason,
-                                        );
-                                  },
-                                );
-                            if (confirmed == true && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    '${employee.name} has been blocked.',
-                                  ),
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            }
-                          },
+                    const SizedBox(height: AppSpacing.x4),
+                    AdminVisitsCard(
+                      state: visits,
+                      onViewAll: () => _openVisits(context),
+                      onVisitSelected: openVisit,
                     ),
-
+                    const SizedBox(height: AppSpacing.x4),
+                    AdminEmployeeContactCard(employee: employee),
+                    const SizedBox(height: AppSpacing.x6),
+                    AdminEmployeeResetPinButton(
+                      onPressed: () => _resetPin(context, ref),
+                    ),
+                    const SizedBox(height: AppSpacing.x3),
+                    AdminEmployeeClearDeviceButton(
+                      deviceRegistered: deviceRegistered,
+                      onPressed: () => _clearDevice(context, ref),
+                    ),
+                    const SizedBox(height: AppSpacing.x3),
+                    AdminEmployeeBlockActionButton(
+                      onBlockPressed: () => _confirmBlock(context, ref),
+                    ),
                     const SizedBox(height: AppSpacing.x6),
                   ],
                 ),
@@ -231,5 +240,68 @@ class AdminEmployeeDetailPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _resetPin(BuildContext context, WidgetRef ref) async {
+    final done = await AdminResetPinSheet.show(
+      context,
+      employee: employee,
+      onConfirm: (pin) => ref
+          .read(employeeRepositoryProvider)
+          .resetPin(id: employee.id, newPin: pin),
+    );
+    if (done == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Temporary PIN set for ${employee.name}. They must choose a new '
+            'one when they sign in.',
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _clearDevice(BuildContext context, WidgetRef ref) async {
+    final cleared = await AdminClearDeviceSheet.show(
+      context,
+      employee: employee,
+      onConfirm: () => ref
+          .read(adminEmployeeListControllerProvider.notifier)
+          .clearDevice(employeeId: employee.id),
+    );
+    if (cleared == null || !context.mounted) return; // cancelled
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          cleared
+              ? 'Device binding cleared for ${employee.name}. The next phone '
+                    'they sign in on will be registered.'
+              : 'No phone was registered for ${employee.name}.',
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Future<void> _confirmBlock(BuildContext context, WidgetRef ref) async {
+    final confirmed = await AdminBlockEmployeeSheet.show(
+      context,
+      employee: employee,
+      onConfirmBlock: (reason) async {
+        await ref
+            .read(adminEmployeeListControllerProvider.notifier)
+            .blockEmployee(employeeId: employee.id, reason: reason);
+      },
+    );
+    if (confirmed == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${employee.name} has been blocked.'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }

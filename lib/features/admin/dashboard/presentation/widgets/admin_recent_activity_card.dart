@@ -34,16 +34,20 @@ class AdminRecentActivityCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.neutral200, width: 1),
+        boxShadow: AppElevation.card,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           // Header Row
           Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
+            constraints: const BoxConstraints(minHeight: 56),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.x4,
+              vertical: AppSpacing.x2,
+            ),
             decoration: const BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: AppColors.neutral200, width: 1),
@@ -52,22 +56,38 @@ class AdminRecentActivityCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.history_rounded,
-                      size: 20,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: AppSpacing.x2),
-                    Text(
-                      'Recent activity',
-                      style: AppTypography.title.copyWith(
-                        color: AppColors.textPrimary,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: const BoxDecoration(
+                          color: AppColors.neutral100,
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.history_rounded,
+                          size: 16,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: AppSpacing.x2),
+                      Flexible(
+                        child: Text(
+                          'Recent activity',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.title.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: AppSpacing.x2),
                 TextButton(
                   key: const Key('btn-see-all-activities'),
                   onPressed: onSeeAll,

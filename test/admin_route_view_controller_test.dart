@@ -229,7 +229,8 @@ void main() {
         await pumpEventQueue();
 
         final summary = stateOf(container).summary!;
-        expect(summary.flaggedPoints, 2);
+        expect(summary.flaggedPoints, 1, reason: 'only the fake location');
+        expect(summary.weakGpsPoints, 1);
         expect(summary.jumpCount, 1);
         expect(stateOf(container).analysis!.mockPoints, hasLength(1));
       },

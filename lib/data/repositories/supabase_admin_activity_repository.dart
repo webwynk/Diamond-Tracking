@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exceptions.dart';
+import '../../core/utils/failure_log.dart';
 import '../../domain/entities/admin_activity_event.dart';
 import '../../domain/repositories/admin_activity_repository.dart';
 import '../network_failure.dart';
@@ -173,7 +173,7 @@ class SupabaseAdminActivityRepository implements AdminActivityRepository {
     } catch (e, st) {
       final network = asNetworkFailure(e);
       if (network != null) throw network;
-      debugPrint('AdminActivityRepository: could not $action: $e\n$st');
+      logFailure('AdminActivityRepository: could not $action', e, st);
       throw ServerException('Could not $action. Please try again.');
     }
   }

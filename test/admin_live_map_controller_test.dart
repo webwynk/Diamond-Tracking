@@ -458,7 +458,6 @@ void main() {
 
       notifier.clearFilters();
       expect(stateOf(container).filteredOfficers, hasLength(3));
-      expect(stateOf(container).hasActiveFilter, isFalse);
     });
   });
 

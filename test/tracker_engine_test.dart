@@ -19,10 +19,11 @@ TrackerFix _fix({
   double lon = 73.0,
   double? speed,
   bool mock = false,
+  double accuracy = 5,
 }) => TrackerFix(
   latitude: lat,
   longitude: lon,
-  accuracy: 5,
+  accuracy: accuracy,
   speed: speed,
   isMock: mock,
 );
@@ -79,6 +80,104 @@ void main() {
   });
 
   tearDown(() => database.close());
+
+  group('waiting for a good first fix', () {
+    setUp(() async => engine.start(_session()));
+
+    test(
+      'a weak fix right after start is skipped; a good one is recorded',
+      () async {
+        await engine.handleFix(_fix(accuracy: 400));
+        await engine.handleFix(_fix(accuracy: 120));
+        expect(reported, isEmpty);
+        expect(await store.pendingPointCount(), 0);
+
+        deviceNow = deviceNow.add(const Duration(seconds: 6));
+        await engine.handleFix(_fix(accuracy: 12));
+
+        expect(reported, hasLength(1));
+        expect(reported.single.accuracy, 12);
+      },
+    );
+
+    test('50 m counts as good; just over it does not', () async {
+      await engine.handleFix(_fix(accuracy: 50.1));
+      expect(reported, isEmpty);
+
+      await engine.handleFix(_fix(accuracy: 50));
+      expect(reported, hasLength(1));
+    });
+
+    test('after 30 seconds a weak fix is recorded anyway', () async {
+      await engine.handleFix(_fix(accuracy: 300));
+      expect(reported, isEmpty);
+
+      deviceNow = deviceNow.add(const Duration(seconds: 29));
+      await engine.handleFix(_fix(accuracy: 300));
+      expect(reported, isEmpty, reason: 'still inside the 30 seconds');
+
+      deviceNow = deviceNow.add(const Duration(seconds: 1));
+      await engine.handleFix(_fix(accuracy: 300));
+      expect(reported, hasLength(1), reason: 'tracking never waits for ever');
+      expect(reported.single.accuracy, 300);
+    });
+
+    test('a fake location is recorded at once, never skipped', () async {
+      await engine.handleFix(_fix(accuracy: 400, mock: true));
+
+      expect(reported, hasLength(1));
+      expect(reported.single.isMock, isTrue);
+    });
+
+    test(
+      'once a point is recorded, weak fixes follow the normal rules',
+      () async {
+        await engine.handleFix(_fix(accuracy: 10));
+        expect(reported, hasLength(1));
+
+        // Moving: the next point is due after 25 s, weak or not.
+        deviceNow = deviceNow.add(const Duration(seconds: 26));
+        await engine.handleFix(_fix(lat: 20.001, accuracy: 300, speed: 5));
+
+        expect(reported, hasLength(2));
+        expect(reported.last.accuracy, 300);
+      },
+    );
+
+    test(
+      'starting again (a system restart) waits for a good fix again',
+      () async {
+        await engine.handleFix(_fix(accuracy: 10));
+        expect(reported, hasLength(1));
+        engine.stop();
+
+        deviceNow = deviceNow.add(const Duration(minutes: 10));
+        await engine.start(_session());
+        await engine.handleFix(_fix(accuracy: 300));
+        expect(
+          reported,
+          hasLength(1),
+          reason: 'weak fix skipped after restart',
+        );
+
+        await engine.handleFix(_fix(accuracy: 20));
+        expect(reported, hasLength(2));
+      },
+    );
+
+    test('a phone clock that is wrong does not stretch the wait', () async {
+      engine.stop();
+      // The server is 2 hours ahead of the phone.
+      await engine.start(_session(offset: const Duration(hours: 2)));
+
+      await engine.handleFix(_fix(accuracy: 300));
+      expect(reported, isEmpty);
+
+      deviceNow = deviceNow.add(const Duration(seconds: 31));
+      await engine.handleFix(_fix(accuracy: 300));
+      expect(reported, hasLength(1));
+    });
+  });
 
   group('starting and resuming', () {
     test('tracks the session it is given', () async {

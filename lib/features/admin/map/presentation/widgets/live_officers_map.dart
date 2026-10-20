@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/utils/failure_log.dart';
 import '../../../../../domain/entities/live_position.dart';
 import '../../../../../shared/widgets/india_map.dart';
 import '../controllers/admin_live_map_state.dart';
@@ -216,7 +217,7 @@ class LiveOfficersMapState extends State<LiveOfficersMap> {
       if (pending != null) unawaited(flyTo(pending));
       await _addTextLayers(controller);
     } on Object catch (e, st) {
-      debugPrint('LiveOfficersMap: could not set up the layers: $e\n$st');
+      logFailure('LiveOfficersMap: could not set up the layers', e, st);
     }
   }
 
@@ -258,7 +259,7 @@ class LiveOfficersMapState extends State<LiveOfficersMap> {
         enableInteraction: false,
       );
     } on Object catch (e) {
-      debugPrint('LiveOfficersMap: text layers unavailable: $e');
+      logFailure('LiveOfficersMap: text layers unavailable', e);
     }
   }
 
@@ -275,7 +276,7 @@ class LiveOfficersMapState extends State<LiveOfficersMap> {
     try {
       await controller.setGeoJsonSource(_sourceId, _geoJson());
     } on Object catch (e) {
-      debugPrint('LiveOfficersMap: could not update the positions: $e');
+      logFailure('LiveOfficersMap: could not update the positions', e);
     } finally {
       _pushing = false;
     }
@@ -294,7 +295,7 @@ class LiveOfficersMapState extends State<LiveOfficersMap> {
         _selectedFilter(widget.selectedId),
       );
     } on Object catch (e) {
-      debugPrint('LiveOfficersMap: could not mark the selection: $e');
+      logFailure('LiveOfficersMap: could not mark the selection', e);
     }
   }
 
@@ -333,7 +334,7 @@ class LiveOfficersMapState extends State<LiveOfficersMap> {
       final employeeId = properties['id'];
       if (employeeId is String) widget.onOfficerTapped(employeeId);
     } on Object catch (e) {
-      debugPrint('LiveOfficersMap: could not read the tap: $e');
+      logFailure('LiveOfficersMap: could not read the tap', e);
     }
   }
 

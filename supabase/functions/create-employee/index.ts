@@ -28,13 +28,17 @@ function reply(status: number, body: Json): Response {
   });
 }
 
-/** Exactly 6 digits, not one repeated digit, not a simple run (PRD F1). */
+/**
+ * Exactly 6 digits, not one repeated digit, not a run up or down that may wrap
+ * round (PRD F1). This is the same rule as private.pin_problem in the database,
+ * which is the one that decides; this copy only gives an early, clear message.
+ */
 export function pinProblem(pin: string): string | null {
   if (!/^\d{6}$/.test(pin)) return 'PIN must be exactly 6 digits';
   if (/^(\d)\1{5}$/.test(pin)) return 'PIN cannot be one repeated digit';
   const d = pin.split('').map(Number);
-  const up = d.every((n, i) => i === 0 || n === d[i - 1] + 1);
-  const down = d.every((n, i) => i === 0 || n === d[i - 1] - 1);
+  const up = d.every((n, i) => i === 0 || n === (d[i - 1] + 1) % 10);
+  const down = d.every((n, i) => i === 0 || n === (d[i - 1] + 9) % 10);
   if (up || down) return 'PIN cannot be a simple sequence like 123456';
   return null;
 }
@@ -113,9 +117,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // auth.users never sees them (found 2026-10-17 on the first real attempt:
   // the account was created and then rolled back because no profile existed).
   const loginEmail = `${code.toLowerCase()}@${SYNTHETIC_EMAIL_DOMAIN}`;
+  // The login's real password is a throw-away here: set_employee_pin (step 5b)
+  // replaces it with the derived one, and the PIN itself is kept only as a hash.
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email: loginEmail,
-    password: pin,
+    password: crypto.randomUUID() + crypto.randomUUID(),
     email_confirm: true,
     app_metadata: { role: 'employee' },
     user_metadata: { full_name: fullName },
@@ -150,6 +156,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
       // Someone else took the code or phone between the check above and now.
       const phoneClash = (profileError.message ?? '').includes('phone');
       return reply(409, { error: phoneClash ? 'phone_taken' : 'employee_code_taken' });
+    }
+    return reply(500, { error: 'create_failed' });
+  }
+
+  // 5b. The PIN: stored as a hash, checked by the server at every login, and the
+  // login's own password becomes a derived secret. A refused PIN or a failure
+  // undoes the whole account.
+  const { error: pinError } = await admin.rpc('set_employee_pin', {
+    p_user: userId,
+    p_pin: pin,
+    p_must_change: true,
+  });
+  if (pinError) {
+    console.error('set_employee_pin failed', pinError.code);
+    await admin.auth.admin.deleteUser(userId);
+    if (pinError.message === 'pin_invalid') {
+      return reply(400, {
+        error: 'validation_failed',
+        fields: { pin: pinError.details ?? 'Choose a different PIN' },
+      });
     }
     return reply(500, { error: 'create_failed' });
   }

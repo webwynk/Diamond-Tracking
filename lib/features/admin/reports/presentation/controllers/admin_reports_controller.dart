@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,6 +5,7 @@ import '../../../../../core/errors/app_exceptions.dart';
 import '../../../../../core/reports/report_pdf_renderer.dart';
 import '../../../../../core/reports/report_pdf_style.dart';
 import '../../../../../core/utils/duty_time_helper.dart';
+import '../../../../../core/utils/failure_log.dart';
 import '../../../../../core/utils/phone_clock.dart';
 import '../../../../../data/repositories/supabase_report_repository.dart';
 import '../../../../../domain/entities/report_builder.dart';
@@ -176,7 +176,7 @@ class AdminReportsNotifier extends Notifier<AdminReportsState> {
         errorMessage: e.message,
       );
     } catch (e, st) {
-      debugPrint('AdminReports: could not create the report: $e\n$st');
+      logFailure('AdminReports: could not create the report', e, st);
       if (stale()) return;
       state = state.copyWith(
         phase: ReportPhase.failed,

@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exceptions.dart';
+import '../../core/utils/failure_log.dart';
 import '../../domain/entities/admin_duty_session.dart';
 import '../../domain/entities/route_day.dart';
 import '../../domain/repositories/route_repository.dart';
@@ -126,7 +126,7 @@ class SupabaseRouteRepository implements RouteRepository {
     } catch (e, st) {
       final network = asNetworkFailure(e);
       if (network != null) throw network;
-      debugPrint('RouteRepository: could not $action: $e\n$st');
+      logFailure('RouteRepository: could not $action', e, st);
       throw ServerException('Could not $action. Please try again.');
     }
   }

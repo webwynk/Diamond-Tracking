@@ -9,11 +9,10 @@ import '../employees/presentation/admin_employee_list_page.dart';
 import '../employees/presentation/controllers/admin_employee_list_controller.dart';
 import '../map/presentation/admin_live_map_page.dart';
 import '../map/presentation/controllers/admin_live_map_controller.dart';
-import '../places/presentation/admin_places_page.dart';
 import '../reports/presentation/admin_reports_page.dart';
 import 'admin_tab.dart';
 
-/// Admin app root: one bottom bar over the five tab screens.
+/// Admin app root: one bottom bar over the four tab screens.
 ///
 /// Screens opened from a tab (detail pages, forms, notifications) are pushed on
 /// top of this shell and therefore have no bottom bar.
@@ -35,11 +34,6 @@ class AdminShell extends ConsumerWidget {
       label: 'Team',
       icon: Icons.group_outlined,
       activeIcon: Icons.group_rounded,
-    ),
-    AppNavItem(
-      label: 'Places',
-      icon: Icons.domain_outlined,
-      activeIcon: Icons.domain_rounded,
     ),
     AppNavItem(
       label: 'Reports',
@@ -78,7 +72,6 @@ class AdminShell extends ConsumerWidget {
             AdminDashboardPage(),
             AdminLiveMapPage(),
             AdminEmployeeListPage(),
-            AdminPlacesPage(),
             AdminReportsPage(),
           ],
         ),

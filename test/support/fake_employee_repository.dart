@@ -86,6 +86,28 @@ class FakeEmployeeRepository implements EmployeeRepository {
   Future<void> unblockEmployee({required String id}) async {
     _record('unblockEmployee');
   }
+
+  /// The PINs set through [resetPin], by employee id.
+  final Map<String, String> pinsReset = <String, String>{};
+
+  @override
+  Future<void> resetPin({required String id, required String newPin}) async {
+    _record('resetPin');
+    pinsReset[id] = newPin;
+  }
+
+  /// The employee ids whose phone [clearDevice] cleared.
+  final List<String> devicesCleared = <String>[];
+
+  /// What [clearDevice] answers: true = a phone was registered and is cleared.
+  bool clearDeviceResult = true;
+
+  @override
+  Future<bool> clearDevice({required String id}) async {
+    _record('clearDevice');
+    devicesCleared.add(id);
+    return clearDeviceResult;
+  }
 }
 
 /// Provider override that routes the roster and form to [repository].

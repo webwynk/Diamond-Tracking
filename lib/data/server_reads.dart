@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/errors/app_exceptions.dart';
+import '../core/utils/failure_log.dart';
 
 /// Two server reads several admin screens share, so they are written once.
 abstract final class ServerReads {
@@ -34,7 +34,7 @@ abstract final class ServerReads {
       if (value is num) return value.toDouble();
       return double.tryParse('$value');
     } on Object catch (e) {
-      debugPrint('ServerReads: no running distance: $e');
+      logFailure('ServerReads: no running distance', e);
       return null;
     }
   }

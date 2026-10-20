@@ -19,7 +19,12 @@ import '../../core/utils/map_support.dart';
 /// Where the native renderer is unavailable (widget tests, desktop) it shows a
 /// plain placeholder with the same attribution.
 class IndiaMap extends StatelessWidget {
-  const IndiaMap({super.key, this.onMapCreated, this.onStyleLoaded});
+  const IndiaMap({
+    super.key,
+    this.onMapCreated,
+    this.onStyleLoaded,
+    this.restrictBounds = true,
+  });
 
   /// Hands back the controller once the native map exists.
   final void Function(MapLibreMapController controller)? onMapCreated;
@@ -27,6 +32,9 @@ class IndiaMap extends StatelessWidget {
   /// Called when the map style has finished loading (and again if it reloads).
   /// Sources and layers can only be added from here on.
   final VoidCallback? onStyleLoaded;
+
+  /// Whether camera panning is strictly confined to India's geographical boundaries.
+  final bool restrictBounds;
 
   /// Centre of India, used for the starting and re-centred camera.
   static const LatLng center = LatLng(22.5, 79.0);
@@ -76,7 +84,9 @@ class IndiaMap extends StatelessWidget {
                     target: center,
                     zoom: initialZoom,
                   ),
-                  cameraTargetBounds: CameraTargetBounds(bounds),
+                  cameraTargetBounds: restrictBounds
+                      ? CameraTargetBounds(bounds)
+                      : CameraTargetBounds.unbounded,
                   minMaxZoomPreference: const MinMaxZoomPreference(
                     minZoom,
                     maxZoom,

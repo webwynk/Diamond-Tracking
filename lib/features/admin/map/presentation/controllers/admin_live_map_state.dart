@@ -108,9 +108,6 @@ class AdminLiveMapState {
     return null;
   }
 
-  bool get hasActiveFilter =>
-      selectedFilter != AdminMapFilter.all || searchQuery.trim().isNotEmpty;
-
   List<LiveOfficer> get filteredOfficers {
     final query = searchQuery.trim().toLowerCase();
     return officers.where((officer) {
