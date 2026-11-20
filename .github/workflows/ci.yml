@@ -67,3 +67,20 @@ jobs:
       - uses: actions/checkout@v4
       - name: Migration, security and rules tests
         run: supabase/tests/run_local.sh
+
+  functions:
+    name: Server function tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: supabase/functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.5.x
+      - run: deno fmt --check
+      - run: deno lint
+      - run: deno check */index.ts
+      - run: deno test --allow-env

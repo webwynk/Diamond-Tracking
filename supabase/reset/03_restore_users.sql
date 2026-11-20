@@ -1,5 +1,5 @@
 -- STEP 3 of 3. Run once in the Supabase SQL editor, after step 2 (the new
--- schema, supabase/migrations/20261120000000_rewrite_baseline.sql).
+-- schema: both files in supabase/migrations, oldest first).
 --
 -- Brings the kept users into the new profiles table and marks every employee
 -- to set a new password: their old PIN logins cannot work with the new
@@ -36,7 +36,8 @@ do $$
 begin
   if to_regclass('supabase_migrations.schema_migrations') is not null then
     insert into supabase_migrations.schema_migrations (version, name)
-    values ('20261120000000', 'rewrite_baseline')
+    values ('20261120000000', 'rewrite_baseline'),
+           ('20261121000000', 'login_and_devices')
     on conflict do nothing;
   end if;
 end;

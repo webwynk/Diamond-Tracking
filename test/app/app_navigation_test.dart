@@ -3,9 +3,13 @@ import 'dart:async';
 import 'package:diamond_tracking/app/app.dart';
 import 'package:diamond_tracking/features/auth/application/auth_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
+import 'package:diamond_tracking/features/users/application/users_providers.dart';
+import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/fakes.dart';
 
 void main() {
   late StreamController<AuthStatus> auth;
@@ -16,7 +20,16 @@ void main() {
   Future<void> pumpApp(WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [authStatusStreamProvider.overrideWithValue(auth.stream)],
+        overrides: [
+          authStatusStreamProvider.overrideWithValue(auth.stream),
+          authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
+          usersRepositoryProvider.overrideWithValue(
+            FakeUsersRepository(<Profile>[
+              profile('u', name: 'Asha Roy'),
+              profile('a', name: 'Boss', role: AppRole.admin),
+            ]),
+          ),
+        ],
         child: const DiamondApp(),
       ),
     );
@@ -89,6 +102,56 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Set your password'), findsWidgets);
+    expect(find.text('Choose your password'), findsWidgets);
+  });
+
+  testWidgets('the Profile tab shows the user and logs out', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(tester);
+    auth.add(
+      const SignedIn(
+        userId: 'u',
+        role: AppRole.employee,
+        mustChangePassword: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(NavigationDestination, 'Profile'));
+    await tester.pumpAndSettle();
+    expect(find.text('Asha Roy'), findsOneWidget);
+
+    await tester.tap(find.text('Change password'));
+    await tester.pumpAndSettle();
+    expect(find.text('Current password'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+  });
+
+  testWidgets('an admin opens Users and their own account', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(tester);
+    auth.add(
+      const SignedIn(
+        userId: 'a',
+        role: AppRole.admin,
+        mustChangePassword: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(NavigationDestination, 'Users'));
+    await tester.pumpAndSettle();
+    expect(find.text('Asha Roy'), findsOneWidget);
+
+    await tester.tap(find.text('Asha Roy'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit user'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('My account'));
+    await tester.pumpAndSettle();
+    expect(find.text('My account'), findsWidgets);
+    expect(find.text('Boss'), findsOneWidget);
   });
 }
