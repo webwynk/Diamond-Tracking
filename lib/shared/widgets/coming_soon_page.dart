@@ -10,16 +10,18 @@ class ComingSoonPage extends StatelessWidget {
     required this.phase,
     required this.icon,
     super.key,
+    this.actions = const <Widget>[],
   });
 
   final String title;
   final String phase;
   final IconData icon;
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: Text(title), actions: actions),
       body: Padding(
         padding: AppSpacing.screen,
         child: AppEmptyState(

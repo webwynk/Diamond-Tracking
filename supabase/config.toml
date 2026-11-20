@@ -1,0 +1,13 @@
+# Supabase CLI settings used when deploying Edge Functions.
+project_id = "diamond-tracking"
+
+# These functions check the caller themselves (user token or none), because
+# the new publishable/secret API keys are not JWTs the gateway can verify.
+[functions.admin-users]
+verify_jwt = false
+
+[functions.account]
+verify_jwt = false
+
+[functions.password-reset]
+verify_jwt = false

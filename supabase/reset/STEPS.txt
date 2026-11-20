@@ -1,29 +1,76 @@
-Resetting the live database (keeps users, clears everything else)
-===================================================================
+Going live with the new database and login (phases 2 and 3)
+=============================================================
 
 Do this only when you are ready. It deletes all old attendance, routes,
 visits and notifications for good. Sign-in accounts are kept.
 
+You need: the Supabase dashboard, and a computer with Node.js for step 5.
+Your project ref is the part of the project URL before .supabase.co.
+
+
+A. DATABASE (Supabase dashboard > SQL editor)
+---------------------------------------------
+
 0. BACKUP FIRST
-   Supabase dashboard > Database > Backups: download the latest backup.
+   Database > Backups: download the latest backup.
    (Free plan has no backups: in the SQL editor, run
     "select * from public.profiles" and export the result as CSV, and do the
     same for duty_sessions, visits and location_points if you want to keep
     a copy.)
 
-1. SQL editor: paste and run supabase/reset/01_backup_and_clear_old.sql
+1. Paste and run supabase/reset/01_backup_and_clear_old.sql
 
-2. SQL editor: paste and run
-   supabase/migrations/20261120000000_rewrite_baseline.sql
-   (Database > Extensions: pg_cron must be enabled first, so the 11 PM job
-    is scheduled. The script checks and schedules it if available.)
+2. Database > Extensions: turn on pg_cron (for the 11 PM auto duty off).
+   Then paste and run, in this order:
+     supabase/migrations/20261120000000_rewrite_baseline.sql
+     supabase/migrations/20261121000000_login_and_devices.sql
 
-3. SQL editor: paste and run supabase/reset/03_restore_users.sql
+3. Paste and run supabase/reset/03_restore_users.sql
    The last query lists the kept users. Check them.
 
-4. Edge Functions: delete the old employee-auth, create-employee and
-   visit-photos functions (phase 3 and 7 deploy new ones).
 
-After step 3 nobody can sign in until phase 3 (new login) is installed.
+B. SIGN-IN SETTINGS (Supabase dashboard > Authentication)
+---------------------------------------------------------
+
+4. Sign In / Providers > Email:
+   - "Confirm email": off (user accounts are made by the admin).
+   - Minimum password length: 6 (temporary PINs are 6 digits; the app asks
+     for 8+ characters with a letter and a digit for real passwords).
+   - Allow new users to sign up: off. Only the admin creates accounts.
+
+
+C. SERVER FUNCTIONS (on your computer, in the project folder)
+-------------------------------------------------------------
+
+5. Deploy the three new functions:
+     npx supabase login
+     npx supabase functions deploy --project-ref YOUR_PROJECT_REF
+   This deploys admin-users, account and password-reset with the settings
+   in supabase/config.toml.
+
+6. Edge Functions: delete the old employee-auth, create-employee and
+   visit-photos functions (phase 7 deploys a new photo function).
+
+7. Password reset by email (optional, can be done later):
+   - Make a free account at resend.com, add and verify your domain, and
+     create an API key.
+   - Edge Functions > Secrets: add
+       RESEND_API_KEY    = the key
+       RESET_EMAIL_FROM  = Diamond Agritech <no-reply@your-domain>
+   Until this is set, "Forgot password" tells users to ask the admin, and
+   the admin's "Reset password" button still works.
+
+
+D. FIRST SIGN-IN
+----------------
+
+8. Install the new app build. The admin signs in with their email and their
+   current password.
+
+9. Users tab: open each employee and tap "Reset password". Give them the new
+   temporary PIN shown. They sign in with their user ID and that PIN, then
+   choose their own password.
+   (Old PINs were stored in the code history, so do not rely on them.)
+
 reset_backup.profiles stays as a copy of the old user list; drop it once
-everything works.
+everything works:  drop schema reset_backup cascade;

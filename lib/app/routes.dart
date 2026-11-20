@@ -7,17 +7,23 @@ abstract final class Routes {
   static const String splash = '/';
   static const String login = '/login';
   static const String setPassword = '/set-password';
+  static const String forgotPassword = '/forgot-password';
 
   static const String userHome = '/home';
   static const String userMap = '/map';
   static const String userHistory = '/history';
   static const String userProfile = '/profile';
+  static const String userChangePassword = '/profile/password';
 
   static const String adminDashboard = '/admin';
   static const String adminLiveMap = '/admin/live';
   static const String adminRequests = '/admin/requests';
   static const String adminUsers = '/admin/users';
   static const String adminReports = '/admin/reports';
+  static const String adminUserNew = '/admin/users/new';
+  static String adminUserEdit(String id) => '/admin/users/$id';
+  static const String adminAccount = '/admin/account';
+  static const String adminChangePassword = '/admin/account/password';
 
   static bool isAdminPath(String path) =>
       path == adminDashboard || path.startsWith('$adminDashboard/');
@@ -26,7 +32,12 @@ abstract final class Routes {
       path == userHome ||
       path == userMap ||
       path == userHistory ||
-      path == userProfile;
+      path == userProfile ||
+      path.startsWith('$userProfile/');
+
+  /// Screens for signed-out users.
+  static bool isPublicPath(String path) =>
+      path == login || path == forgotPassword;
 }
 
 /// Where the app must go for [status] when the user tries to open [path].
@@ -36,7 +47,7 @@ String? resolveRedirect(AuthStatus status, String path) {
     case AuthLoading():
       return path == Routes.splash ? null : Routes.splash;
     case SignedOut():
-      return path == Routes.login ? null : Routes.login;
+      return Routes.isPublicPath(path) ? null : Routes.login;
     case SignedIn(mustChangePassword: true):
       return path == Routes.setPassword ? null : Routes.setPassword;
     case SignedIn(role: AppRole.admin):

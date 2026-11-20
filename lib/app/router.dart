@@ -4,8 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/application/auth_providers.dart';
 import '../features/auth/domain/auth_status.dart';
+import '../features/auth/presentation/change_password_page.dart';
+import '../features/auth/presentation/forgot_password_page.dart';
 import '../features/auth/presentation/login_page.dart';
+import '../features/auth/presentation/set_password_page.dart';
 import '../features/auth/presentation/splash_page.dart';
+import '../features/users/presentation/account_button.dart';
+import '../features/users/presentation/account_page.dart';
+import '../features/users/presentation/user_form_page.dart';
+import '../features/users/presentation/users_page.dart';
 import '../shared/widgets/coming_soon_page.dart';
 import '../shared/widgets/nav_shell.dart';
 import 'routes.dart';
@@ -22,7 +29,11 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
     (AuthStatus? _, AuthStatus next) => status.value = next,
   );
 
+  // Forms and the admin's account open over the tab bar, on this navigator.
+  final GlobalKey<NavigatorState> rootKey = GlobalKey<NavigatorState>();
+
   final GoRouter router = GoRouter(
+    navigatorKey: rootKey,
     initialLocation: Routes.splash,
     refreshListenable: status,
     redirect: (BuildContext context, GoRouterState state) =>
@@ -39,12 +50,33 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
             const LoginPage(),
       ),
       GoRoute(
+        path: Routes.forgotPassword,
+        builder: (BuildContext context, GoRouterState state) =>
+            const ForgotPasswordPage(),
+      ),
+      GoRoute(
         path: Routes.setPassword,
         builder: (BuildContext context, GoRouterState state) =>
             const SetPasswordPage(),
       ),
-      _userShell(),
-      _adminShell(),
+      // Listed before the admin tabs so it is not taken for a tab.
+      GoRoute(
+        path: Routes.adminAccount,
+        builder: (BuildContext context, GoRouterState state) =>
+            const AccountPage(
+              title: 'My account',
+              changePasswordRoute: Routes.adminChangePassword,
+            ),
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'password',
+            builder: (BuildContext context, GoRouterState state) =>
+                const ChangePasswordPage(),
+          ),
+        ],
+      ),
+      _userShell(rootKey),
+      _adminShell(rootKey),
     ],
   );
   ref.onDispose(() {
@@ -54,13 +86,25 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
   return router;
 });
 
-GoRoute _tab(String path, String title, String phase, IconData icon) => GoRoute(
+GoRoute _tab(
+  String path,
+  String title,
+  String phase,
+  IconData icon, {
+  bool adminAccount = false,
+}) => GoRoute(
   path: path,
-  builder: (BuildContext context, GoRouterState state) =>
-      ComingSoonPage(title: title, phase: phase, icon: icon),
+  builder: (BuildContext context, GoRouterState state) => ComingSoonPage(
+    title: title,
+    phase: phase,
+    icon: icon,
+    actions: adminAccount ? const <Widget>[AccountButton()] : const <Widget>[],
+  ),
 );
 
-StatefulShellRoute _userShell() => StatefulShellRoute.indexedStack(
+StatefulShellRoute _userShell(
+  GlobalKey<NavigatorState> rootKey,
+) => StatefulShellRoute.indexedStack(
   builder:
       (BuildContext context, GoRouterState state, StatefulNavigationShell s) =>
           NavShell(
@@ -95,21 +139,32 @@ StatefulShellRoute _userShell() => StatefulShellRoute.indexedStack(
     ),
     StatefulShellBranch(
       routes: <RouteBase>[
-        _tab(
-          Routes.userProfile,
-          'Profile',
-          'phase 3 (login and users)',
-          Icons.person_rounded,
+        GoRoute(
+          path: Routes.userProfile,
+          builder: (BuildContext context, GoRouterState state) =>
+              const AccountPage(changePasswordRoute: Routes.userChangePassword),
+          routes: <RouteBase>[
+            GoRoute(
+              path: 'password',
+              parentNavigatorKey: rootKey,
+              builder: (BuildContext context, GoRouterState state) =>
+                  const ChangePasswordPage(),
+            ),
+          ],
         ),
       ],
     ),
   ],
 );
 
-StatefulShellRoute _adminShell() => StatefulShellRoute.indexedStack(
-  builder:
-      (BuildContext context, GoRouterState state, StatefulNavigationShell s) =>
-          NavShell(
+StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
+    StatefulShellRoute.indexedStack(
+      builder:
+          (
+            BuildContext context,
+            GoRouterState state,
+            StatefulNavigationShell s,
+          ) => NavShell(
             shell: s,
             tabs: const <NavTab>[
               NavTab(label: 'Dashboard', icon: Icons.dashboard_rounded),
@@ -119,56 +174,74 @@ StatefulShellRoute _adminShell() => StatefulShellRoute.indexedStack(
               NavTab(label: 'Reports', icon: Icons.picture_as_pdf_rounded),
             ],
           ),
-  branches: <StatefulShellBranch>[
-    StatefulShellBranch(
-      routes: <RouteBase>[
-        _tab(
-          Routes.adminDashboard,
-          'Dashboard',
-          'phase 6 (requests)',
-          Icons.dashboard_rounded,
+      branches: <StatefulShellBranch>[
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            _tab(
+              Routes.adminDashboard,
+              'Dashboard',
+              'phase 6 (requests)',
+              Icons.dashboard_rounded,
+              adminAccount: true,
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            _tab(
+              Routes.adminLiveMap,
+              'Live map',
+              'phase 5 (maps)',
+              Icons.location_on_rounded,
+              adminAccount: true,
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            _tab(
+              Routes.adminRequests,
+              'Requests',
+              'phase 6 (requests)',
+              Icons.inbox_rounded,
+              adminAccount: true,
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: Routes.adminUsers,
+              builder: (BuildContext context, GoRouterState state) =>
+                  const UsersPage(),
+              routes: <RouteBase>[
+                // 'new' before ':id', so it is not read as an id.
+                GoRoute(
+                  path: 'new',
+                  parentNavigatorKey: rootKey,
+                  builder: (BuildContext context, GoRouterState state) =>
+                      const UserFormPage(),
+                ),
+                GoRoute(
+                  path: ':id',
+                  parentNavigatorKey: rootKey,
+                  builder: (BuildContext context, GoRouterState state) =>
+                      UserFormPage(userId: state.pathParameters['id']),
+                ),
+              ],
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            _tab(
+              Routes.adminReports,
+              'Reports',
+              'phase 8 (reports)',
+              Icons.picture_as_pdf_rounded,
+              adminAccount: true,
+            ),
+          ],
         ),
       ],
-    ),
-    StatefulShellBranch(
-      routes: <RouteBase>[
-        _tab(
-          Routes.adminLiveMap,
-          'Live map',
-          'phase 5 (maps)',
-          Icons.location_on_rounded,
-        ),
-      ],
-    ),
-    StatefulShellBranch(
-      routes: <RouteBase>[
-        _tab(
-          Routes.adminRequests,
-          'Requests',
-          'phase 6 (requests)',
-          Icons.inbox_rounded,
-        ),
-      ],
-    ),
-    StatefulShellBranch(
-      routes: <RouteBase>[
-        _tab(
-          Routes.adminUsers,
-          'Users',
-          'phase 3 (login and users)',
-          Icons.group_rounded,
-        ),
-      ],
-    ),
-    StatefulShellBranch(
-      routes: <RouteBase>[
-        _tab(
-          Routes.adminReports,
-          'Reports',
-          'phase 8 (reports)',
-          Icons.picture_as_pdf_rounded,
-        ),
-      ],
-    ),
-  ],
-);
+    );

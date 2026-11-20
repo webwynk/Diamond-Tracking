@@ -43,8 +43,8 @@ begin
 end;
 $$;
 
-grant usage on schema t to anon, authenticated;
-grant execute on all functions in schema t to anon, authenticated;
+grant usage on schema t to anon, authenticated, service_role;
+grant execute on all functions in schema t to anon, authenticated, service_role;
 
 -- People
 insert into auth.users (id, email) values
@@ -57,6 +57,10 @@ insert into public.profiles (id, user_code, full_name, role, created_at) values
   ('00000000-0000-0000-0000-000000000001', 'DA-001', 'Employee One', 'employee', now() - interval '30 days'),
   ('00000000-0000-0000-0000-000000000002', 'DA-002', 'Employee Two', 'employee', now() - interval '30 days'),
   ('00000000-0000-0000-0000-000000000003', 'DA-003', 'Employee Three', 'employee', now() - interval '30 days');
+
+update public.profiles set active_device_id = 'dev-e1-0001' where user_code = 'DA-001';
+update public.profiles set active_device_id = 'dev-e2-0001' where user_code = 'DA-002';
+update public.profiles set active_device_id = 'dev-e3-0001' where user_code = 'DA-003';
 
 \echo '--- helpers'
 do $$
@@ -76,7 +80,7 @@ $$;
 \echo '--- anonymous visitors see and do nothing'
 select t.act_as(null);
 select t.expect_error('select count(*) from public.profiles', 'permission denied');
-select t.expect_error('select public.duty_on()', 'permission denied');
+select t.expect_error($$select public.duty_on('dev-e1-0001')$$, 'permission denied');
 select t.expect_error('select public.server_now()', 'permission denied');
 select t.act_as_owner();
 
@@ -104,7 +108,7 @@ begin
   perform t.eq((select count(*) from public.profiles), 4::bigint, 'admin sees all profiles');
 end;
 $$;
-select t.expect_error('select public.duty_on()', 'not_active_employee');
+select t.expect_error($$select public.duty_on('dev-ad-0001')$$, 'not_active_employee');
 select t.act_as_owner();
 
 \echo '--- duty on follows the 05:00 to 08:30 IST window'
@@ -114,10 +118,10 @@ declare
   v_time time := (now() at time zone 'Asia/Kolkata')::time;
 begin
   if v_time >= time '05:00' and v_time < time '08:31' then
-    perform public.duty_on();
-    perform t.expect_error('select public.duty_on()', 'already_on_duty_today');
+    perform public.duty_on('dev-e3-0001');
+    perform t.expect_error($q$select public.duty_on('dev-e3-0001')$q$, 'already_on_duty_today');
   else
-    perform t.expect_error('select public.duty_on()', 'duty_on_closed');
+    perform t.expect_error($q$select public.duty_on('dev-e3-0001')$q$, 'duty_on_closed');
   end if;
 end;
 $$;
@@ -160,12 +164,13 @@ begin
     'la', 22500000, 'lo', 88300000, 'a', 8, 'b', 90);
 
   perform t.act_as('00000000-0000-0000-0000-000000000001');
-  perform t.eq(public.upload_points(v_id, v_points), 52, 'points stored');
-  perform t.eq(public.upload_points(v_id, v_points), 0, 'a retried upload adds nothing');
+  perform t.eq(public.upload_points(v_id, v_points, 'dev-e1-0001'), 52, 'points stored');
+  perform t.eq(public.upload_points(v_id, v_points, 'dev-e1-0001'), 0, 'a retried upload adds nothing');
+  perform t.expect_error(format($q$select public.upload_points(%s, '[]', 'other-phone-1')$q$, v_id), 'signed_in_elsewhere');
 
   -- Another employee cannot touch this duty.
   perform t.act_as('00000000-0000-0000-0000-000000000002');
-  perform t.expect_error(format('select public.upload_points(%s, %L)', v_id, v_points), 'duty_not_found');
+  perform t.expect_error(format($q$select public.upload_points(%s, %L, 'dev-e2-0001')$q$, v_id, v_points), 'duty_not_found');
   perform t.expect_error(format('select public.duty_off(%s)', v_id), 'duty_not_found');
   perform t.eq((select count(*) from public.track_points), 0::bigint, 'others cannot read points');
 
@@ -354,6 +359,60 @@ begin
   perform private.cleanup();
   perform t.eq((select count(*) from public.track_points), 0::bigint, 'old points removed');
   perform t.eq((select count(*) from public.day_routes) > 0, true, 'routes kept');
+end;
+$$;
+
+\echo '--- one phone at a time'
+do $$
+begin
+  perform t.act_as('00000000-0000-0000-0000-000000000002');
+  perform public.claim_device('dev-e2-0001');  -- same phone: fine
+  perform t.expect_error($q$select public.claim_device('second-phone')$q$, 'signed_in_elsewhere');
+  perform t.expect_error($q$select public.claim_device('x')$q$, 'invalid_device');
+  perform public.release_device('second-phone');  -- the wrong phone cannot release
+  perform t.expect_error($q$select public.claim_device('second-phone')$q$, 'signed_in_elsewhere');
+  perform public.release_device('dev-e2-0001');
+  perform public.claim_device('second-phone');
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform public.claim_device('admin-phone-1');
+  perform public.claim_device('admin-phone-2');  -- admins are not limited
+  perform t.expect_error($q$select public.svc_revoke_sessions('00000000-0000-0000-0000-000000000002')$q$, 'permission denied');
+  perform t.act_as_owner();
+
+  insert into auth.sessions (user_id) values ('00000000-0000-0000-0000-000000000002');
+  perform set_config('role', 'service_role', false);
+  perform public.svc_revoke_sessions('00000000-0000-0000-0000-000000000002');
+  perform t.act_as_owner();
+  perform t.eq((select count(*) from auth.sessions where user_id = '00000000-0000-0000-0000-000000000002'),
+               0::bigint, 'sessions revoked');
+  perform t.eq((select active_device_id from public.profiles where user_code = 'DA-002'),
+               null::text, 'device released on revoke');
+end;
+$$;
+
+\echo '--- password reset codes'
+do $$
+declare
+  u uuid := '00000000-0000-0000-0000-000000000003';
+begin
+  perform t.act_as('00000000-0000-0000-0000-000000000003');
+  perform t.expect_error($q$select public.svc_store_reset_code('00000000-0000-0000-0000-000000000003', '123456')$q$, 'permission denied');
+  perform t.expect_error($q$select count(*) from private.password_reset_codes$q$, 'permission denied');
+  perform set_config('role', 'service_role', false);
+  perform t.eq(public.svc_store_reset_code(u, '123456'), true, 'code stored');
+  perform t.eq(public.svc_store_reset_code(u, '654321'), false, 'no second email within a minute');
+  perform t.eq(public.svc_use_reset_code(u, '000000'), false, 'wrong code');
+  perform t.eq(public.svc_use_reset_code(u, '123456'), true, 'right code');
+  perform t.eq(public.svc_use_reset_code(u, '123456'), false, 'a code works once');
+  perform t.act_as_owner();
+  update private.password_reset_codes set created_at = now() - interval '2 minutes' where user_id = u;
+  perform set_config('role', 'service_role', false);
+  perform public.svc_store_reset_code(u, '111111');
+  perform public.svc_use_reset_code(u, '1'); perform public.svc_use_reset_code(u, '2');
+  perform public.svc_use_reset_code(u, '3'); perform public.svc_use_reset_code(u, '4');
+  perform public.svc_use_reset_code(u, '5');
+  perform t.eq(public.svc_use_reset_code(u, '111111'), false, 'locked after 5 wrong tries');
+  perform t.act_as_owner();
 end;
 $$;
 
