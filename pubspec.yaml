@@ -56,6 +56,17 @@ dependencies:
   # map display). The key is added at build time, see android/app/build.gradle.kts.
   google_maps_flutter: ^2.19.0
 
+  # Phase 6: requests and notifications.
+  # Attendance and leave photos from the camera or gallery, shrunk on the
+  # phone, then posted straight to Cloudinary with a signed form (http).
+  image_picker: ^1.2.4
+  http: ^1.6.0
+  # Phone push. Firebase is set up in code from env.json (no
+  # google-services.json, no Gradle plugin); without those values the app
+  # shows notifications inside the app only.
+  firebase_core: ^5.2.0
+  firebase_messaging: ^17.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.stop-addresses]
 verify_jwt = false
+
+[functions.photos]
+verify_jwt = false
+
+[functions.push]
+verify_jwt = false

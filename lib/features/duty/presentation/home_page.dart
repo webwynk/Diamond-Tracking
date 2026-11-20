@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../app/routes.dart';
 
 import '../../../core/rules/duty_rules.dart';
 import '../../../core/theme/app_colors.dart';
@@ -12,6 +15,8 @@ import '../../../core/time/ist_format.dart';
 import '../../../shared/widgets/app_banner.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_error_view.dart';
+import '../../notifications/presentation/notification_bell.dart';
+import '../../requests/presentation/my_requests_page.dart';
 import '../../tracking/application/tracker_control.dart';
 import '../../tracking/application/tracker_providers.dart';
 import '../../tracking/presentation/tracking_setup_sheet.dart';
@@ -225,7 +230,10 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final AsyncValue<DutyHome> home = ref.watch(dutyHomeProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Home')),
+      appBar: AppBar(
+        title: const Text('Home'),
+        actions: const <Widget>[NotificationBell()],
+      ),
       body: home.when(
         skipLoadingOnRefresh: true,
         data: (DutyHome value) => RefreshIndicator(
@@ -257,6 +265,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 onDutyOn: _dutyOn,
                 onDutyOff: _dutyOff,
               ),
+              const SizedBox(height: AppSpacing.x4),
+              const _RequestsCard(),
             ],
           ),
         ),
@@ -320,7 +330,7 @@ class _DutyCard extends StatelessWidget {
         ),
         const _Line(
           'Duty on is allowed from 5:00 AM to 8:30 AM. If you worked today, '
-          'you can request attendance (coming soon).',
+          'use Request attendance below.',
         ),
       ],
       DutyPhase.onDuty => <Widget>[
@@ -433,6 +443,37 @@ class _Line extends StatelessWidget {
     child: Text(
       text,
       style: AppTypography.body.copyWith(color: AppColors.textSecondary),
+    ),
+  );
+}
+
+/// Attendance and leave requests.
+class _RequestsCard extends StatelessWidget {
+  const _RequestsCard();
+
+  @override
+  Widget build(BuildContext context) => Card(
+    margin: EdgeInsets.zero,
+    child: Padding(
+      padding: AppSpacing.card,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const Expanded(
+                child: Text('Requests', style: AppTypography.title),
+              ),
+              TextButton(
+                onPressed: () => context.push(Routes.userRequests),
+                child: const Text('My requests'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.x2),
+          const NewRequestButtons(),
+        ],
+      ),
     ),
   );
 }

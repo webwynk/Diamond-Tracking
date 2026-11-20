@@ -27,6 +27,26 @@ abstract final class Env {
     'SUPABASE_PUBLISHABLE_KEY',
   );
 
+  /// Firebase, for push notifications. Optional: without them the app shows
+  /// notifications inside the app only. Public values (from the Firebase
+  /// console's google-services.json), not secrets.
+  static const String firebaseApiKey = String.fromEnvironment(
+    'FIREBASE_API_KEY',
+  );
+  static const String firebaseAppId = String.fromEnvironment('FIREBASE_APP_ID');
+  static const String firebaseSenderId = String.fromEnvironment(
+    'FIREBASE_SENDER_ID',
+  );
+  static const String firebaseProjectId = String.fromEnvironment(
+    'FIREBASE_PROJECT_ID',
+  );
+
+  static bool get pushConfigured =>
+      firebaseApiKey.isNotEmpty &&
+      firebaseAppId.isNotEmpty &&
+      firebaseSenderId.isNotEmpty &&
+      firebaseProjectId.isNotEmpty;
+
   /// Every required key with its value.
   static const Map<String, String> required = <String, String>{
     'SUPABASE_URL': supabaseUrl,

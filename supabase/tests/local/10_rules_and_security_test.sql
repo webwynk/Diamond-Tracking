@@ -214,6 +214,9 @@ begin
 
   perform t.act_as('00000000-0000-0000-0000-00000000000a');
   perform t.eq((select count(*) from public.notifications where kind = 'short_duty'), 1::bigint, 'admin notified');
+  perform t.eq((select (data->>'request_id')::bigint from public.notifications where kind = 'short_duty'),
+               (select id from public.requests where kind = 'short_duty' order by id desc limit 1),
+               'the alert names its request');
   perform t.expect_error(format($q$select public.decide_request(%s, 'leave')$q$, v_req), 'invalid_decision');
   perform public.decide_request(v_req, 'half_day', 'Left early, approved');
   perform t.expect_error(format($q$select public.decide_request(%s, 'present')$q$, v_req), 'request_already_decided');
@@ -261,13 +264,15 @@ declare
 begin
   perform t.act_as('00000000-0000-0000-0000-000000000003');
   -- Day 1 back was marked absent above; the request can still fix it.
-  select id into v_req from public.request_attendance(v_today - 1, time '09:00', time '19:30', 'Forgot to duty on', 'photo/abc');
-  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '19:30', 'again', 'p')$q$, v_today - 1), 'already_requested');
-  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '19:30', 'old', 'p')$q$, v_today - 8), 'outside_request_window');
-  perform t.expect_error(format($q$select public.request_attendance(%L, '19:00', '09:00', 'x', 'p')$q$, v_today - 3), 'invalid_times');
-  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', null)$q$, v_today - 3), 'check constraint');
+  select id into v_req from public.request_attendance(v_today - 1, time '09:00', time '19:30', 'Forgot to duty on', 'req-11111111-2222-3333-4444-555555555555');
+  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '19:30', 'again', 'req-11111111-2222-3333-4444-555555555555')$q$, v_today - 1), 'already_requested');
+  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '19:30', 'old', 'req-11111111-2222-3333-4444-555555555555')$q$, v_today - 8), 'outside_request_window');
+  perform t.expect_error(format($q$select public.request_attendance(%L, '19:00', '09:00', 'x', 'req-11111111-2222-3333-4444-555555555555')$q$, v_today - 3), 'invalid_times');
+  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', null)$q$, v_today - 3), 'photo_required');
+  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', 'photo/abc')$q$, v_today - 3), 'photo_required');
+  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', '  ', 'req-11111111-2222-3333-4444-555555555555')$q$, v_today - 3), 'message_required');
   perform t.act_as('00000000-0000-0000-0000-000000000001');
-  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '19:30', 'x', 'p')$q$, v_today - 1), 'already_has_duty');
+  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '19:30', 'x', 'req-11111111-2222-3333-4444-555555555555')$q$, v_today - 1), 'already_has_duty');
 
   perform t.act_as('00000000-0000-0000-0000-00000000000a');
   perform public.decide_request(v_req, 'present');
@@ -292,8 +297,11 @@ begin
   perform t.eq(v_req.dates, array[v_today + 1, v_today + 2], 'dates sorted and unique');
   perform public.cancel_request(v_req.id);
   perform t.expect_error(format('select public.cancel_request(%s)', v_req.id), 'request_not_cancellable');
-  v_req := public.request_leave('sick', array[v_today - 1, v_today + 1], 'Fever', 'proof/1');
+  perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date], 'x', 'proof/1')$q$, v_today + 1), 'invalid_photo');
+  perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date], 'x')$q$, v_today + 120), 'invalid_dates');
+  v_req := public.request_leave('sick', array[v_today - 1, v_today + 1], 'Fever', 'req-aaaaaaaa-2222-3333-4444-555555555555');
 
+  perform t.expect_error(format($q$select public.request_leave('casual', array[%L::date], 'overlap')$q$, v_today + 1), 'already_requested');
   perform t.act_as('00000000-0000-0000-0000-00000000000a');
   perform public.decide_request(v_req.id, 'leave');
   perform t.act_as_owner();
@@ -585,6 +593,75 @@ begin
   perform t.expect_error($q$select public.svc_save_places(1, '[]')$q$, 'permission denied');
   perform t.expect_error($q$select count(*) from private.place_names$q$, 'permission denied');
   perform t.act_as_owner();
+end;
+$$;
+
+\echo '--- push tokens and sending'
+create table t.pushed (url text, body jsonb);
+create schema if not exists net;
+create function net.http_post(url text, body jsonb, params jsonb default '{}',
+  headers jsonb default '{}', timeout_milliseconds int default 5000) returns bigint
+language sql as $$ insert into t.pushed values (url, body); select 1::bigint; $$;
+grant usage on schema net to anon, authenticated, service_role;
+grant all on t.pushed to anon, authenticated, service_role;
+do $$
+declare
+  v_tok text := repeat('a', 30);
+  v_id bigint;
+  v_claim jsonb;
+begin
+  -- Without push_url nothing is sent.
+  perform t.act_as_owner();
+  perform private.notify('00000000-0000-0000-0000-000000000001', 'test', 'No url', null);
+  perform t.eq((select count(*) from t.pushed), 0::bigint, 'no push without push_url');
+  insert into private.app_settings values ('push_url', 'https://x.test/functions/v1/push');
+
+  perform t.act_as('00000000-0000-0000-0000-000000000001');
+  perform public.set_push_token('dev-e1-0001', v_tok);
+  perform public.set_push_token('dev-e1-0001', repeat('b', 30));  -- refreshed token replaces it
+  perform t.expect_error($q$select public.set_push_token('dev-e1-0001', 'short')$q$, 'invalid_token');
+  perform t.expect_error($q$select * from private.push_tokens$q$, 'permission denied');
+  perform t.expect_error($q$select public.svc_claim_push(1)$q$, 'permission denied');
+  perform t.act_as(null);
+  perform t.expect_error($q$select public.set_push_token('dev-e1-0001', repeat('c', 30))$q$, 'permission denied');
+
+  perform t.act_as_owner();
+  perform t.eq((select array_agg(token) from private.push_tokens
+                where user_id = '00000000-0000-0000-0000-000000000001'),
+               array[repeat('b', 30)], 'one token per phone');
+  -- A token from a phone that no longer holds the account is not used.
+  insert into private.push_tokens values (repeat('d', 30), '00000000-0000-0000-0000-000000000001', 'dev-old-0001', now());
+
+  perform private.notify('00000000-0000-0000-0000-000000000001', 'test', 'Hello', 'Body',
+                         '{"request_id": 5}');
+  select id into v_id from public.notifications where title = 'Hello';
+  perform t.eq((select body from t.pushed order by ctid desc limit 1), jsonb_build_object('id', v_id), 'insert asks for a push');
+  set local role service_role;
+  v_claim := public.svc_claim_push(v_id);
+  perform t.eq(v_claim->>'title', 'Hello', 'claim has the text');
+  perform t.eq(v_claim->'tokens', jsonb_build_array(repeat('b', 30)), 'only the account phone');
+  perform t.eq((v_claim->'data'->>'request_id')::int, 5, 'data kept');
+  perform t.eq(public.svc_claim_push(v_id), null::jsonb, 'claimed once');
+  perform public.svc_drop_push_tokens(array[repeat('b', 30)]);
+  perform t.act_as_owner();
+  perform t.eq((select count(*) from private.push_tokens where token = repeat('b', 30)), 0::bigint, 'dropped');
+
+  -- Logout clears the phone's token.
+  perform t.act_as('00000000-0000-0000-0000-000000000001');
+  perform public.set_push_token('dev-e1-0001', v_tok);
+  perform public.clear_push_token(v_tok);
+  perform t.act_as_owner();
+  perform t.eq((select count(*) from private.push_tokens where token = v_tok), 0::bigint, 'logout clears');
+
+  -- An admin's request photo check.
+  select id into v_id from public.requests where kind = 'attendance' limit 1;
+  set local role service_role;
+  perform t.eq(public.svc_request_photo(v_id, '00000000-0000-0000-0000-00000000000a'),
+               'req-11111111-2222-3333-4444-555555555555', 'admin sees the photo id');
+  perform t.expect_error(format('select public.svc_request_photo(%s, %L)',
+                 v_id, '00000000-0000-0000-0000-000000000002'), 'not_allowed');
+  perform t.act_as_owner();
+  delete from private.app_settings;
 end;
 $$;
 

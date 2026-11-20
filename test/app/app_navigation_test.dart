@@ -6,6 +6,8 @@ import 'package:diamond_tracking/core/time/clock_providers.dart';
 import 'package:diamond_tracking/features/auth/application/auth_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
+import 'package:diamond_tracking/features/notifications/application/notifications_providers.dart';
+import 'package:diamond_tracking/features/requests/application/requests_providers.dart';
 import 'package:diamond_tracking/features/routes/application/route_providers.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
 import 'package:diamond_tracking/features/users/application/users_providers.dart';
@@ -18,8 +20,14 @@ import '../support/fakes.dart';
 
 void main() {
   late StreamController<AuthStatus> auth;
+  FakePushService push = FakePushService();
+  FakeNotificationsRepository notifications = FakeNotificationsRepository();
 
-  setUp(() => auth = StreamController<AuthStatus>());
+  setUp(() {
+    auth = StreamController<AuthStatus>();
+    push = FakePushService();
+    notifications = FakeNotificationsRepository();
+  });
   tearDown(() => auth.close());
 
   Future<void> pumpApp(WidgetTester tester) async {
@@ -36,6 +44,11 @@ void main() {
           deviceIdStoreProvider.overrideWithValue(FakeDeviceIdStore()),
           routeRepositoryProvider.overrideWithValue(FakeRouteRepository()),
           showGoogleMapProvider.overrideWithValue(false),
+          notificationsRepositoryProvider.overrideWithValue(notifications),
+          pushServiceProvider.overrideWithValue(push),
+          requestsRepositoryProvider.overrideWithValue(
+            FakeRequestsRepository(),
+          ),
           usersRepositoryProvider.overrideWithValue(
             FakeUsersRepository(<Profile>[
               profile('u', name: 'Asha Roy'),
@@ -104,6 +117,16 @@ void main() {
     await tester.tap(find.widgetWithText(NavigationDestination, 'Live'));
     await tester.pumpAndSettle();
     expect(find.text('Nobody on duty yet'), findsOneWidget);
+
+    // The phone was registered for push after sign-in.
+    expect(notifications.calls, contains('set:test-device-0001:push-token-1'));
+
+    // A tapped push opens the request it is about.
+    push.openedController.add(5);
+    await tester.pumpAndSettle();
+    expect(find.text('This request was not found.'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
 
     auth.add(const SignedOut());
     await tester.pumpAndSettle();

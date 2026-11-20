@@ -1,5 +1,12 @@
 // An in-memory Backend for the handler tests.
-import type { Backend, MissingPlace, NewProfile, Profile, ProfileChanges } from './backend.ts';
+import type {
+  Backend,
+  MissingPlace,
+  NewProfile,
+  Profile,
+  ProfileChanges,
+  PushJob,
+} from './backend.ts';
 import type { Mailer } from './mailer.ts';
 
 export class FakeBackend implements Backend {
@@ -16,6 +23,11 @@ export class FakeBackend implements Backend {
   dayOwners = new Map<number, string>();
   missing: MissingPlace[] = [];
   saved: { cell_lat: number; cell_lng: number; address: string }[] = [];
+  /** request id -> owner and photo id. */
+  requests = new Map<number, { owner: string; photo: string | null }>();
+  /** notification id -> push job (removed when claimed). */
+  pushJobs = new Map<number, PushJob>();
+  droppedTokens: string[] = [];
   private next = 1;
 
   addUser(
@@ -106,6 +118,23 @@ export class FakeBackend implements Backend {
   }
   savePlaces(_dayId: number, places: { cell_lat: number; cell_lng: number; address: string }[]) {
     this.saved.push(...places);
+    return Promise.resolve();
+  }
+  requestPhoto(requestId: number, callerId: string) {
+    const r = this.requests.get(requestId);
+    const caller = this.profiles.get(callerId);
+    if (!r || !caller || (r.owner !== callerId && caller.role !== 'admin')) {
+      return Promise.resolve('not_allowed' as const);
+    }
+    return Promise.resolve(r.photo);
+  }
+  claimPush(id: number) {
+    const job = this.pushJobs.get(id) ?? null;
+    this.pushJobs.delete(id);
+    return Promise.resolve(job);
+  }
+  dropPushTokens(tokens: string[]) {
+    this.droppedTokens.push(...tokens);
     return Promise.resolve();
   }
   logAdmin(admin: string, action: string, target: string) {

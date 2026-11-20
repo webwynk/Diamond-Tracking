@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/features/auth/application/auth_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
+import 'package:diamond_tracking/features/notifications/application/notifications_providers.dart';
+import 'package:diamond_tracking/features/notifications/application/push_service.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
 import 'package:diamond_tracking/features/users/application/users_providers.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +24,7 @@ Future<void> pumpPage(
   FakeUsersRepository? users,
   FakeTrackerControl? tracker,
   List<Override> overrides = const <Override>[],
+  FakeNotificationsRepository? notifications,
   AuthStatus status = const SignedIn(
     userId: 'admin1',
     role: AppRole.admin,
@@ -62,6 +65,10 @@ Future<void> pumpPage(
         trackerControlProvider.overrideWithValue(
           tracker ?? FakeTrackerControl(),
         ),
+        notificationsRepositoryProvider.overrideWithValue(
+          notifications ?? FakeNotificationsRepository(),
+        ),
+        pushServiceProvider.overrideWithValue(const NoPushService()),
         ...overrides,
       ],
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
@@ -78,6 +85,7 @@ Future<void> pumpPushed(
   FakeUsersRepository? users,
   FakeTrackerControl? tracker,
   List<Override> overrides = const <Override>[],
+  FakeNotificationsRepository? notifications,
   AuthStatus status = const SignedIn(
     userId: 'admin1',
     role: AppRole.admin,
@@ -107,6 +115,10 @@ Future<void> pumpPushed(
         trackerControlProvider.overrideWithValue(
           tracker ?? FakeTrackerControl(),
         ),
+        notificationsRepositoryProvider.overrideWithValue(
+          notifications ?? FakeNotificationsRepository(),
+        ),
+        pushServiceProvider.overrideWithValue(const NoPushService()),
         ...overrides,
       ],
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
