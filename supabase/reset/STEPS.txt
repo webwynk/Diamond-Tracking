@@ -1,0 +1,29 @@
+Resetting the live database (keeps users, clears everything else)
+===================================================================
+
+Do this only when you are ready. It deletes all old attendance, routes,
+visits and notifications for good. Sign-in accounts are kept.
+
+0. BACKUP FIRST
+   Supabase dashboard > Database > Backups: download the latest backup.
+   (Free plan has no backups: in the SQL editor, run
+    "select * from public.profiles" and export the result as CSV, and do the
+    same for duty_sessions, visits and location_points if you want to keep
+    a copy.)
+
+1. SQL editor: paste and run supabase/reset/01_backup_and_clear_old.sql
+
+2. SQL editor: paste and run
+   supabase/migrations/20261120000000_rewrite_baseline.sql
+   (Database > Extensions: pg_cron must be enabled first, so the 11 PM job
+    is scheduled. The script checks and schedules it if available.)
+
+3. SQL editor: paste and run supabase/reset/03_restore_users.sql
+   The last query lists the kept users. Check them.
+
+4. Edge Functions: delete the old employee-auth, create-employee and
+   visit-photos functions (phase 3 and 7 deploy new ones).
+
+After step 3 nobody can sign in until phase 3 (new login) is installed.
+reset_backup.profiles stays as a copy of the old user list; drop it once
+everything works.
