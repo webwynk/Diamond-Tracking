@@ -1,0 +1,234 @@
+import 'dart:io';
+
+import 'package:diamond_tracking/core/supabase/supabase_providers.dart';
+import 'package:diamond_tracking/core/theme/app_theme.dart';
+import 'package:diamond_tracking/core/time/clock_providers.dart';
+import 'package:diamond_tracking/core/time/ist.dart';
+import 'package:diamond_tracking/features/auth/application/auth_providers.dart';
+import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
+import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
+import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
+import 'package:diamond_tracking/features/duty/presentation/home_page.dart';
+import 'package:diamond_tracking/features/tracking/application/tracker_control.dart';
+import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
+import 'package:diamond_tracking/features/tracking/domain/tracking_session.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../support/fakes.dart';
+
+void main() {
+  DateTime ist(int h, [int m = 0]) => Ist.instantAt(2026, 11, 20, h, m);
+
+  late FakeDutyRepository repo;
+  late FakeTrackerControl tracker;
+  late FixedClock time;
+
+  setUp(() {
+    repo = FakeDutyRepository()..dutyOnTime = ist(7);
+    tracker = FakeTrackerControl();
+    time = FixedClock(ist(7));
+  });
+
+  Future<void> pumpHome(WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStatusStreamProvider.overrideWithValue(
+            Stream<AuthStatus>.value(
+              const SignedIn(
+                userId: 'u1',
+                role: AppRole.employee,
+                mustChangePassword: false,
+              ),
+            ),
+          ),
+          dutyRepositoryProvider.overrideWithValue(repo),
+          trackerControlProvider.overrideWithValue(tracker),
+          serverClockProvider.overrideWithValue(time.clock),
+          deviceIdStoreProvider.overrideWithValue(FakeDeviceIdStore()),
+        ],
+        child: MaterialApp(theme: AppTheme.light, home: const HomePage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  DutyDay onDuty() => DutyDay(
+    id: 5,
+    day: DateTime.utc(2026, 11, 20),
+    status: DayStatus.onDuty,
+    dutyOnAt: ist(7),
+  );
+
+  TrackingSession sessionFor(DutyDay d) => TrackingSession(
+    dayId: d.id,
+    pass: 'pass',
+    dutyOnAt: d.dutyOnAt!,
+    autoOffAt: ist(23),
+  );
+
+  testWidgets('duty on in the morning starts the tracker', (
+    WidgetTester tester,
+  ) async {
+    await pumpHome(tester);
+    expect(find.text('Ready to start'), findsOneWidget);
+
+    await tester.tap(find.text('Duty on'));
+    await tester.pumpAndSettle();
+
+    expect(repo.calls, contains('dutyOn'));
+    expect(tracker.calls, contains('start:100'));
+    expect(tracker.stored?.pass, 'pass-100');
+    expect(tracker.stored?.autoOffAt, ist(23));
+    expect(find.text('On duty'), findsOneWidget);
+    expect(find.text('Since 7:00 AM'), findsOneWidget);
+  });
+
+  testWidgets('missing permissions are asked for first', (
+    WidgetTester tester,
+  ) async {
+    tracker.missing = <TrackerRequirement>[
+      TrackerRequirement.locationPermission,
+      TrackerRequirement.backgroundLocation,
+      TrackerRequirement.batteryOptimization,
+    ];
+    await pumpHome(tester);
+    await tester.tap(find.text('Duty on'));
+    await tester.pumpAndSettle();
+    expect(find.text('Before duty on'), findsOneWidget);
+    expect(repo.calls, isNot(contains('dutyOn')));
+
+    // Battery saver is optional; the other two are needed.
+    await tester.tap(find.text('Allow').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Allow').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(tracker.calls.where((String c) => c != 'ensureRunning'), <String>[
+      'request:locationPermission',
+      'request:backgroundLocation',
+      'start:100',
+    ]);
+    expect(find.text('On duty'), findsOneWidget);
+  });
+
+  testWidgets('after 8:30 AM duty on is closed', (WidgetTester tester) async {
+    time.at = ist(9);
+    await pumpHome(tester);
+    expect(find.text('Duty on is closed for today'), findsOneWidget);
+    expect(find.text('Duty on'), findsNothing);
+  });
+
+  testWidgets('a refused duty on shows why', (WidgetTester tester) async {
+    repo.dutyOnError = const PostgrestException(message: 'on_leave_today');
+    await pumpHome(tester);
+    await tester.tap(find.text('Duty on'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('You are on leave today, so duty on is not allowed.'),
+      findsOneWidget,
+    );
+    expect(tracker.calls, isNot(contains(startsWith('start'))));
+  });
+
+  testWidgets('a load error offers retry', (WidgetTester tester) async {
+    repo.error = const PostgrestException(message: 'boom');
+    await pumpHome(tester);
+    repo.error = null;
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ready to start'), findsOneWidget);
+  });
+
+  testWidgets('a short duty off warns, then says not eligible', (
+    WidgetTester tester,
+  ) async {
+    repo.today = onDuty();
+    tracker.stored = sessionFor(repo.today!);
+    time.at = ist(15);
+    await pumpHome(tester);
+    expect(find.text('8 h 00 min'), findsOneWidget);
+
+    await tester.tap(find.text('Duty off'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('less than 10 hours'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'Duty off'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Not eligible for attendance'), findsOneWidget);
+    expect(tracker.calls, contains('dutyOff:true'));
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    expect(find.text('Waiting for admin'), findsOneWidget);
+  });
+
+  testWidgets('a full day duty off just says done', (
+    WidgetTester tester,
+  ) async {
+    repo.today = onDuty();
+    tracker.stored = sessionFor(repo.today!);
+    time.at = ist(18);
+    await pumpHome(tester);
+    await tester.tap(find.text('Duty off'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('less than 10 hours'), findsNothing);
+    await tester.tap(find.widgetWithText(TextButton, 'Duty off'));
+    await tester.pumpAndSettle();
+    expect(find.text('Duty off done. Thank you.'), findsOneWidget);
+    expect(find.text('Present'), findsOneWidget);
+  });
+
+  testWidgets('duty off without internet is saved for later', (
+    WidgetTester tester,
+  ) async {
+    repo.today = onDuty();
+    tracker.stored = sessionFor(repo.today!);
+    time.at = ist(18);
+    await pumpHome(tester);
+    repo.error = const SocketException('offline');
+    await tester.tap(find.text('Duty off'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Duty off'));
+    await tester.pumpAndSettle();
+
+    expect(tracker.calls, contains('dutyOff:false'));
+    expect(find.text('Duty off saved'), findsOneWidget);
+    expect(find.text('No internet connection'), findsOneWidget);
+  });
+
+  testWidgets('duty on elsewhere: a lost session is resumed', (
+    WidgetTester tester,
+  ) async {
+    repo.today = onDuty();
+    time.at = ist(12);
+    await pumpHome(tester);
+    expect(repo.calls, contains('resume'));
+    expect(tracker.stored?.pass, 'pass-resumed');
+    expect(find.text('On duty'), findsOneWidget);
+  });
+
+  testWidgets('the tracker failing to start is shown', (
+    WidgetTester tester,
+  ) async {
+    repo.today = onDuty();
+    tracker.failStart = true;
+    time.at = ist(12);
+    await pumpHome(tester);
+    expect(find.text('Route is not being recorded'), findsOneWidget);
+  });
+
+  testWidgets('a battery warning pops up', (WidgetTester tester) async {
+    repo.today = onDuty();
+    tracker.stored = sessionFor(repo.today!);
+    time.at = ist(12);
+    await pumpHome(tester);
+    tracker.battery.add(15);
+    await tester.pumpAndSettle();
+    expect(find.text('Battery 15%'), findsOneWidget);
+  });
+}

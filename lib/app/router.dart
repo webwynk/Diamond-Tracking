@@ -9,6 +9,7 @@ import '../features/auth/presentation/forgot_password_page.dart';
 import '../features/auth/presentation/login_page.dart';
 import '../features/auth/presentation/set_password_page.dart';
 import '../features/auth/presentation/splash_page.dart';
+import '../features/duty/presentation/home_page.dart';
 import '../features/users/presentation/account_button.dart';
 import '../features/users/presentation/account_page.dart';
 import '../features/users/presentation/user_form_page.dart';
@@ -119,7 +120,11 @@ StatefulShellRoute _userShell(
   branches: <StatefulShellBranch>[
     StatefulShellBranch(
       routes: <RouteBase>[
-        _tab(Routes.userHome, 'Home', 'phase 4 (duty)', Icons.home_rounded),
+        GoRoute(
+          path: Routes.userHome,
+          builder: (BuildContext context, GoRouterState state) =>
+              const HomePage(),
+        ),
       ],
     ),
     StatefulShellBranch(

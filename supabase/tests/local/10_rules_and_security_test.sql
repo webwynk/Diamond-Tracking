@@ -118,7 +118,7 @@ declare
   v_time time := (now() at time zone 'Asia/Kolkata')::time;
 begin
   if v_time >= time '05:00' and v_time < time '08:31' then
-    perform public.duty_on('dev-e3-0001');
+    perform t.eq(length(public.duty_on('dev-e3-0001')->>'upload_pass'), 64, 'duty on gives an upload pass');
     perform t.expect_error($q$select public.duty_on('dev-e3-0001')$q$, 'already_on_duty_today');
   else
     perform t.expect_error($q$select public.duty_on('dev-e3-0001')$q$, 'duty_on_closed');
@@ -387,6 +387,146 @@ begin
                0::bigint, 'sessions revoked');
   perform t.eq((select active_device_id from public.profiles where user_code = 'DA-002'),
                null::text, 'device released on revoke');
+end;
+$$;
+
+\echo '--- the tracker uploads with a pass instead of a session'
+do $$
+declare
+  e1 uuid := '00000000-0000-0000-0000-000000000001';
+  e3 uuid := '00000000-0000-0000-0000-000000000003';
+  v_today public.duty_days;
+  v_day public.duty_days;
+  v_t timestamptz;
+  v_pass text;
+  v_pts jsonb;
+  r jsonb;
+  v_before_11 boolean;
+begin
+  -- Resume: e1's duty from the visits test is still on today.
+  select * into v_today from public.duty_days where user_id = e1 and day = private.ist_today();
+  v_before_11 := now() < private.auto_off_at(v_today.day);
+  perform t.act_as(e1);
+  perform t.expect_error($q$select public.duty_resume('other-phone-1')$q$, 'signed_in_elsewhere');
+  if v_before_11 then
+    r := public.duty_resume('dev-e1-0001');
+    perform t.eq((r->'day'->>'id')::bigint, v_today.id, 'resume returns today''s duty');
+    perform t.eq(length(r->>'upload_pass'), 64, 'resume gives a new pass');
+  else
+    perform t.expect_error($q$select public.duty_resume('dev-e1-0001')$q$, 'not_on_duty');
+  end if;
+  perform t.act_as(e3);
+  perform t.expect_error($q$select public.duty_resume('dev-e3-0001')$q$, 'not_on_duty');
+  perform t.act_as_owner();
+
+  -- A duty day for e3, five days ago, still on (the tracker is uploading).
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values (e3, private.ist_today() - 5, 'on_duty', private.ist_at(private.ist_today() - 5, time '07:00'))
+  returning * into v_day;
+  v_t := v_day.duty_on_at;
+  v_pass := private.new_upload_pass(v_day, 'dev-e3-0001');
+  v_pts := jsonb_build_array(
+    jsonb_build_object('t', v_t + interval '1 minute', 'la', 22500000, 'lo', 88300000, 'a', 8, 'b', 50),
+    jsonb_build_object('t', v_t + interval '4 minutes', 'la', 22501000, 'lo', 88300000, 'a', 8, 'b', 49));
+
+  -- A pass ends 2 days after the day's 11 PM, so this old one has expired.
+  perform t.act_as(null);
+  perform t.expect_error(format($q$select public.upload_points_with_pass(%s, %L, '[]')$q$, v_day.id, v_pass),
+                         'invalid_upload_pass');
+  perform t.act_as_owner();
+  update private.upload_passes set expires_at = now() + interval '1 day' where duty_day_id = v_day.id;
+
+  -- No session at all (the publishable key only).
+  perform t.act_as(null);
+  perform t.eq(public.upload_points_with_pass(v_day.id, v_pass, v_pts), 2, 'upload with a pass');
+  perform t.eq(public.upload_points_with_pass(v_day.id, v_pass, v_pts), 0, 'retry adds nothing');
+  perform t.expect_error(format($q$select public.upload_points_with_pass(%s, 'nope', '[]')$q$, v_day.id),
+                         'invalid_upload_pass');
+  perform t.expect_error(format($q$select public.upload_points_with_pass(%s, null, '[]')$q$, v_day.id),
+                         'invalid_upload_pass');
+  -- The pass belongs to one day only.
+  perform t.expect_error(format($q$select public.upload_points_with_pass(%s, %L, '[]')$q$, v_today.id, v_pass),
+                         'invalid_upload_pass');
+  perform t.expect_error($q$select count(*) from public.duty_breaks$q$, 'permission denied');
+  perform t.expect_error($q$select count(*) from private.upload_passes$q$, 'permission denied');
+
+  -- Phone-off times, clipped to the duty; repeats and blips are ignored.
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_t + interval '10 minutes',
+               v_t + interval '50 minutes', 'phone_off'), true, 'break stored');
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_t + interval '10 minutes',
+               v_t + interval '50 minutes', 'phone_off'), false, 'repeat ignored');
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_t + interval '60 minutes',
+               v_t + interval '60 minutes 30 seconds', 'tracking_stopped'), false, 'blip ignored');
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_t - interval '1 hour',
+               v_t + interval '5 minutes', 'tracking_stopped'), true, 'break before duty on clipped');
+  perform t.act_as_owner();
+  perform t.eq((select min(started_at) from public.duty_breaks where duty_day_id = v_day.id),
+               v_t, 'clipped to duty on');
+  perform t.eq((select recorded_at from public.live_positions where user_id = e3),
+               v_t + interval '4 minutes', 'live position from the pass upload');
+
+  -- Only the owner and admins see breaks.
+  perform t.act_as(e3);
+  perform t.eq((select count(*) from public.duty_breaks), 2::bigint, 'own breaks visible');
+  perform t.act_as(e1);
+  perform t.eq((select count(*) from public.duty_breaks), 0::bigint, 'others'' breaks hidden');
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.eq((select count(*) from public.duty_breaks), 2::bigint, 'admin sees breaks');
+
+  -- Points that arrive after duty off still count, and the route is rebuilt.
+  perform t.act_as(e3);
+  perform public.duty_off(v_day.id, v_t + interval '30 minutes');
+  perform t.act_as(null);
+  perform t.eq(public.upload_points_with_pass(v_day.id, v_pass, jsonb_build_array(
+    jsonb_build_object('t', v_t + interval '20 minutes', 'la', 22510000, 'lo', 88300000, 'a', 8, 'b', 45),
+    jsonb_build_object('t', v_t + interval '40 minutes', 'la', 22520000, 'lo', 88300000, 'a', 8, 'b', 44))),
+    1, 'late points inside the duty kept, after duty off dropped');
+  perform t.act_as_owner();
+  perform t.eq((select point_count from public.day_routes where duty_day_id = v_day.id), 3,
+               'route rebuilt with late points');
+
+  -- Duty off pressed offline arrives later through the tracker.
+  perform t.act_as_owner();
+  update public.duty_days set status = 'on_duty', duty_off_at = null, end_reason = null,
+    worked_minutes = null where id = v_day.id;
+  delete from public.requests where user_id = e3 and kind = 'short_duty';
+  perform private.auto_duty_off();
+  perform t.eq((select end_reason from public.duty_days where id = v_day.id),
+               'auto'::public.duty_end_reason, '11 PM closed it first');
+  perform t.act_as(null);
+  perform t.eq(public.duty_off_with_pass(v_day.id, v_pass, v_t + interval '3 hours'),
+               'pending'::public.day_status, 'late duty off corrects the day');
+  perform t.eq(public.duty_off_with_pass(v_day.id, v_pass, v_t + interval '2 hours'),
+               'pending'::public.day_status, 'a repeat changes nothing');
+  perform t.act_as_owner();
+  perform t.eq((select duty_off_at from public.duty_days where id = v_day.id),
+               v_t + interval '3 hours', 'real duty off time kept');
+  perform t.eq((select end_reason from public.duty_days where id = v_day.id),
+               'manual'::public.duty_end_reason, 'ended by hand');
+  perform t.eq((select count(*) from public.requests where user_id = e3 and kind = 'short_duty'),
+               1::bigint, 'one review request');
+
+  -- The pass stops working when it expires, the phone changes, or on reset.
+  update private.upload_passes set expires_at = now() - interval '1 second' where duty_day_id = v_day.id;
+  perform t.act_as(null);
+  perform t.expect_error(format($q$select public.upload_points_with_pass(%s, %L, '[]')$q$, v_day.id, v_pass),
+                         'invalid_upload_pass');
+  perform t.act_as_owner();
+  update private.upload_passes set expires_at = now() + interval '1 day' where duty_day_id = v_day.id;
+  update public.profiles set active_device_id = 'new-phone-01' where id = e3;
+  perform t.act_as(null);
+  perform t.expect_error(format($q$select public.upload_points_with_pass(%s, %L, '[]')$q$, v_day.id, v_pass),
+                         'invalid_upload_pass');
+  perform t.act_as_owner();
+  update public.profiles set active_device_id = 'dev-e3-0001' where id = e3;
+  perform t.act_as(null);
+  perform public.upload_points_with_pass(v_day.id, v_pass, '[]');
+  perform t.act_as_owner();
+  perform set_config('role', 'service_role', false);
+  perform public.svc_revoke_sessions(e3);
+  perform t.act_as_owner();
+  perform t.eq((select count(*) from private.upload_passes where user_id = e3), 0::bigint, 'reset removes passes');
+  update public.profiles set active_device_id = 'dev-e3-0001' where id = e3;
 end;
 $$;
 

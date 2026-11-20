@@ -8,6 +8,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_error_view.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/auth_status.dart';
+import '../../tracking/application/tracker_control.dart';
+import '../../tracking/application/tracker_providers.dart';
 import '../application/users_providers.dart';
 import '../domain/profile.dart';
 
@@ -24,6 +26,28 @@ class AccountPage extends ConsumerWidget {
   final String title;
 
   Future<void> _logOut(BuildContext context, WidgetRef ref) async {
+    final TrackerControl tracker = ref.read(trackerControlProvider);
+    if (await tracker.hasUnsentWork()) {
+      if (!context.mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          title: const Text('Not yet'),
+          content: const Text(
+            'Do duty off first. If you already did, your route is still being '
+            'sent: connect to the internet and try again in a minute.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    if (!context.mounted) return;
     final bool? ok = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
@@ -44,7 +68,9 @@ class AccountPage extends ConsumerWidget {
         ],
       ),
     );
-    if (ok ?? false) await ref.read(authRepositoryProvider).signOut();
+    if (!(ok ?? false)) return;
+    await ref.read(authRepositoryProvider).signOut();
+    await tracker.clear();
   }
 
   @override
