@@ -8,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_error_view.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/auth_status.dart';
+import '../../notifications/application/notifications_providers.dart';
 import '../../tracking/application/tracker_control.dart';
 import '../../tracking/application/tracker_providers.dart';
 import '../application/users_providers.dart';
@@ -69,6 +70,8 @@ class AccountPage extends ConsumerWidget {
       ),
     );
     if (!(ok ?? false)) return;
+    // While still signed in: this phone stops getting the account's pushes.
+    await ref.read(pushRegistrarProvider).clear();
     await ref.read(authRepositoryProvider).signOut();
     await tracker.clear();
   }

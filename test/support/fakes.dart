@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:diamond_tracking/core/supabase/device_id.dart';
 import 'package:diamond_tracking/core/time/server_clock.dart';
@@ -7,6 +8,12 @@ import 'package:diamond_tracking/features/auth/domain/auth_failure.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/data/duty_repository.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
+import 'package:diamond_tracking/features/notifications/application/push_service.dart';
+import 'package:diamond_tracking/features/notifications/data/notifications_repository.dart';
+import 'package:diamond_tracking/features/notifications/domain/app_notification.dart';
+import 'package:diamond_tracking/features/requests/data/photo_picker.dart';
+import 'package:diamond_tracking/features/requests/data/requests_repository.dart';
+import 'package:diamond_tracking/features/requests/domain/app_request.dart';
 import 'package:diamond_tracking/features/routes/data/route_repository.dart';
 import 'package:diamond_tracking/features/routes/domain/day_route.dart';
 import 'package:diamond_tracking/features/routes/domain/live_position.dart';
@@ -372,4 +379,207 @@ class FakeRouteRepository implements RouteRepository {
     yield initialLive;
     yield* live.stream;
   }
+}
+
+/// Requests in memory; decisions and cancels change them like the server.
+class FakeRequestsRepository implements RequestsRepository {
+  final List<AppRequest> requests = <AppRequest>[];
+  final List<String> calls = <String>[];
+  int uploads = 0;
+  Exception? error;
+  int _next = 500;
+
+  void _maybeFail() {
+    final Exception? e = error;
+    if (e != null) throw e;
+  }
+
+  AppRequest _copy(
+    AppRequest r, {
+    RequestStatus? status,
+    DayStatus? decision,
+    String? note,
+  }) => AppRequest(
+    id: r.id,
+    userId: r.userId,
+    kind: r.kind,
+    status: status ?? r.status,
+    createdAt: r.createdAt,
+    day: r.day,
+    dutyOnAt: r.dutyOnAt,
+    dutyOffAt: r.dutyOffAt,
+    leaveType: r.leaveType,
+    dates: r.dates,
+    message: r.message,
+    hasPhoto: r.hasPhoto,
+    decision: decision ?? r.decision,
+    decisionNote: note ?? r.decisionNote,
+    decidedAt: decision == null ? r.decidedAt : DateTime.utc(2026, 11, 20, 9),
+  );
+
+  @override
+  Future<List<AppRequest>> mine(String userId) async {
+    _maybeFail();
+    return requests.where((AppRequest r) => r.userId == userId).toList();
+  }
+
+  @override
+  Future<List<AppRequest>> forAdmin({required bool pendingOnly}) async {
+    _maybeFail();
+    return requests
+        .where((AppRequest r) => !pendingOnly || r.isPending)
+        .toList();
+  }
+
+  @override
+  Future<AppRequest?> byId(int id) async =>
+      requests.where((AppRequest r) => r.id == id).firstOrNull;
+
+  @override
+  Future<void> requestAttendance({
+    required DateTime day,
+    required int dutyOnMinute,
+    required int dutyOffMinute,
+    required String message,
+    required String photoId,
+  }) async {
+    _maybeFail();
+    calls.add(
+      'attendance:${isoDate(day)}:$dutyOnMinute-$dutyOffMinute:$message:$photoId',
+    );
+  }
+
+  @override
+  Future<void> requestLeave({
+    required LeaveType type,
+    required List<DateTime> dates,
+    required String message,
+    String? proofId,
+  }) async {
+    _maybeFail();
+    calls.add(
+      'leave:${type.wire}:${dates.map(isoDate).join(',')}:$message:$proofId',
+    );
+  }
+
+  @override
+  Future<void> cancel(int id) async {
+    _maybeFail();
+    calls.add('cancel:$id');
+    final int i = requests.indexWhere((AppRequest r) => r.id == id);
+    requests[i] = _copy(requests[i], status: RequestStatus.cancelled);
+  }
+
+  @override
+  Future<void> decide(int id, DayStatus decision, String? note) async {
+    _maybeFail();
+    calls.add('decide:$id:${decision.wire}:${note ?? ''}');
+    final int i = requests.indexWhere((AppRequest r) => r.id == id);
+    final bool rejected =
+        decision == DayStatus.absent &&
+        requests[i].kind != RequestKind.shortDuty;
+    requests[i] = _copy(
+      requests[i],
+      status: rejected ? RequestStatus.rejected : RequestStatus.approved,
+      decision: decision,
+      note: note,
+    );
+  }
+
+  @override
+  Future<String> uploadPhoto(Uint8List jpeg) async {
+    _maybeFail();
+    uploads++;
+    return 'req-00000000-0000-0000-0000-${(_next++).toString().padLeft(12, '0')}';
+  }
+
+  @override
+  PhotoSource photo(int requestId) => PhotoSource(
+    url: 'https://photos.test/$requestId',
+    headers: const <String, String>{},
+  );
+}
+
+class FakePhotoPicker implements PhotoPicker {
+  final List<PhotoFrom> picks = <PhotoFrom>[];
+
+  @override
+  Future<Uint8List?> pick(PhotoFrom from) async {
+    picks.add(from);
+    return Uint8List.fromList(<int>[1, 2, 3]);
+  }
+}
+
+class FakeNotificationsRepository implements NotificationsRepository {
+  FakeNotificationsRepository([List<AppNotification>? initial])
+    : items = initial ?? <AppNotification>[];
+
+  List<AppNotification> items;
+  final List<String> calls = <String>[];
+  // Lives as long as the test.
+  // ignore: close_sinks
+  final StreamController<List<AppNotification>> _live =
+      StreamController<List<AppNotification>>.broadcast();
+
+  void push(List<AppNotification> next) {
+    items = next;
+    _live.add(next);
+  }
+
+  @override
+  Stream<List<AppNotification>> watch(String userId) async* {
+    yield items;
+    yield* _live.stream;
+  }
+
+  @override
+  Future<void> markRead([List<int>? ids]) async {
+    calls.add('read:${ids?.join(',') ?? 'all'}');
+    push(<AppNotification>[
+      for (final AppNotification n in items)
+        ids == null || ids.contains(n.id)
+            ? AppNotification(
+                id: n.id,
+                kind: n.kind,
+                title: n.title,
+                body: n.body,
+                requestId: n.requestId,
+                createdAt: n.createdAt,
+                readAt: DateTime.utc(2026, 11, 20, 9),
+              )
+            : n,
+    ]);
+  }
+
+  @override
+  Future<void> setPushToken(String deviceId, String token) async =>
+      calls.add('set:$deviceId:$token');
+
+  @override
+  Future<void> clearPushToken(String token) async => calls.add('clear:$token');
+}
+
+class FakePushService implements PushService {
+  FakePushService({this.tokenValue = 'push-token-1'});
+
+  final String? tokenValue;
+  // Lives as long as the test.
+  // ignore: close_sinks
+  final StreamController<int?> openedController =
+      StreamController<int?>.broadcast();
+  // ignore: close_sinks
+  final StreamController<String> refreshController =
+      StreamController<String>.broadcast();
+
+  @override
+  Future<bool> start() async => tokenValue != null;
+
+  @override
+  Future<String?> token() async => tokenValue;
+
+  @override
+  Stream<String> get tokenRefresh => refreshController.stream;
+
+  @override
+  Stream<int?> get opened => openedController.stream;
 }

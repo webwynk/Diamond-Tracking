@@ -36,6 +36,15 @@ export interface MissingPlace {
   lng: number;
 }
 
+/** What the push function sends for one notification. */
+export interface PushJob {
+  title: string;
+  body: string | null;
+  kind: string;
+  data: Record<string, unknown>;
+  tokens: string[];
+}
+
 export interface Backend {
   /** The signed-in user behind an access token, or null if it is not valid. */
   userFromToken(
@@ -71,6 +80,11 @@ export interface Backend {
     dayId: number,
     places: { cell_lat: number; cell_lng: number; address: string }[],
   ): Promise<void>;
+  /** A request's photo id (null if none), or 'not_allowed' for this caller. */
+  requestPhoto(requestId: number, callerId: string): Promise<string | null | 'not_allowed'>;
+  /** Claims a notification for pushing; null if gone or already pushed. */
+  claimPush(id: number): Promise<PushJob | null>;
+  dropPushTokens(tokens: string[]): Promise<void>;
 }
 
 const PROFILE_COLUMNS = 'id, user_code, full_name, phone, contact_email, role, is_active';
@@ -192,6 +206,23 @@ export function supabaseBackend(): Backend {
     },
     async savePlaces(dayId, places) {
       check(await db.rpc('svc_save_places', { p_day_id: dayId, p_places: places }));
+    },
+    async requestPhoto(requestId, callerId) {
+      const { data, error } = await db.rpc('svc_request_photo', {
+        p_request_id: requestId,
+        p_caller: callerId,
+      });
+      if (error) {
+        if (/not_allowed/.test(error.message)) return 'not_allowed';
+        throw new Error(error.message);
+      }
+      return (data as string | null) ?? null;
+    },
+    async claimPush(id) {
+      return (check(await db.rpc('svc_claim_push', { p_id: id })) as PushJob | null) ?? null;
+    },
+    async dropPushTokens(tokens) {
+      check(await db.rpc('svc_drop_push_tokens', { p_tokens: tokens }));
     },
     async logAdmin(adminId, action, target, details) {
       check(

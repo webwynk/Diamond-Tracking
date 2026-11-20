@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/admin/presentation/admin_dashboard_page.dart';
 import '../features/auth/application/auth_providers.dart';
 import '../features/auth/domain/auth_status.dart';
 import '../features/auth/presentation/change_password_page.dart';
@@ -10,6 +11,12 @@ import '../features/auth/presentation/login_page.dart';
 import '../features/auth/presentation/set_password_page.dart';
 import '../features/auth/presentation/splash_page.dart';
 import '../features/duty/presentation/home_page.dart';
+import '../features/notifications/presentation/notifications_page.dart';
+import '../features/requests/presentation/admin_requests_page.dart';
+import '../features/requests/presentation/attendance_request_page.dart';
+import '../features/requests/presentation/leave_request_page.dart';
+import '../features/requests/presentation/my_requests_page.dart';
+import '../features/requests/presentation/request_detail_page.dart';
 import '../features/routes/presentation/day_route_page.dart';
 import '../features/routes/presentation/history_page.dart';
 import '../features/routes/presentation/live_map_page.dart';
@@ -81,6 +88,11 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         ],
       ),
       GoRoute(
+        path: Routes.adminNotifications,
+        builder: (BuildContext context, GoRouterState state) =>
+            const NotificationsPage(),
+      ),
+      GoRoute(
         path: '/admin/days/:dayId',
         builder: (BuildContext context, GoRouterState state) =>
             DayRoutePage(dayId: int.parse(state.pathParameters['dayId']!)),
@@ -133,6 +145,44 @@ StatefulShellRoute _userShell(
           path: Routes.userHome,
           builder: (BuildContext context, GoRouterState state) =>
               const HomePage(),
+          routes: <RouteBase>[
+            GoRoute(
+              path: 'notifications',
+              parentNavigatorKey: rootKey,
+              builder: (BuildContext context, GoRouterState state) =>
+                  const NotificationsPage(),
+            ),
+            GoRoute(
+              path: 'requests',
+              parentNavigatorKey: rootKey,
+              builder: (BuildContext context, GoRouterState state) =>
+                  const MyRequestsPage(),
+              routes: <RouteBase>[
+                // Fixed names before ':id', so they are not read as ids.
+                GoRoute(
+                  path: 'attendance',
+                  parentNavigatorKey: rootKey,
+                  builder: (BuildContext context, GoRouterState state) =>
+                      const AttendanceRequestPage(),
+                ),
+                GoRoute(
+                  path: 'leave',
+                  parentNavigatorKey: rootKey,
+                  builder: (BuildContext context, GoRouterState state) =>
+                      const LeaveRequestPage(),
+                ),
+                GoRoute(
+                  path: ':id',
+                  parentNavigatorKey: rootKey,
+                  builder: (BuildContext context, GoRouterState state) =>
+                      RequestDetailPage(
+                        requestId: int.parse(state.pathParameters['id']!),
+                        admin: false,
+                      ),
+                ),
+              ],
+            ),
+          ],
         ),
       ],
     ),
@@ -204,12 +254,10 @@ StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
       branches: <StatefulShellBranch>[
         StatefulShellBranch(
           routes: <RouteBase>[
-            _tab(
-              Routes.adminDashboard,
-              'Dashboard',
-              'phase 6 (requests)',
-              Icons.dashboard_rounded,
-              adminAccount: true,
+            GoRoute(
+              path: Routes.adminDashboard,
+              builder: (BuildContext context, GoRouterState state) =>
+                  const AdminDashboardPage(),
             ),
           ],
         ),
@@ -224,12 +272,21 @@ StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
         ),
         StatefulShellBranch(
           routes: <RouteBase>[
-            _tab(
-              Routes.adminRequests,
-              'Requests',
-              'phase 6 (requests)',
-              Icons.inbox_rounded,
-              adminAccount: true,
+            GoRoute(
+              path: Routes.adminRequests,
+              builder: (BuildContext context, GoRouterState state) =>
+                  const AdminRequestsPage(),
+              routes: <RouteBase>[
+                GoRoute(
+                  path: ':id',
+                  parentNavigatorKey: rootKey,
+                  builder: (BuildContext context, GoRouterState state) =>
+                      RequestDetailPage(
+                        requestId: int.parse(state.pathParameters['id']!),
+                        admin: true,
+                      ),
+                ),
+              ],
             ),
           ],
         ),

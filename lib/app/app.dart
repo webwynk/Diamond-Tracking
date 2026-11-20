@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_theme.dart';
+import '../features/notifications/application/notifications_providers.dart';
 import 'router.dart';
 
 class DiamondApp extends ConsumerWidget {
@@ -11,6 +12,8 @@ class DiamondApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final GoRouter router = ref.watch(routerProvider);
+    // Registers the phone for push after sign-in; opens tapped notifications.
+    ref.watch(pushRegistrarProvider);
     return MaterialApp.router(
       title: 'Diamond Agritech',
       debugShowCheckedModeBanner: false,
