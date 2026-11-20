@@ -11,6 +11,9 @@ enum DutyPhase {
   /// 5:00 to 8:30 AM: the duty on button.
   canDutyOn,
 
+  /// Outside 5:00 to 8:30 AM, but the admin allowed duty on today.
+  allowedByAdmin,
+
   /// After 8:30 AM with no duty: duty on is closed for today.
   windowClosed,
 
@@ -33,6 +36,7 @@ class DutyHome {
     required this.loadedAt,
     this.serverReachable = true,
     this.trackingProblem,
+    this.dutyOnAllowed = false,
   });
 
   /// Today's record from the server (or rebuilt from the phone when offline).
@@ -50,6 +54,9 @@ class DutyHome {
   /// Set when duty is on but route recording could not be started.
   final String? trackingProblem;
 
+  /// The admin allowed duty on today outside the window (not used yet).
+  final bool dutyOnAllowed;
+
   DutyPhase phaseAt(DateTime now) {
     final DutyDay? day = today;
     final TrackingSession? s = session;
@@ -60,6 +67,9 @@ class DutyHome {
     }
     if (day == null) {
       if (DutyRules.canDutyOn(now)) return DutyPhase.canDutyOn;
+      if (dutyOnAllowed && Ist.minuteOfDay(now) < DutyRules.autoDutyOffMinute) {
+        return DutyPhase.allowedByAdmin;
+      }
       return Ist.minuteOfDay(now) < DutyRules.dutyOnStartMinute
           ? DutyPhase.beforeWindow
           : DutyPhase.windowClosed;

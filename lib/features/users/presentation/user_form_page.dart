@@ -18,6 +18,7 @@ import '../application/users_providers.dart';
 import '../data/users_repository.dart';
 import '../domain/profile.dart';
 import '../domain/temp_pin.dart';
+import 'duty_on_permission_card.dart';
 import 'pin_dialog.dart';
 
 /// Add a user (with a temporary PIN), or edit one when [userId] is set.
@@ -405,7 +406,14 @@ class _UserFormState extends ConsumerState<_UserForm> {
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.x2),
+                  const SizedBox(height: AppSpacing.x4),
+                  if (widget.initial!.role == AppRole.employee &&
+                      widget.initial!.isActive) ...<Widget>[
+                    DutyOnPermissionCard(user: widget.initial!),
+                    const SizedBox(height: AppSpacing.x4),
+                    const Divider(height: 1),
+                    const SizedBox(height: AppSpacing.x4),
+                  ],
                   AppButton(
                     label: 'Reset password',
                     variant: AppButtonVariant.secondary,

@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show FutureProviderFamily;
 
 import '../../../core/supabase/supabase_providers.dart';
+import '../../../core/time/clock_providers.dart';
+import '../../../core/time/ist.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/auth_status.dart';
 import '../data/users_repository.dart';
@@ -33,3 +35,16 @@ final FutureProvider<Profile?> myProfileProvider =
       if (status is! SignedIn) return Future<Profile?>.value();
       return ref.watch(usersRepositoryProvider).byId(status.userId);
     });
+
+/// Whether the admin has allowed this user to do duty on today (not used yet).
+final FutureProviderFamily<bool, String> dutyOnAllowedProvider = FutureProvider
+    .autoDispose
+    .family<bool, String>(
+      (Ref ref, String userId) => ref
+          .watch(usersRepositoryProvider)
+          .dutyOnAllowed(
+            userId,
+            Ist.dateOf(ref.watch(serverClockProvider).now()),
+          ),
+      retry: (int count, Object error) => null,
+    );

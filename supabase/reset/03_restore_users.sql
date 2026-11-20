@@ -41,7 +41,8 @@ begin
            ('20261122000000', 'duty_tracking'),
            ('20261123000000', 'maps'),
            ('20261124000000', 'requests_push'),
-           ('20261125000000', 'visits')
+           ('20261125000000', 'visits'),
+           ('20261126000000', 'duty_on_permit')
     on conflict do nothing;
   end if;
 end;

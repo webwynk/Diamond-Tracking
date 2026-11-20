@@ -167,6 +167,29 @@ class FakeUsersRepository implements UsersRepository {
     final Exception? f = failWith;
     if (f != null) throw f;
   }
+
+  /// Users the admin allowed to do duty on today.
+  final Set<String> allowed = <String>{};
+
+  @override
+  Future<bool> dutyOnAllowed(String userId, DateTime day) async =>
+      allowed.contains(userId);
+
+  @override
+  Future<void> allowDutyOn(String userId, {String? note}) async {
+    calls.add('allowDutyOn:$userId:${note ?? ''}');
+    final Exception? f = failWith;
+    if (f != null) throw f;
+    allowed.add(userId);
+  }
+
+  @override
+  Future<void> revokeDutyOn(String userId) async {
+    calls.add('revokeDutyOn:$userId');
+    final Exception? f = failWith;
+    if (f != null) throw f;
+    allowed.remove(userId);
+  }
 }
 
 /// A clock fixed at [at] (move it with [FixedClock.at]).
@@ -224,6 +247,16 @@ class FakeDutyRepository implements DutyRepository {
 
   /// Thrown by duty on only.
   Exception? dutyOnError;
+
+  /// Whether the admin allowed duty on today.
+  bool allowed = false;
+
+  @override
+  Future<bool> dutyOnAllowed(String userId, DateTime day) async {
+    calls.add('dutyOnAllowed');
+    _maybeFail();
+    return allowed;
+  }
 
   @override
   Future<DutyStart> dutyOn(String deviceId) async {

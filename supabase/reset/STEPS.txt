@@ -28,6 +28,7 @@ A. DATABASE (Supabase dashboard > SQL editor)
      supabase/migrations/20261123000000_maps.sql
      supabase/migrations/20261124000000_requests_push.sql
      supabase/migrations/20261125000000_visits.sql
+     supabase/migrations/20261126000000_duty_on_permit.sql
 
 3. Paste and run supabase/reset/03_restore_users.sql
    The last query lists the kept users. Check them.
