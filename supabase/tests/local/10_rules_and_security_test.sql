@@ -865,4 +865,79 @@ begin
 end;
 $$;
 
+\echo '--- nightly cleanup keeps and removes the right rows'
+-- One check per line of private.cleanup(), so a rewrite that drops a line
+-- fails here (review finding H1: two lines were lost that way).
+do $$
+declare
+  u      uuid := '00000000-0000-0000-0000-000000000003';
+  u2     uuid := '00000000-0000-0000-0000-000000000002';
+  today  date := private.ist_today();
+  d_old  bigint;  -- 100 days ago: past the 90-day limit
+  d_new  bigint;  -- 10 days ago: kept
+begin
+  perform t.act_as_owner();
+  delete from public.duty_days where user_id = u and day in (today - 100, today - 10);
+  insert into public.duty_days (user_id, day, status) values (u, today - 100, 'absent')
+    returning id into d_old;
+  insert into public.duty_days (user_id, day, status) values (u, today - 10, 'absent')
+    returning id into d_new;
+
+  -- routes and phone-off notes (90 days)
+  insert into public.day_routes (duty_day_id, day) values (d_old, today - 100), (d_new, today - 10);
+  insert into public.duty_breaks (duty_day_id, started_at, ended_at, kind) values
+    (d_old, now() - interval '100 days', now() - interval '100 days' + interval '1 hour', 'phone_off'),
+    (d_new, now() - interval '10 days', now() - interval '10 days' + interval '1 hour', 'tracking_stopped');
+  -- upload passes: one expired, one still valid
+  insert into private.upload_passes (duty_day_id, user_id, device_id, pass_hash, expires_at) values
+    (d_old, u, 'dev-cleanup-1', '\x00', now() - interval '1 minute'),
+    (d_new, u, 'dev-cleanup-1', '\x01', now() + interval '1 hour');
+  -- notifications (60 days)
+  delete from public.notifications where kind = 'cleanup_test';
+  insert into public.notifications (user_id, kind, title, created_at) values
+    (u, 'cleanup_test', 'old', now() - interval '61 days'),
+    (u, 'cleanup_test', 'new', now() - interval '59 days');
+  -- push tokens (60 days)
+  insert into private.push_tokens (token, user_id, device_id, updated_at) values
+    ('cleanup-test-token-old-0001', u, 'dev-cleanup-1', now() - interval '61 days'),
+    ('cleanup-test-token-new-0001', u, 'dev-cleanup-1', now() - interval '59 days')
+  on conflict (token) do update set updated_at = excluded.updated_at;
+  -- duty-on permissions (30 days)
+  delete from public.duty_permits where user_id = u and day in (today - 31, today - 29);
+  insert into public.duty_permits (user_id, day) values (u, today - 31), (u, today - 29);
+  -- reset codes: u's expired over a day ago, u2's expired only an hour ago
+  insert into private.password_reset_codes (user_id, code_hash, expires_at) values
+    (u, 'x', now() - interval '25 hours'), (u2, 'x', now() - interval '1 hour')
+  on conflict (user_id) do update set expires_at = excluded.expires_at;
+  -- live position of an ended duty, last updated 2 days ago
+  insert into public.live_positions (user_id, duty_day_id, lat_e6, lng_e6, recorded_at, updated_at)
+  values (u, d_new, 22000000, 88000000, now() - interval '2 days', now() - interval '2 days')
+  on conflict (user_id) do update set duty_day_id = excluded.duty_day_id,
+    updated_at = excluded.updated_at;
+
+  perform private.cleanup();
+
+  perform t.eq((select count(*) from public.day_routes where duty_day_id = d_old), 0::bigint, 'route older than 90 days removed');
+  perform t.eq((select count(*) from public.day_routes where duty_day_id = d_new), 1::bigint, 'recent route kept');
+  perform t.eq((select count(*) from public.duty_breaks where duty_day_id = d_old), 0::bigint, 'phone-off note older than 90 days removed');
+  perform t.eq((select count(*) from public.duty_breaks where duty_day_id = d_new), 1::bigint, 'recent phone-off note kept');
+  perform t.eq((select count(*) from private.upload_passes where duty_day_id = d_old), 0::bigint, 'expired upload pass removed');
+  perform t.eq((select count(*) from private.upload_passes where duty_day_id = d_new), 1::bigint, 'valid upload pass kept');
+  perform t.eq((select string_agg(title, ',') from public.notifications where kind = 'cleanup_test'), 'new', 'notification older than 60 days removed, newer kept');
+  perform t.eq((select string_agg(token, ',') from private.push_tokens where token like 'cleanup-test-token-%'), 'cleanup-test-token-new-0001', 'push token older than 60 days removed, newer kept');
+  perform t.eq((select string_agg((today - day)::text, ',') from public.duty_permits where user_id = u and day in (today - 31, today - 29)), '29', 'permission older than 30 days removed, newer kept');
+  perform t.eq((select count(*) from private.password_reset_codes where user_id = u), 0::bigint, 'reset code expired over a day ago removed');
+  perform t.eq((select count(*) from private.password_reset_codes where user_id = u2), 1::bigint, 'recently expired reset code kept');
+  perform t.eq((select count(*) from public.live_positions where user_id = u), 0::bigint, 'live position of an ended duty removed');
+  perform t.eq((select count(*) from public.duty_days where id in (d_old, d_new)), 2::bigint, 'attendance days are never removed');
+
+  -- tidy up
+  delete from public.notifications where kind = 'cleanup_test';
+  delete from private.push_tokens where token like 'cleanup-test-token-%';
+  delete from public.duty_permits where user_id = u and day in (today - 31, today - 29);
+  delete from private.password_reset_codes where user_id in (u, u2);
+  delete from public.duty_days where id in (d_old, d_new);
+end;
+$$;
+
 \echo 'ALL TESTS PASSED'
