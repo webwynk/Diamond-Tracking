@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/features/auth/application/auth_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
+import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
 import 'package:diamond_tracking/features/users/application/users_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,7 @@ Future<void> pumpPage(
   Widget page, {
   FakeAuthRepository? auth,
   FakeUsersRepository? users,
+  FakeTrackerControl? tracker,
   AuthStatus status = const SignedIn(
     userId: 'admin1',
     role: AppRole.admin,
@@ -55,6 +57,9 @@ Future<void> pumpPage(
         usersRepositoryProvider.overrideWithValue(
           users ?? FakeUsersRepository(),
         ),
+        trackerControlProvider.overrideWithValue(
+          tracker ?? FakeTrackerControl(),
+        ),
       ],
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
     ),
@@ -68,6 +73,7 @@ Future<void> pumpPushed(
   Widget page, {
   FakeAuthRepository? auth,
   FakeUsersRepository? users,
+  FakeTrackerControl? tracker,
   AuthStatus status = const SignedIn(
     userId: 'admin1',
     role: AppRole.admin,
@@ -93,6 +99,9 @@ Future<void> pumpPushed(
         authRepositoryProvider.overrideWithValue(auth ?? FakeAuthRepository()),
         usersRepositoryProvider.overrideWithValue(
           users ?? FakeUsersRepository(),
+        ),
+        trackerControlProvider.overrideWithValue(
+          tracker ?? FakeTrackerControl(),
         ),
       ],
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),

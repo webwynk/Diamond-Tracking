@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,6 +14,7 @@ import '../core/supabase/supabase_time_source.dart';
 import '../core/theme/app_theme.dart';
 import '../core/time/clock_providers.dart';
 import '../core/time/server_clock.dart';
+import '../features/tracking/service/tracker_service_config.dart';
 import 'app.dart';
 
 /// Starts the app: error handlers, configuration check, Supabase, server
@@ -20,6 +22,8 @@ import 'app.dart';
 /// of a half-working app.
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Messages from the tracker service (battery warnings) need this port.
+  FlutterForegroundTask.initCommunicationPort();
 
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
@@ -32,6 +36,7 @@ Future<void> bootstrap() async {
 
   try {
     Env.validate();
+    TrackerServiceConfig.init();
 
     await Supabase.initialize(
       url: Env.supabaseUrl,

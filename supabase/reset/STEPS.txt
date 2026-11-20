@@ -24,6 +24,7 @@ A. DATABASE (Supabase dashboard > SQL editor)
    Then paste and run, in this order:
      supabase/migrations/20261120000000_rewrite_baseline.sql
      supabase/migrations/20261121000000_login_and_devices.sql
+     supabase/migrations/20261122000000_duty_tracking.sql
 
 3. Paste and run supabase/reset/03_restore_users.sql
    The last query lists the kept users. Check them.

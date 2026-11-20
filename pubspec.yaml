@@ -36,6 +36,22 @@ dependencies:
   # Date and time formatting in India time (12-hour clock, "20 Nov 2026").
   intl: ^0.20.2
 
+  # Phase 4: duty and tracking.
+  # The tracker runs in an Android foreground service (its own Flutter engine)
+  # that keeps going with the screen off, and restarts after a phone restart.
+  flutter_foreground_task: ^11.0.3
+  # GPS fixes inside that service, and the location permission (asked twice:
+  # first "while using the app", then "allow all the time", which Android
+  # needs to restart tracking after a phone restart).
+  geolocator: ^14.1.2
+  # Battery level for the 20/15/10% warnings and on every point.
+  battery_plus: ^7.1.2
+  # Battery warnings as real notifications, from the service. 22.x, because
+  # 23.x needs Android compileSdk 37 and a newer Android Gradle plugin.
+  flutter_local_notifications: ^22.3.3
+  # The app's private folder, for the offline point queue.
+  path_provider: ^2.1.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

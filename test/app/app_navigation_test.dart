@@ -1,8 +1,12 @@
 import 'dart:async';
 
 import 'package:diamond_tracking/app/app.dart';
+import 'package:diamond_tracking/core/supabase/supabase_providers.dart';
+import 'package:diamond_tracking/core/time/clock_providers.dart';
 import 'package:diamond_tracking/features/auth/application/auth_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
+import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
+import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
 import 'package:diamond_tracking/features/users/application/users_providers.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +27,12 @@ void main() {
         overrides: [
           authStatusStreamProvider.overrideWithValue(auth.stream),
           authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
+          dutyRepositoryProvider.overrideWithValue(FakeDutyRepository()),
+          trackerControlProvider.overrideWithValue(FakeTrackerControl()),
+          serverClockProvider.overrideWithValue(
+            FixedClock(DateTime.utc(2026, 11, 20, 6)).clock,
+          ),
+          deviceIdStoreProvider.overrideWithValue(FakeDeviceIdStore()),
           usersRepositoryProvider.overrideWithValue(
             FakeUsersRepository(<Profile>[
               profile('u', name: 'Asha Roy'),
