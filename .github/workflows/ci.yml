@@ -44,6 +44,10 @@ jobs:
       # no real keys are needed or available in CI.
       - name: Build debug APK
         run: flutter build apk --debug --dart-define-from-file=env.example.json
+        env:
+          # Empty on forks or before the secret is added: the build still works,
+          # the map is just blank.
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
 
   database:
     name: Database tests

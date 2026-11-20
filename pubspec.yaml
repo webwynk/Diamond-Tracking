@@ -52,6 +52,10 @@ dependencies:
   # The app's private folder, for the offline point queue.
   path_provider: ^2.1.6
 
+  # Phase 5: maps. Google's own Flutter plugin (Maps SDK for Android, free for
+  # map display). The key is added at build time, see android/app/build.gradle.kts.
+  google_maps_flutter: ^2.19.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

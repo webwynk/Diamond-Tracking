@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
@@ -249,7 +250,18 @@ class _UserFormState extends ConsumerState<_UserForm> {
   Widget build(BuildContext context) {
     final bool self = !_isNew && _isSelf;
     return Scaffold(
-      appBar: AppBar(title: Text(_isNew ? 'Add user' : 'Edit user')),
+      appBar: AppBar(
+        title: Text(_isNew ? 'Add user' : 'Edit user'),
+        actions: <Widget>[
+          if (widget.initial case final Profile p
+              when p.role == AppRole.employee)
+            IconButton(
+              tooltip: 'Duty history',
+              icon: const Icon(Icons.calendar_month_rounded),
+              onPressed: () => context.push(Routes.adminUserDays(p.id)),
+            ),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.x4),

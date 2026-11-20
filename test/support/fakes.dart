@@ -7,6 +7,9 @@ import 'package:diamond_tracking/features/auth/domain/auth_failure.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/data/duty_repository.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
+import 'package:diamond_tracking/features/routes/data/route_repository.dart';
+import 'package:diamond_tracking/features/routes/domain/day_route.dart';
+import 'package:diamond_tracking/features/routes/domain/live_position.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_control.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracking_session.dart';
 import 'package:diamond_tracking/features/users/data/users_repository.dart';
@@ -308,5 +311,65 @@ class FakeTrackerControl implements TrackerControl {
   Future<void> clear() async {
     calls.add('clear');
     stored = null;
+  }
+}
+
+/// Routes and live positions from memory.
+class FakeRouteRepository implements RouteRepository {
+  final Map<int, DutyDay> days = <int, DutyDay>{};
+  final Map<int, DayRoute> routes = <int, DayRoute>{};
+  // Lives as long as the test.
+  // ignore: close_sinks
+  final StreamController<List<LivePosition>> live =
+      StreamController<List<LivePosition>>.broadcast();
+  List<LivePosition> initialLive = <LivePosition>[];
+  int addressRequests = 0;
+
+  /// Addresses the next request "finds", by stop index.
+  Map<int, String> addressesToFind = <int, String>{};
+
+  @override
+  Future<DayRoute?> dayRoute(int dayId) async => routes[dayId];
+
+  @override
+  Future<DutyDay?> day(int dayId) async => days[dayId];
+
+  @override
+  Future<List<DutyDay>> history(String userId, DateTime since) async =>
+      days.values.where((DutyDay d) => d.userId == userId).toList()
+        ..sort((DutyDay a, DutyDay b) => b.day.compareTo(a.day));
+
+  @override
+  Future<List<DutyDay>> daysOn(DateTime day) async =>
+      days.values.where((DutyDay d) => d.day == day).toList();
+
+  @override
+  Future<int> requestAddresses(int dayId) async {
+    addressRequests++;
+    final DayRoute? r = routes[dayId];
+    if (r == null || addressesToFind.isEmpty) return 0;
+    routes[dayId] = DayRoute(
+      dayId: r.dayId,
+      segments: r.segments,
+      stops: <RouteStop>[
+        for (int i = 0; i < r.stops.length; i++)
+          RouteStop(
+            point: r.stops[i].point,
+            start: r.stops[i].start,
+            end: r.stops[i].end,
+            address: addressesToFind[i] ?? r.stops[i].address,
+          ),
+      ],
+      notes: r.notes,
+      distanceM: r.distanceM,
+      pointCount: r.pointCount,
+    );
+    return addressesToFind.length;
+  }
+
+  @override
+  Stream<List<LivePosition>> livePositions() async* {
+    yield initialLive;
+    yield* live.stream;
   }
 }

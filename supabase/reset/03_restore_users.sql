@@ -38,7 +38,8 @@ begin
     insert into supabase_migrations.schema_migrations (version, name)
     values ('20261120000000', 'rewrite_baseline'),
            ('20261121000000', 'login_and_devices'),
-           ('20261122000000', 'duty_tracking')
+           ('20261122000000', 'duty_tracking'),
+           ('20261123000000', 'maps')
     on conflict do nothing;
   end if;
 end;

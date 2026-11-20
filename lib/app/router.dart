@@ -10,6 +10,10 @@ import '../features/auth/presentation/login_page.dart';
 import '../features/auth/presentation/set_password_page.dart';
 import '../features/auth/presentation/splash_page.dart';
 import '../features/duty/presentation/home_page.dart';
+import '../features/routes/presentation/day_route_page.dart';
+import '../features/routes/presentation/history_page.dart';
+import '../features/routes/presentation/live_map_page.dart';
+import '../features/routes/presentation/my_map_page.dart';
 import '../features/users/presentation/account_button.dart';
 import '../features/users/presentation/account_page.dart';
 import '../features/users/presentation/user_form_page.dart';
@@ -76,6 +80,11 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
           ),
         ],
       ),
+      GoRoute(
+        path: '/admin/days/:dayId',
+        builder: (BuildContext context, GoRouterState state) =>
+            DayRoutePage(dayId: int.parse(state.pathParameters['dayId']!)),
+      ),
       _userShell(rootKey),
       _adminShell(rootKey),
     ],
@@ -129,16 +138,29 @@ StatefulShellRoute _userShell(
     ),
     StatefulShellBranch(
       routes: <RouteBase>[
-        _tab(Routes.userMap, 'My map', 'phase 5 (maps)', Icons.map_rounded),
+        GoRoute(
+          path: Routes.userMap,
+          builder: (BuildContext context, GoRouterState state) =>
+              const MyMapPage(),
+        ),
       ],
     ),
     StatefulShellBranch(
       routes: <RouteBase>[
-        _tab(
-          Routes.userHistory,
-          'History',
-          'phase 5 (maps)',
-          Icons.calendar_month_rounded,
+        GoRoute(
+          path: Routes.userHistory,
+          builder: (BuildContext context, GoRouterState state) =>
+              const HistoryPage(dayRoute: Routes.userDay),
+          routes: <RouteBase>[
+            GoRoute(
+              path: 'day/:dayId',
+              parentNavigatorKey: rootKey,
+              builder: (BuildContext context, GoRouterState state) =>
+                  DayRoutePage(
+                    dayId: int.parse(state.pathParameters['dayId']!),
+                  ),
+            ),
+          ],
         ),
       ],
     ),
@@ -193,12 +215,10 @@ StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
         ),
         StatefulShellBranch(
           routes: <RouteBase>[
-            _tab(
-              Routes.adminLiveMap,
-              'Live map',
-              'phase 5 (maps)',
-              Icons.location_on_rounded,
-              adminAccount: true,
+            GoRoute(
+              path: Routes.adminLiveMap,
+              builder: (BuildContext context, GoRouterState state) =>
+                  const LiveMapPage(),
             ),
           ],
         ),
@@ -232,6 +252,18 @@ StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
                   parentNavigatorKey: rootKey,
                   builder: (BuildContext context, GoRouterState state) =>
                       UserFormPage(userId: state.pathParameters['id']),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'days',
+                      parentNavigatorKey: rootKey,
+                      builder: (BuildContext context, GoRouterState state) =>
+                          HistoryPage(
+                            userId: state.pathParameters['id'],
+                            title: 'Duty history',
+                            dayRoute: Routes.adminDay,
+                          ),
+                    ),
+                  ],
                 ),
               ],
             ),

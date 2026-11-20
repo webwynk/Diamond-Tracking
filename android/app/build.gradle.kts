@@ -16,6 +16,29 @@ if (keyPropertiesFile.exists()) {
     keyPropertiesFile.inputStream().use { keyProperties.load(it) }
 }
 
+// The Google Maps key (the "Android app" key, restricted to this package and
+// its signing certificate). Read from android/local.properties on a computer
+// (MAPS_API_KEY=...) or the MAPS_API_KEY environment variable in CI (a GitHub
+// secret). It never goes in git or env.json: Android reads it from the
+// manifest, not the Dart code.
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+val mapsApiKey: String =
+    (localProperties.getProperty("MAPS_API_KEY") ?: System.getenv("MAPS_API_KEY") ?: "").trim()
+if (mapsApiKey.isEmpty()) {
+    logger.warn("MAPS_API_KEY is not set: maps will be blank in this build.")
+}
+// A release without the key would ship blank maps: refuse to build it.
+gradle.taskGraph.whenReady {
+    val releasing = allTasks.any { it.name.contains("Release") && it.project.name == "app" }
+    if (releasing && mapsApiKey.isEmpty()) {
+        throw GradleException("MAPS_API_KEY is missing. Add it to android/local.properties.")
+    }
+}
+
 android {
     namespace = "com.diamondagritech.tracking"
     compileSdk = flutter.compileSdkVersion
@@ -37,6 +60,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     signingConfigs {

@@ -530,6 +530,64 @@ begin
 end;
 $$;
 
+\echo '--- maps: today''s route while on duty, stop addresses'
+do $$
+declare
+  e2 uuid := '00000000-0000-0000-0000-000000000002';
+  e1 uuid := '00000000-0000-0000-0000-000000000001';
+  v_day public.duty_days;
+  v_t timestamptz;
+  v_pts jsonb := '[]';
+  r record;
+  n integer := 0;
+  i integer;
+begin
+  update public.profiles set active_device_id = 'dev-e2-0001' where id = e2;
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values (e2, private.ist_today() - 6, 'on_duty', private.ist_at(private.ist_today() - 6, time '07:00'))
+  returning * into v_day;
+  v_t := v_day.duty_on_at;
+  -- 20 minutes at a dealer.
+  for i in 0..20 loop
+    v_pts := v_pts || jsonb_build_object('t', v_t + make_interval(mins => i),
+      'la', 22700000 + (i % 2) * 30, 'lo', 88400000, 'a', 8, 'b', 70);
+  end loop;
+  perform t.act_as(e2);
+  perform public.upload_points(v_day.id, v_pts, 'dev-e2-0001');
+  perform t.act_as_owner();
+  perform t.eq((select jsonb_array_length(stops) from public.day_routes where duty_day_id = v_day.id),
+               1, 'route built while on duty');
+
+  -- Only the owner or an admin may ask for addresses.
+  perform set_config('role', 'service_role', false);
+  perform t.expect_error(format('select * from public.svc_missing_places(%s, %L)', v_day.id, e1),
+                         'not_allowed');
+  for r in select * from public.svc_missing_places(v_day.id, e2) loop
+    n := n + 1;
+    perform t.eq(r.cell_lat, 22700, 'cell of the stop');
+  end loop;
+  perform t.eq(n, 1, 'one place to look up');
+  perform public.svc_save_places(v_day.id,
+    jsonb_build_array(jsonb_build_object('cell_lat', 22700, 'cell_lng', 88400,
+                                         'address', 'Krishi Kendra Rd, Barasat')));
+  perform t.eq((select count(*)::integer from public.svc_missing_places(v_day.id, '00000000-0000-0000-0000-00000000000a')),
+               0, 'nothing left; admins may ask too');
+  perform t.act_as_owner();
+  perform t.eq((select stops->0->>'address' from public.day_routes where duty_day_id = v_day.id),
+               'Krishi Kendra Rd, Barasat', 'address on the stop');
+
+  -- A rebuild keeps the address (it comes from the saved places).
+  perform private.build_route(v_day.id);
+  perform t.eq((select stops->0->>'address' from public.day_routes where duty_day_id = v_day.id),
+               'Krishi Kendra Rd, Barasat', 'address kept after rebuild');
+
+  perform t.act_as(e2);
+  perform t.expect_error($q$select public.svc_save_places(1, '[]')$q$, 'permission denied');
+  perform t.expect_error($q$select count(*) from private.place_names$q$, 'permission denied');
+  perform t.act_as_owner();
+end;
+$$;
+
 \echo '--- password reset codes'
 do $$
 declare

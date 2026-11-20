@@ -36,6 +36,8 @@ class DutyDay {
     this.dutyOffAt,
     this.autoEnded = false,
     this.workedMinutes,
+    this.distanceM,
+    this.userId,
   });
 
   factory DutyDay.fromJson(Map<String, dynamic> json) => DutyDay(
@@ -46,6 +48,8 @@ class DutyDay {
     dutyOffAt: _time(json['duty_off_at']),
     autoEnded: json['end_reason'] == 'auto',
     workedMinutes: (json['worked_minutes'] as num?)?.toInt(),
+    distanceM: (json['distance_m'] as num?)?.toInt(),
+    userId: json['user_id'] as String?,
   );
 
   final int id;
@@ -59,6 +63,10 @@ class DutyDay {
   /// Ended by the 11:00 PM automatic duty off.
   final bool autoEnded;
   final int? workedMinutes;
+  final int? distanceM;
+
+  /// Set when the row was read with its user (admin lists).
+  final String? userId;
 
   static DateTime? _time(Object? value) =>
       value is String ? DateTime.parse(value).toUtc() : null;
