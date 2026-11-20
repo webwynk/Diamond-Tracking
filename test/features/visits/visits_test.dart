@@ -1,0 +1,248 @@
+import 'dart:io';
+
+import 'package:diamond_tracking/core/supabase/supabase_providers.dart';
+import 'package:diamond_tracking/core/time/clock_providers.dart';
+import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
+import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
+import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
+import 'package:diamond_tracking/features/duty/presentation/home_page.dart';
+import 'package:diamond_tracking/features/requests/application/requests_providers.dart';
+import 'package:diamond_tracking/features/routes/application/route_providers.dart';
+import 'package:diamond_tracking/features/routes/domain/geo_point.dart';
+import 'package:diamond_tracking/features/routes/presentation/day_route_page.dart';
+import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
+import 'package:diamond_tracking/features/visits/domain/visit.dart';
+import 'package:diamond_tracking/features/visits/domain/visit_failure.dart';
+import 'package:diamond_tracking/features/visits/presentation/add_visit_page.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../support/fakes.dart';
+import '../../support/pump.dart';
+
+void main() {
+  // 13:30 IST on 20 Nov 2026.
+  final DateTime now = DateTime.utc(2026, 11, 20, 8);
+  const SignedIn employee = SignedIn(
+    userId: 'u',
+    role: AppRole.employee,
+    mustChangePassword: false,
+  );
+
+  late FakeVisitsRepository visits;
+  late FakePhotoPicker picker;
+  late FakeLocation location;
+  setUp(() {
+    visits = FakeVisitsRepository();
+    picker = FakePhotoPicker();
+    location = FakeLocation();
+  });
+
+  List<Override> overrides() => <Override>[
+    photoPickerProvider.overrideWithValue(picker),
+    currentLocationProvider.overrideWithValue(location),
+    serverClockProvider.overrideWithValue(FixedClock(now).clock),
+  ];
+
+  void tall(WidgetTester tester) {
+    tester.view.physicalSize = const Size(1080, 4000);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+  }
+
+  Future<void> openAddVisit(WidgetTester tester) async {
+    tall(tester);
+    await pumpPushed(
+      tester,
+      const AddVisitPage(dayId: 5),
+      status: employee,
+      visits: visits,
+      overrides: overrides(),
+    );
+  }
+
+  Future<void> save(WidgetTester tester) async {
+    await tester.tap(find.text('Save visit'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('a camera photo saves the place it was taken', (
+    WidgetTester tester,
+  ) async {
+    await openAddVisit(tester);
+
+    await save(tester);
+    expect(find.text(VisitFailure.storeNameRequired.message), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, 'Krishi Kendra');
+    await save(tester);
+    expect(find.text(VisitFailure.photoRequired.message), findsOneWidget);
+
+    await tester.tap(find.text('Camera'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Location found: 22.50000, 88.30000'), findsOne);
+    await tester.enterText(find.byType(TextField).at(1), 'Order taken');
+    await save(tester);
+
+    expect(visits.uploads, 1);
+    expect(visits.lastLocation, const GeoPoint(22.5, 88.3));
+    final Visit saved = visits.byDay[5]!.single;
+    expect(saved.storeName, 'Krishi Kendra');
+    expect(saved.note, 'Order taken');
+    expect(find.text('below'), findsOneWidget); // closed
+  });
+
+  testWidgets('a gallery photo saves no place', (WidgetTester tester) async {
+    await openAddVisit(tester);
+    await tester.enterText(find.byType(TextField).first, 'Agro Store');
+    await tester.tap(find.text('Gallery'));
+    await tester.pumpAndSettle();
+    expect(find.text('Gallery photo: no location is saved.'), findsOneWidget);
+    await save(tester);
+
+    expect(location.calls, 0);
+    expect(visits.lastLocation, isNull);
+    expect(visits.byDay[5]!.single.fromGallery, isTrue);
+  });
+
+  testWidgets('a camera photo without a location cannot be saved until found', (
+    WidgetTester tester,
+  ) async {
+    location = FakeLocation(<GeoPoint?>[null, const GeoPoint(22.6, 88.4)]);
+    await openAddVisit(tester);
+    await tester.enterText(find.byType(TextField).first, 'Agro Store');
+    await tester.tap(find.text('Camera'));
+    await tester.pumpAndSettle();
+    expect(find.text('Location not found.'), findsOneWidget);
+    await save(tester);
+    expect(find.text(VisitFailure.noLocation.message), findsOneWidget);
+    expect(visits.uploads, 0);
+
+    await tester.tap(find.text('Try again'));
+    await tester.pumpAndSettle();
+    await save(tester);
+    expect(visits.lastLocation, const GeoPoint(22.6, 88.4));
+  });
+
+  testWidgets('a failed save is retried without a second upload', (
+    WidgetTester tester,
+  ) async {
+    visits.addError = const SocketException('offline');
+    await openAddVisit(tester);
+    await tester.enterText(find.byType(TextField).first, 'Agro Store');
+    await tester.tap(find.text('Gallery'));
+    await tester.pumpAndSettle();
+    await save(tester);
+    expect(find.text(VisitFailure.noInternet.message), findsOneWidget);
+
+    visits.addError = null;
+    await save(tester);
+    expect(visits.uploads, 1);
+    expect(visits.byDay[5], hasLength(1));
+  });
+
+  test('server errors read as plain words', () {
+    expect(
+      mapVisitError(const PostgrestException(message: 'not_on_duty')),
+      VisitFailure.notOnDuty,
+    );
+    expect(
+      mapVisitError(const PostgrestException(message: 'location_required')),
+      VisitFailure.noLocation,
+    );
+    expect(mapVisitError(Exception('x')), VisitFailure.unknown);
+  });
+
+  test('a visit row reads its place and photo state', () {
+    final Visit v = Visit.fromRow(<String, dynamic>{
+      'id': 'a',
+      'store_name': 'Shop',
+      'note': null,
+      'from_gallery': false,
+      'lat_e6': 22572610,
+      'lng_e6': 88363890,
+      'photo_id': 'visit-a',
+      'photo_removed_at': '2026-11-20T00:00:00Z',
+      'captured_at': '2026-08-20T05:00:00Z',
+    });
+    expect(formatPoint(v.location!), '22.57261, 88.36389');
+    expect(v.showsPhoto, isFalse);
+  });
+
+  group('lists', () {
+    Visit visit(String id, String store, {GeoPoint? at}) => Visit(
+      id: id,
+      storeName: store,
+      fromGallery: at == null,
+      location: at,
+      capturedAt: DateTime.utc(2026, 11, 20, 6),
+    );
+
+    testWidgets('home shows today\'s visits and Add visit while on duty', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      final FakeDutyRepository duty = FakeDutyRepository()
+        ..today = DutyDay(
+          id: 5,
+          day: DateTime.utc(2026, 11, 20),
+          status: DayStatus.onDuty,
+          dutyOnAt: DateTime.utc(2026, 11, 20, 1, 30),
+        );
+      visits.byDay[5] = <Visit>[visit('v1', 'Krishi Kendra')];
+      await pumpPage(
+        tester,
+        const HomePage(),
+        status: employee,
+        visits: visits,
+        overrides: <Override>[
+          ...overrides(),
+          dutyRepositoryProvider.overrideWithValue(duty),
+          deviceIdStoreProvider.overrideWithValue(FakeDeviceIdStore()),
+        ],
+      );
+
+      expect(find.text('Visits today'), findsOneWidget);
+      expect(find.text('Krishi Kendra'), findsOneWidget);
+      await tester.tap(find.text('Add visit'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /home/visit/5'), findsOneWidget);
+    });
+
+    testWidgets('a day\'s page lists visits and opens one', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      final FakeRouteRepository routes = FakeRouteRepository();
+      routes.days[7] = DutyDay(
+        id: 7,
+        userId: 'u',
+        day: DateTime.utc(2026, 11, 20),
+        status: DayStatus.present,
+        dutyOnAt: DateTime.utc(2026, 11, 20, 1, 30),
+      );
+      visits.byDay[7] = <Visit>[
+        visit('v1', 'Krishi Kendra', at: const GeoPoint(22.5, 88.3)),
+        visit('v2', 'Agro Store'),
+      ];
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7, personName: 'Asha Roy'),
+        visits: visits,
+        overrides: <Override>[
+          routeRepositoryProvider.overrideWithValue(routes),
+          showGoogleMapProvider.overrideWithValue(false),
+          serverClockProvider.overrideWithValue(FixedClock(now).clock),
+        ],
+      );
+
+      expect(find.text('Visits (2)'), findsOneWidget);
+      expect(find.textContaining('no location'), findsOneWidget);
+      await tester.tap(find.text('Krishi Kendra'));
+      await tester.pumpAndSettle();
+      expect(find.text('Camera photo at 22.50000, 88.30000'), findsOneWidget);
+    });
+  });
+}

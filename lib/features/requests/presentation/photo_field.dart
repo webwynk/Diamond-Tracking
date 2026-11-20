@@ -18,6 +18,7 @@ class PhotoField extends ConsumerWidget {
     required this.onChanged,
     super.key,
     this.enabled = true,
+    this.onPicked,
   });
 
   final String label;
@@ -25,10 +26,15 @@ class PhotoField extends ConsumerWidget {
   final ValueChanged<Uint8List?> onChanged;
   final bool enabled;
 
+  /// Told whether a new photo came from the camera or the gallery.
+  final ValueChanged<PhotoFrom>? onPicked;
+
   Future<void> _pick(WidgetRef ref, PhotoFrom from) async {
     try {
       final Uint8List? bytes = await ref.read(photoPickerProvider).pick(from);
-      if (bytes != null) onChanged(bytes);
+      if (bytes == null) return;
+      onPicked?.call(from);
+      onChanged(bytes);
     } on Object catch (e, s) {
       // Camera permission refused, or the picker was closed oddly.
       AppLog.failure('pick photo', e, s);

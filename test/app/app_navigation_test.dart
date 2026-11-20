@@ -12,6 +12,7 @@ import 'package:diamond_tracking/features/routes/application/route_providers.dar
 import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
 import 'package:diamond_tracking/features/users/application/users_providers.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
+import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,6 +45,7 @@ void main() {
           deviceIdStoreProvider.overrideWithValue(FakeDeviceIdStore()),
           routeRepositoryProvider.overrideWithValue(FakeRouteRepository()),
           showGoogleMapProvider.overrideWithValue(false),
+          visitsRepositoryProvider.overrideWithValue(FakeVisitsRepository()),
           notificationsRepositoryProvider.overrideWithValue(notifications),
           pushServiceProvider.overrideWithValue(push),
           requestsRepositoryProvider.overrideWithValue(

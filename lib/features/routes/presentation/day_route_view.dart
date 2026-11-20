@@ -9,6 +9,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/time/ist_format.dart';
 import '../../../shared/widgets/app_error_view.dart';
 import '../../duty/domain/duty_day.dart';
+import '../../visits/presentation/visit_widgets.dart';
 import '../application/route_providers.dart';
 import '../domain/day_route.dart';
 import 'app_map.dart';
@@ -124,6 +125,7 @@ class _Body extends StatelessWidget {
                   child: Text('No route recorded for this day yet.'),
                 ),
               ..._timeline(route),
+              if (day != null) DayVisitsSection(dayId: day.id),
             ],
           ),
         ),

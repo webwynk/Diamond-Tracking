@@ -25,6 +25,11 @@ export class FakeBackend implements Backend {
   saved: { cell_lat: number; cell_lng: number; address: string }[] = [];
   /** request id -> owner and photo id. */
   requests = new Map<number, { owner: string; photo: string | null }>();
+  /** visit id -> owner and photo id. */
+  visits = new Map<string, { owner: string; photo: string | null }>();
+  /** photos past 90 days, and those marked removed. */
+  oldPhotos: string[] = [];
+  removedPhotos: string[] = [];
   /** notification id -> push job (removed when claimed). */
   pushJobs = new Map<number, PushJob>();
   droppedTokens: string[] = [];
@@ -127,6 +132,23 @@ export class FakeBackend implements Backend {
       return Promise.resolve('not_allowed' as const);
     }
     return Promise.resolve(r.photo);
+  }
+  visitPhoto(visitId: string, callerId: string) {
+    const v = this.visits.get(visitId);
+    const caller = this.profiles.get(callerId);
+    if (!v || !caller || (v.owner !== callerId && caller.role !== 'admin')) {
+      return Promise.resolve('not_allowed' as const);
+    }
+    return Promise.resolve(v.photo);
+  }
+  photosToPurge(limit: number) {
+    return Promise.resolve(
+      this.oldPhotos.filter((p) => !this.removedPhotos.includes(p)).slice(0, limit),
+    );
+  }
+  photosRemoved(photoIds: string[]) {
+    this.removedPhotos.push(...photoIds);
+    return Promise.resolve();
   }
   claimPush(id: number) {
     const job = this.pushJobs.get(id) ?? null;

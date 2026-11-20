@@ -40,7 +40,8 @@ begin
            ('20261121000000', 'login_and_devices'),
            ('20261122000000', 'duty_tracking'),
            ('20261123000000', 'maps'),
-           ('20261124000000', 'requests_push')
+           ('20261124000000', 'requests_push'),
+           ('20261125000000', 'visits')
     on conflict do nothing;
   end if;
 end;
@@ -49,6 +50,11 @@ $$;
 -- Phone push: where the database sends each new notification.
 insert into private.app_settings (key, value)
 values ('push_url', 'https://bljroionzwxxsgmyituh.supabase.co/functions/v1/push')
+on conflict (key) do update set value = excluded.value;
+
+-- Old photos: where the nightly job asks for photos past 90 days to be deleted.
+insert into private.app_settings (key, value)
+values ('photos_url', 'https://bljroionzwxxsgmyituh.supabase.co/functions/v1/photos')
 on conflict (key) do update set value = excluded.value;
 
 commit;

@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../data/photo_upload.dart';
+
 /// Why a request action failed, in plain words.
 enum RequestFailure {
   outsideWindow('Requests can be made for today and the last 7 days only.'),
@@ -37,6 +39,7 @@ class RequestException implements Exception {
 
 RequestFailure mapRequestError(Object error) {
   if (error is RequestException) return error.failure;
+  if (error is PhotoUploadFailed) return RequestFailure.photoUploadFailed;
   if (error is SocketException ||
       error is TimeoutException ||
       error is HttpException ||
