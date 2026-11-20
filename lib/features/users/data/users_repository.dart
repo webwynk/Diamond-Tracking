@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/logging/app_log.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_failure.dart';
+import '../../requests/data/requests_repository.dart' show isoDate;
 import '../domain/profile.dart';
 
 /// Field errors from the server, keyed by field name.
@@ -17,6 +18,16 @@ abstract interface class UsersRepository {
   Future<Profile> create(ProfileDraft draft, {required String tempPin});
   Future<Profile> update(String id, ProfileDraft draft);
   Future<void> resetPin(String id, {required String tempPin});
+
+  /// Whether the admin has allowed [userId] to do duty on on [day] (an IST
+  /// date) and it is not used yet.
+  Future<bool> dutyOnAllowed(String userId, DateTime day);
+
+  /// Lets [userId] do duty on today outside 5:00 to 8:30 AM, once.
+  Future<void> allowDutyOn(String userId, {String? note});
+
+  /// Takes back a permission that is not used yet.
+  Future<void> revokeDutyOn(String userId);
 }
 
 class SupabaseUsersRepository implements UsersRepository {
@@ -108,4 +119,32 @@ class SupabaseUsersRepository implements UsersRepository {
       throw mapAuthError(e);
     }
   }
+
+  @override
+  Future<bool> dutyOnAllowed(String userId, DateTime day) async {
+    final Map<String, dynamic>? row = await _client
+        .from('duty_permits')
+        .select('user_id')
+        .eq('user_id', userId)
+        .eq('day', isoDate(day))
+        .isFilter('used_at', null)
+        .maybeSingle();
+    return row != null;
+  }
+
+  @override
+  Future<void> allowDutyOn(String userId, {String? note}) =>
+      _client.rpc<Object?>(
+        'allow_duty_on',
+        params: <String, Object?>{
+          'p_user': userId,
+          'p_note': (note?.trim().isEmpty ?? true) ? null : note!.trim(),
+        },
+      );
+
+  @override
+  Future<void> revokeDutyOn(String userId) => _client.rpc<Object?>(
+    'revoke_duty_on',
+    params: <String, Object?>{'p_user': userId},
+  );
 }

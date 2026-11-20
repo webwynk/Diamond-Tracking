@@ -1,3 +1,4 @@
+import 'package:diamond_tracking/core/time/clock_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_failure.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/users/data/users_repository.dart';
@@ -5,7 +6,9 @@ import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/users/presentation/user_form_page.dart';
 import 'package:diamond_tracking/features/users/presentation/users_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../support/fakes.dart';
 import '../../support/pump.dart';
@@ -148,6 +151,97 @@ void main() {
       await tester.pumpAndSettle();
       expect(users.calls.single, startsWith('resetPin:u1:'));
       expect(find.text('Password reset'), findsOneWidget);
+    });
+
+    group('allow duty on', () {
+      Future<FakeUsersRepository> open(
+        WidgetTester tester, {
+        AppRole role = AppRole.employee,
+        bool active = true,
+      }) async {
+        tester.view.physicalSize = const Size(1080, 4000);
+        tester.view.devicePixelRatio = 2;
+        addTearDown(tester.view.reset);
+        final FakeUsersRepository users = FakeUsersRepository(<Profile>[
+          profile(
+            'u1',
+            code: 'emp1',
+            name: 'Asha Roy',
+            role: role,
+            active: active,
+          ),
+        ]);
+        await pumpPushed(
+          tester,
+          const UserFormPage(userId: 'u1'),
+          users: users,
+          overrides: <Override>[
+            serverClockProvider.overrideWithValue(
+              FixedClock(DateTime.utc(2026, 11, 20, 13)).clock,
+            ),
+          ],
+        );
+        return users;
+      }
+
+      testWidgets('allows with a note, then takes it back', (
+        WidgetTester tester,
+      ) async {
+        final FakeUsersRepository users = await open(tester);
+        expect(find.textContaining('Normally only 5:00 to 8:30 AM'), findsOne);
+        await tester.tap(find.text('Allow duty on today'));
+        await tester.pumpAndSettle();
+        expect(find.text('Allow duty on for Asha Roy?'), findsOneWidget);
+        await tester.enterText(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          ),
+          'Late start',
+        );
+        await tester.tap(find.widgetWithText(TextButton, 'Allow'));
+        await tester.pumpAndSettle();
+        expect(users.calls, contains('allowDutyOn:u1:Late start'));
+        expect(find.text('Allowed for today. Not used yet.'), findsOneWidget);
+
+        await tester.tap(find.text('Take back permission'));
+        await tester.pumpAndSettle();
+        expect(users.calls, contains('revokeDutyOn:u1'));
+        expect(find.text('Allow duty on today'), findsOneWidget);
+      });
+
+      testWidgets('cancelling asks nothing of the server', (
+        WidgetTester tester,
+      ) async {
+        final FakeUsersRepository users = await open(tester);
+        await tester.tap(find.text('Allow duty on today'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+        await tester.pumpAndSettle();
+        expect(users.calls, isEmpty);
+      });
+
+      testWidgets('a day that is already recorded says so', (
+        WidgetTester tester,
+      ) async {
+        final FakeUsersRepository users = await open(tester);
+        users.failWith = const PostgrestException(
+          message: 'day_already_recorded',
+        );
+        await tester.tap(find.text('Allow duty on today'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(TextButton, 'Allow'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('already has a record for today'), findsOne);
+        expect(find.text('Allow duty on today'), findsOneWidget);
+      });
+
+      testWidgets('not shown for admins or accounts that are off', (
+        WidgetTester tester,
+      ) async {
+        await open(tester, role: AppRole.admin);
+        expect(find.text('Duty on today'), findsNothing);
+      });
     });
 
     testWidgets('admins cannot turn off or demote themselves', (

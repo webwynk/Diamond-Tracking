@@ -8,6 +8,7 @@ import 'package:diamond_tracking/features/auth/application/auth_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
+import 'package:diamond_tracking/features/duty/domain/duty_home.dart';
 import 'package:diamond_tracking/features/duty/presentation/home_page.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_control.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
@@ -126,6 +127,62 @@ void main() {
     await pumpHome(tester);
     expect(find.text('Duty on is closed for today'), findsOneWidget);
     expect(find.text('Duty on'), findsNothing);
+  });
+
+  testWidgets('when the admin allowed it, duty on works after 8:30 AM', (
+    WidgetTester tester,
+  ) async {
+    repo.allowed = true;
+    time.at = ist(18);
+    repo.dutyOnTime = ist(18);
+    await pumpHome(tester);
+    expect(find.text('Duty on is closed for today'), findsNothing);
+    expect(find.textContaining('The admin allowed you'), findsOneWidget);
+    await tester.tap(find.text('Duty on'));
+    await tester.pumpAndSettle();
+    expect(tracker.calls, contains('start:100'));
+    expect(find.text('On duty'), findsOneWidget);
+  });
+
+  testWidgets(
+    'without permission duty on stays closed, and is only looked up then',
+    (WidgetTester tester) async {
+      time.at = ist(18);
+      await pumpHome(tester);
+      expect(find.text('Duty on is closed for today'), findsOneWidget);
+      expect(find.text('Duty on'), findsNothing);
+      // The permission is only looked up when duty on is closed.
+      time.at = ist(7);
+      repo.calls.clear();
+      await pumpHome(tester);
+      expect(repo.calls, isNot(contains('dutyOnAllowed')));
+    },
+  );
+
+  test('permission ends at 11:00 PM', () {
+    final DutyHome home = DutyHome(
+      today: null,
+      session: null,
+      loadedAt: DateTime.utc(2026, 11, 20, 12),
+      dutyOnAllowed: true,
+    );
+    expect(
+      home.phaseAt(DateTime.utc(2026, 11, 20, 12)),
+      DutyPhase.allowedByAdmin,
+    );
+    expect(
+      home.phaseAt(DateTime.utc(2026, 11, 20, 17, 29)),
+      DutyPhase.allowedByAdmin,
+    );
+    expect(
+      home.phaseAt(DateTime.utc(2026, 11, 20, 17, 31)),
+      DutyPhase.windowClosed,
+    );
+    // 3:30 AM IST, before the window.
+    expect(
+      home.phaseAt(DateTime.utc(2026, 11, 19, 22)),
+      DutyPhase.allowedByAdmin,
+    );
   });
 
   testWidgets('a refused duty on shows why', (WidgetTester tester) async {

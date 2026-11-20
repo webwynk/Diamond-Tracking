@@ -7,6 +7,10 @@ abstract interface class DutyRepository {
   /// The signed-in user's record for [day] (an IST date), if any.
   Future<DutyDay?> forDay(String userId, DateTime day);
 
+  /// Whether the admin allowed [userId] to do duty on on [day] outside the
+  /// 5:00 to 8:30 AM window, and it is not used yet.
+  Future<bool> dutyOnAllowed(String userId, DateTime day);
+
   /// Starts today's duty from this phone.
   Future<DutyStart> dutyOn(String deviceId);
 
@@ -39,6 +43,22 @@ class SupabaseDutyRepository implements DutyRepository {
         .eq('day', date)
         .maybeSingle();
     return row == null ? null : DutyDay.fromJson(row);
+  }
+
+  @override
+  Future<bool> dutyOnAllowed(String userId, DateTime day) async {
+    final String date =
+        '${day.year.toString().padLeft(4, '0')}-'
+        '${day.month.toString().padLeft(2, '0')}-'
+        '${day.day.toString().padLeft(2, '0')}';
+    final Map<String, dynamic>? row = await _client
+        .from('duty_permits')
+        .select('user_id')
+        .eq('user_id', userId)
+        .eq('day', date)
+        .isFilter('used_at', null)
+        .maybeSingle();
+    return row != null;
   }
 
   @override

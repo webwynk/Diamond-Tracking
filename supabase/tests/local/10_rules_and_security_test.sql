@@ -127,6 +127,93 @@ end;
 $$;
 select t.act_as_owner();
 
+\echo '--- the admin can allow duty on outside the window, for today, once'
+select t.act_as_owner();
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000004', 'e4@test');
+insert into public.profiles (id, user_code, full_name, role, created_at, active_device_id)
+values ('00000000-0000-0000-0000-000000000004', 'DA-004', 'Employee Four', 'employee',
+        now() - interval '30 days', 'dev-e4-0001');
+do $$
+declare
+  v_time time := (now() at time zone 'Asia/Kolkata')::time;
+  v_closed boolean := v_time < time '05:00' or v_time >= time '08:31';
+  v_late boolean := v_time >= time '23:00';
+  e4 constant uuid := '00000000-0000-0000-0000-000000000004';
+begin
+  -- Only an admin can allow, and only for an active employee.
+  perform t.act_as(e4);
+  perform t.expect_error(format('select public.allow_duty_on(%L)', e4), 'not_admin');
+  perform t.expect_error(format('select public.revoke_duty_on(%L)', e4), 'not_admin');
+  perform t.act_as(null);
+  perform t.expect_error(format('select public.allow_duty_on(%L)', e4), 'permission denied');
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.expect_error(format('select public.allow_duty_on(%L)', gen_random_uuid()), 'user_not_found');
+  perform t.expect_error(format('select public.allow_duty_on(%L)', '00000000-0000-0000-0000-00000000000a'), 'user_not_found');
+
+  if v_late then
+    perform t.expect_error(format('select public.allow_duty_on(%L)', e4), 'too_late');
+    return;
+  end if;
+
+  if v_closed then
+    perform t.act_as(e4);
+    perform t.expect_error($q$select public.duty_on('dev-e4-0001')$q$, 'duty_on_closed');
+  end if;
+
+  -- Allow, then take it back before it is used.
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform public.allow_duty_on(e4, '  Late start  ');
+  perform t.act_as(e4);
+  perform t.eq((select count(*) from public.duty_permits), 1::bigint, 'the employee sees their permission');
+  perform t.expect_error(format('insert into public.duty_permits (user_id, day) values (%L, current_date)', e4),
+                         'permission denied');
+  perform t.act_as('00000000-0000-0000-0000-000000000002');
+  perform t.eq((select count(*) from public.duty_permits), 0::bigint, 'others do not see it');
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.eq((select count(*) from public.duty_permits), 1::bigint, 'admin sees it');
+  perform t.eq((select note from public.duty_permits), 'Late start', 'note trimmed');
+  perform t.eq(public.revoke_duty_on(e4), true, 'taken back');
+  perform t.eq(public.revoke_duty_on(e4), false, 'nothing left to take back');
+  if v_closed then
+    perform t.act_as(e4);
+    perform t.expect_error($q$select public.duty_on('dev-e4-0001')$q$, 'duty_on_closed');
+  end if;
+
+  -- Allow again and use it: once.
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform public.allow_duty_on(e4);
+  perform t.act_as_owner();
+  perform t.eq((select count(*) from public.notifications
+                where user_id = e4 and kind = 'duty_on_allowed'), 2::bigint, 'the employee is told');
+  perform t.eq((select count(*) from public.admin_log where action in ('allow_duty_on', 'revoke_duty_on')
+                and target_user = e4), 3::bigint, 'allowed and revoked are logged');
+  perform t.act_as(e4);
+  perform t.eq(length(public.duty_on('dev-e4-0001')->>'upload_pass'), 64, 'duty on works with permission');
+  perform t.expect_error($q$select public.duty_on('dev-e4-0001')$q$,
+    case when v_closed then 'duty_on_closed' else 'already_on_duty_today' end);
+  perform t.act_as_owner();
+  if v_closed then
+    perform t.eq((select used_at is not null from public.duty_permits where user_id = e4), true, 'permission used');
+  end if;
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.expect_error(format('select public.allow_duty_on(%L)', e4), 'day_already_recorded');
+
+  -- A used permission does not give a second duty.
+  perform t.act_as_owner();
+  delete from public.duty_days where user_id = e4;
+  if v_closed then
+    perform t.act_as(e4);
+    perform t.expect_error($q$select public.duty_on('dev-e4-0001')$q$, 'duty_on_closed');
+  end if;
+  perform t.act_as_owner();
+  delete from public.duty_permits;
+  delete from public.notifications where user_id = e4;
+end;
+$$;
+select t.act_as_owner();
+delete from public.profiles where id = '00000000-0000-0000-0000-000000000004';
+delete from auth.users where id = '00000000-0000-0000-0000-000000000004';
+
 \echo '--- a full day: points, a stop, a phone-off gap, duty off capped at 23:00'
 do $$
 declare

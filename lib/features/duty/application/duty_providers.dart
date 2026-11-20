@@ -106,11 +106,21 @@ class DutyHomeController extends AsyncNotifier<DutyHome> {
       session = await _tracker.session();
     }
     if (problem == null) unawaited(_keepTrackerInStep());
+    var allowed = false;
+    if (day == null && !DutyRules.canDutyOn(now)) {
+      try {
+        allowed = await _repo.dutyOnAllowed(_userId, today);
+      } on Object catch (e, st) {
+        // Without the answer the screen shows duty on as closed.
+        AppLog.failure('DutyHome.dutyOnAllowed', e, st);
+      }
+    }
     return DutyHome(
       today: day,
       session: session,
       loadedAt: now,
       trackingProblem: problem,
+      dutyOnAllowed: allowed,
     );
   }
 
@@ -155,7 +165,10 @@ class DutyHomeController extends AsyncNotifier<DutyHome> {
     if (!await _clock.sync()) {
       throw const DutyException(DutyFailure.noInternet);
     }
-    if (!DutyRules.canDutyOn(_clock.now())) {
+    // Outside the window only with the admin's permission; the server checks
+    // it again.
+    if (!DutyRules.canDutyOn(_clock.now()) &&
+        !(state.value?.dutyOnAllowed ?? false)) {
       throw const DutyException(DutyFailure.closed);
     }
     final DutyStart start;

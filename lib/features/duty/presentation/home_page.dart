@@ -331,6 +331,22 @@ class _DutyCard extends StatelessWidget {
           onPressed: onDutyOn,
         ),
       ],
+      DutyPhase.allowedByAdmin => <Widget>[
+        const _Heading(icon: Icons.verified_rounded, title: 'Ready to start'),
+        const _Line(
+          'The admin allowed you to do duty on today. It works once, until '
+          '11:00 PM.',
+        ),
+        const SizedBox(height: AppSpacing.x4),
+        AppButton(
+          label: 'Duty on',
+          isFullWidth: true,
+          isLoading: busy,
+          loadingLabel: 'Starting…',
+          icon: const Icon(Icons.play_arrow_rounded),
+          onPressed: onDutyOn,
+        ),
+      ],
       DutyPhase.windowClosed => <Widget>[
         const _Heading(
           icon: Icons.event_busy_rounded,
