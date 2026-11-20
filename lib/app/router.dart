@@ -12,6 +12,7 @@ import '../features/auth/presentation/set_password_page.dart';
 import '../features/auth/presentation/splash_page.dart';
 import '../features/duty/presentation/home_page.dart';
 import '../features/notifications/presentation/notifications_page.dart';
+import '../features/reports/presentation/reports_page.dart';
 import '../features/requests/presentation/admin_requests_page.dart';
 import '../features/requests/presentation/attendance_request_page.dart';
 import '../features/requests/presentation/leave_request_page.dart';
@@ -21,12 +22,10 @@ import '../features/routes/presentation/day_route_page.dart';
 import '../features/routes/presentation/history_page.dart';
 import '../features/routes/presentation/live_map_page.dart';
 import '../features/routes/presentation/my_map_page.dart';
-import '../features/users/presentation/account_button.dart';
 import '../features/users/presentation/account_page.dart';
 import '../features/users/presentation/user_form_page.dart';
 import '../features/users/presentation/users_page.dart';
 import '../features/visits/presentation/add_visit_page.dart';
-import '../shared/widgets/coming_soon_page.dart';
 import '../shared/widgets/nav_shell.dart';
 import 'routes.dart';
 
@@ -108,22 +107,6 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
   });
   return router;
 });
-
-GoRoute _tab(
-  String path,
-  String title,
-  String phase,
-  IconData icon, {
-  bool adminAccount = false,
-}) => GoRoute(
-  path: path,
-  builder: (BuildContext context, GoRouterState state) => ComingSoonPage(
-    title: title,
-    phase: phase,
-    icon: icon,
-    actions: adminAccount ? const <Widget>[AccountButton()] : const <Widget>[],
-  ),
-);
 
 StatefulShellRoute _userShell(
   GlobalKey<NavigatorState> rootKey,
@@ -337,12 +320,10 @@ StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
         ),
         StatefulShellBranch(
           routes: <RouteBase>[
-            _tab(
-              Routes.adminReports,
-              'Reports',
-              'phase 8 (reports)',
-              Icons.picture_as_pdf_rounded,
-              adminAccount: true,
+            GoRoute(
+              path: Routes.adminReports,
+              builder: (BuildContext context, GoRouterState state) =>
+                  const ReportsPage(),
             ),
           ],
         ),

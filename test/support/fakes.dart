@@ -11,6 +11,9 @@ import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
 import 'package:diamond_tracking/features/notifications/application/push_service.dart';
 import 'package:diamond_tracking/features/notifications/data/notifications_repository.dart';
 import 'package:diamond_tracking/features/notifications/domain/app_notification.dart';
+import 'package:diamond_tracking/features/reports/data/report_pdf.dart';
+import 'package:diamond_tracking/features/reports/data/reports_repository.dart';
+import 'package:diamond_tracking/features/reports/domain/report.dart';
 import 'package:diamond_tracking/features/requests/data/photo_picker.dart';
 import 'package:diamond_tracking/features/requests/data/requests_repository.dart';
 import 'package:diamond_tracking/features/requests/domain/app_request.dart';
@@ -657,5 +660,28 @@ class FakeLocation implements CurrentLocation {
     final GeoPoint? r = results[calls.clamp(0, results.length - 1)];
     calls++;
     return r;
+  }
+}
+
+/// A fixed report; records the ranges asked for.
+class FakeReportsRepository implements ReportsRepository {
+  FakeReportsRepository([this.people = const <PersonReport>[]]);
+
+  List<PersonReport> people;
+  final List<ReportRange> asked = <ReportRange>[];
+
+  @override
+  Future<List<PersonReport>> load(ReportRange range) async {
+    asked.add(range);
+    return people;
+  }
+}
+
+class FakePdfSharer implements PdfSharer {
+  final List<(int, String)> shared = <(int, String)>[];
+
+  @override
+  Future<void> share(Uint8List bytes, String filename) async {
+    shared.add((bytes.length, filename));
   }
 }
