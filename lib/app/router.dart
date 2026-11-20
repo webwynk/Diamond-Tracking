@@ -25,6 +25,7 @@ import '../features/users/presentation/account_button.dart';
 import '../features/users/presentation/account_page.dart';
 import '../features/users/presentation/user_form_page.dart';
 import '../features/users/presentation/users_page.dart';
+import '../features/visits/presentation/add_visit_page.dart';
 import '../shared/widgets/coming_soon_page.dart';
 import '../shared/widgets/nav_shell.dart';
 import 'routes.dart';
@@ -151,6 +152,14 @@ StatefulShellRoute _userShell(
               parentNavigatorKey: rootKey,
               builder: (BuildContext context, GoRouterState state) =>
                   const NotificationsPage(),
+            ),
+            GoRoute(
+              path: 'visit/:dayId',
+              parentNavigatorKey: rootKey,
+              builder: (BuildContext context, GoRouterState state) =>
+                  AddVisitPage(
+                    dayId: int.parse(state.pathParameters['dayId']!),
+                  ),
             ),
             GoRoute(
               path: 'requests',

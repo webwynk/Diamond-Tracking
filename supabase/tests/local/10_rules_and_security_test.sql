@@ -339,24 +339,57 @@ begin
 end;
 $$;
 
-\echo '--- visits need an open duty; gallery photos carry no GPS'
+\echo '--- visits need an open duty, a store name and their own photo; gallery photos carry no GPS'
 select t.act_as('00000000-0000-0000-0000-000000000001');
-select t.expect_error($$select public.add_visit(gen_random_uuid(), 'Shop', null, false,
-  22500000, 88300000, 'p/1', now())$$, 'not_on_duty');
+select t.expect_error($$select public.add_visit('aaaaaaaa-0000-0000-0000-000000000001', 'Shop', null, false,
+  22500000, 88300000, 'visit-aaaaaaaa-0000-0000-0000-000000000001', now())$$, 'not_on_duty');
 select t.act_as_owner();
 do $$
 declare
-  v_id uuid := gen_random_uuid();
+  v_id uuid := 'aaaaaaaa-0000-0000-0000-000000000002';
+  v_cam uuid := 'aaaaaaaa-0000-0000-0000-000000000003';
   v public.visits;
 begin
   insert into public.duty_days (user_id, day, status, duty_on_at)
   values ('00000000-0000-0000-0000-000000000001', private.ist_today(), 'on_duty', now() - interval '1 hour');
   perform t.act_as('00000000-0000-0000-0000-000000000001');
-  v := public.add_visit(v_id, 'Krishi Kendra', 'Order taken', true, 22500000, 88300000, 'p/2', now());
+  perform t.expect_error(format('select public.add_visit(%L, %L, null, true, null, null, %L, now())',
+    v_id, '  ', 'visit-' || v_id), 'store_name_required');
+  perform t.expect_error(format('select public.add_visit(%L, %L, null, true, null, null, %L, now())',
+    v_id, 'Shop', 'req-' || v_id), 'photo_required');
+  perform t.expect_error(format('select public.add_visit(%L, %L, null, true, null, null, %L, now())',
+    v_id, 'Shop', 'visit-' || v_cam), 'photo_required');
+  perform t.expect_error(format('select public.add_visit(%L, %L, null, false, null, null, %L, now())',
+    v_cam, 'Shop', 'visit-' || v_cam), 'location_required');
+  perform t.expect_error(format('select public.add_visit(%L, %L, %L, true, null, null, %L, now())',
+    v_id, 'Shop', repeat('x', 301), 'visit-' || v_id), 'note_too_long');
+
+  v := public.add_visit(v_id, ' Krishi Kendra ', 'Order taken', true, 22500000, 88300000, 'visit-' || v_id, now());
   perform t.eq(v.lat_e6, null::integer, 'gallery photo has no GPS');
-  v := public.add_visit(v_id, 'Krishi Kendra', 'Order taken', true, null, null, 'p/2', now());
+  perform t.eq(v.store_name, 'Krishi Kendra', 'store name trimmed');
+  v := public.add_visit(v_id, 'Krishi Kendra', 'Order taken', true, null, null, 'visit-' || v_id, now());
+  v := public.add_visit(v_cam, 'Agro Store', null, false, 22500000, 88300000, 'visit-' || v_cam,
+                        now() - interval '1 day');
+  perform t.eq(v.lat_e6, 22500000, 'camera photo keeps GPS');
+  perform t.eq(v.captured_at >= now() - interval '1 hour', true, 'time not before duty on');
+  perform t.expect_error($q$insert into public.visits (id, user_id, duty_day_id, from_gallery, captured_at)
+    values (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', 1, true, now())$q$, 'permission denied');
   perform t.act_as_owner();
-  perform t.eq((select count(*) from public.visits), 1::bigint, 'a retried visit is not duplicated');
+  perform t.eq((select count(*) from public.visits), 2::bigint, 'a retried visit is not duplicated');
+
+  -- Someone else cannot take over the id, or see the visit.
+  perform t.act_as('00000000-0000-0000-0000-000000000002');
+  perform t.eq((select count(*) from public.visits), 0::bigint, 'others see no visits');
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.eq((select count(*) from public.visits), 2::bigint, 'admin sees visits');
+  perform t.act_as_owner();
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values ('00000000-0000-0000-0000-000000000003', private.ist_today(), 'on_duty', now() - interval '1 hour');
+  perform t.act_as('00000000-0000-0000-0000-000000000003');
+  perform t.expect_error(format('select public.add_visit(%L, %L, null, true, null, null, %L, now())',
+    v_id, 'Shop', 'visit-' || v_id), 'invalid_visit');
+  perform t.act_as_owner();
+  delete from public.duty_days where user_id = '00000000-0000-0000-0000-000000000003';
 end;
 $$;
 
@@ -661,6 +694,60 @@ begin
   perform t.expect_error(format('select public.svc_request_photo(%s, %L)',
                  v_id, '00000000-0000-0000-0000-000000000002'), 'not_allowed');
   perform t.act_as_owner();
+  delete from private.app_settings;
+end;
+$$;
+
+\echo '--- visit photos: who sees them, deleted after 90 days'
+do $$
+declare
+  v_id uuid := 'aaaaaaaa-0000-0000-0000-000000000002';
+  v_req bigint;
+begin
+  set local role service_role;
+  perform t.eq(public.svc_visit_photo(v_id, '00000000-0000-0000-0000-000000000001'),
+               'visit-' || v_id, 'owner sees the visit photo');
+  perform t.eq(public.svc_visit_photo(v_id, '00000000-0000-0000-0000-00000000000a'),
+               'visit-' || v_id, 'admin sees the visit photo');
+  perform t.expect_error(format('select public.svc_visit_photo(%L, %L)',
+                 v_id, '00000000-0000-0000-0000-000000000002'), 'not_allowed');
+  perform t.expect_error(format('select public.svc_visit_photo(%L, %L)',
+                 gen_random_uuid(), '00000000-0000-0000-0000-00000000000a'), 'not_allowed');
+  perform t.eq((select count(*) from public.svc_photos_to_purge()), 0::bigint, 'nothing young purged');
+
+  perform t.act_as('00000000-0000-0000-0000-000000000001');
+  perform t.expect_error($q$select * from public.svc_photos_to_purge()$q$, 'permission denied');
+  perform t.expect_error($q$select public.svc_photos_removed(array['x'])$q$, 'permission denied');
+  perform t.expect_error($q$select private.purge_photos()$q$, 'permission denied');
+
+  -- 91 days later.
+  perform t.act_as_owner();
+  update public.visits set created_at = created_at - interval '91 days' where id = v_id;
+  select id into v_req from public.requests where kind = 'attendance' limit 1;
+  update public.requests set created_at = created_at - interval '91 days' where id = v_req;
+  delete from t.pushed;
+  perform private.purge_photos();
+  perform t.eq((select count(*) from t.pushed), 0::bigint, 'no purge call without photos_url');
+  insert into private.app_settings values ('photos_url', 'https://x.test/functions/v1/photos');
+  perform private.purge_photos();
+  perform t.eq((select body from t.pushed), '{"action": "purge"}'::jsonb, 'asks the photos function');
+
+  set local role service_role;
+  perform t.eq((select array_agg(kind || ':' || photo_id order by kind) from public.svc_photos_to_purge()),
+               array['request:req-11111111-2222-3333-4444-555555555555', 'visit:visit-' || v_id],
+               'old photos listed');
+  perform t.eq(public.svc_photos_removed(array['visit-' || v_id, 'req-11111111-2222-3333-4444-555555555555']),
+               2, 'marked removed');
+  perform t.eq((select count(*) from public.svc_photos_to_purge()), 0::bigint, 'purged once');
+  perform t.eq(public.svc_visit_photo(v_id, '00000000-0000-0000-0000-000000000001'), null::text,
+               'removed visit photo not shown');
+  perform t.eq(public.svc_request_photo(v_req, '00000000-0000-0000-0000-00000000000a'), null::text,
+               'removed request photo not shown');
+  perform t.act_as_owner();
+  perform t.eq((select count(*) from public.visits where id = v_id), 1::bigint, 'the visit stays');
+  delete from t.pushed;
+  perform private.purge_photos();
+  perform t.eq((select count(*) from t.pushed), 0::bigint, 'no call when nothing is left');
   delete from private.app_settings;
 end;
 $$;

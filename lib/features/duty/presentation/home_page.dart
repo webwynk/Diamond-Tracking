@@ -21,6 +21,9 @@ import '../../tracking/application/tracker_control.dart';
 import '../../tracking/application/tracker_providers.dart';
 import '../../tracking/presentation/tracking_setup_sheet.dart';
 import '../../tracking/service/battery_alerts.dart';
+import '../../visits/application/visits_providers.dart';
+import '../../visits/domain/visit.dart';
+import '../../visits/presentation/visit_widgets.dart';
 import '../application/duty_providers.dart';
 import '../domain/duty_day.dart';
 import '../domain/duty_failure.dart';
@@ -265,6 +268,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                 onDutyOn: _dutyOn,
                 onDutyOff: _dutyOff,
               ),
+              if (value.today case final DutyDay day
+                  when day.dutyOnAt != null) ...<Widget>[
+                const SizedBox(height: AppSpacing.x4),
+                _VisitsCard(day: day),
+              ],
               const SizedBox(height: AppSpacing.x4),
               const _RequestsCard(),
             ],
@@ -476,4 +484,70 @@ class _RequestsCard extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Today's dealer visits, with Add visit while on duty.
+class _VisitsCard extends ConsumerWidget {
+  const _VisitsCard({required this.day});
+
+  final DutyDay day;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<Visit>> visits = ref.watch(dayVisitsProvider(day.id));
+    final bool onDuty = day.status == DayStatus.onDuty;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: AppSpacing.card,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text('Visits today', style: AppTypography.title),
+            const SizedBox(height: AppSpacing.x2),
+            ...visits.when(
+              skipLoadingOnRefresh: true,
+              data: (List<Visit> list) => list.isEmpty
+                  ? <Widget>[
+                      Text(
+                        onDuty
+                            ? 'No visits yet. Add one at each dealer, with a '
+                                  'photo.'
+                            : 'No visits today.',
+                        style: AppTypography.body.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ]
+                  : <Widget>[for (final Visit v in list) VisitTile(visit: v)],
+              error: (_, _) => <Widget>[
+                Row(
+                  children: <Widget>[
+                    const Expanded(child: Text('Visits could not be loaded.')),
+                    TextButton(
+                      onPressed: () =>
+                          ref.invalidate(dayVisitsProvider(day.id)),
+                      child: const Text('Try again'),
+                    ),
+                  ],
+                ),
+              ],
+              loading: () => const <Widget>[
+                Center(child: CircularProgressIndicator()),
+              ],
+            ),
+            if (onDuty) ...<Widget>[
+              const SizedBox(height: AppSpacing.x3),
+              AppButton(
+                label: 'Add visit',
+                isFullWidth: true,
+                icon: const Icon(Icons.add_a_photo_rounded),
+                onPressed: () => context.push(Routes.userAddVisit(day.id)),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }

@@ -82,6 +82,12 @@ export interface Backend {
   ): Promise<void>;
   /** A request's photo id (null if none), or 'not_allowed' for this caller. */
   requestPhoto(requestId: number, callerId: string): Promise<string | null | 'not_allowed'>;
+  /** A visit's photo id (null if none or removed), or 'not_allowed' for this caller. */
+  visitPhoto(visitId: string, callerId: string): Promise<string | null | 'not_allowed'>;
+  /** Photos older than 90 days still on Cloudinary. */
+  photosToPurge(limit: number): Promise<string[]>;
+  /** Marks photos as deleted from Cloudinary. */
+  photosRemoved(photoIds: string[]): Promise<void>;
   /** Claims a notification for pushing; null if gone or already pushed. */
   claimPush(id: number): Promise<PushJob | null>;
   dropPushTokens(tokens: string[]): Promise<void>;
@@ -217,6 +223,26 @@ export function supabaseBackend(): Backend {
         throw new Error(error.message);
       }
       return (data as string | null) ?? null;
+    },
+    async visitPhoto(visitId, callerId) {
+      const { data, error } = await db.rpc('svc_visit_photo', {
+        p_visit_id: visitId,
+        p_caller: callerId,
+      });
+      if (error) {
+        if (/not_allowed/.test(error.message)) return 'not_allowed';
+        throw new Error(error.message);
+      }
+      return (data as string | null) ?? null;
+    },
+    async photosToPurge(limit) {
+      const rows = check(await db.rpc('svc_photos_to_purge', { p_limit: limit })) as
+        | { photo_id: string }[]
+        | null;
+      return (rows ?? []).map((r) => r.photo_id);
+    },
+    async photosRemoved(photoIds) {
+      check(await db.rpc('svc_photos_removed', { p_photo_ids: photoIds }));
     },
     async claimPush(id) {
       return (check(await db.rpc('svc_claim_push', { p_id: id })) as PushJob | null) ?? null;

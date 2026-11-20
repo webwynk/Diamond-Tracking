@@ -14,9 +14,16 @@ export const ALLOWED_FORMATS = 'jpg,jpeg,png,webp';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-/** True for an id the photos function hands out: `req-<uuid>`. */
+export function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
+/** True for an id the photos function hands out: `req-<uuid>` or `visit-<uuid>`. */
 export function isPhotoId(value: unknown): value is string {
-  return typeof value === 'string' && value.startsWith('req-') && UUID.test(value.slice(4));
+  if (typeof value !== 'string') return false;
+  if (value.startsWith('req-')) return UUID.test(value.slice(4));
+  if (value.startsWith('visit-')) return UUID.test(value.slice(6));
+  return false;
 }
 
 const encoder = new TextEncoder();
@@ -64,6 +71,25 @@ export async function uploadFields(
     type: 'authenticated',
   };
   return { ...params, api_key: cfg.apiKey, signature: await signParams(params, cfg.apiSecret) };
+}
+
+/** The form fields that delete one photo (and clear it from the CDN). */
+export async function destroyFields(
+  cfg: CloudinaryConfig,
+  publicId: string,
+  timestamp: number,
+): Promise<Record<string, string>> {
+  const params = {
+    invalidate: 'true',
+    public_id: publicId,
+    timestamp: String(timestamp),
+    type: 'authenticated',
+  };
+  return { ...params, api_key: cfg.apiKey, signature: await signParams(params, cfg.apiSecret) };
+}
+
+export function destroyUrl(cloudName: string): string {
+  return `https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`;
 }
 
 export function uploadUrl(cloudName: string): string {

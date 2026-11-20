@@ -12,6 +12,7 @@ import 'package:diamond_tracking/features/duty/presentation/home_page.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_control.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracking_session.dart';
+import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,8 +26,10 @@ void main() {
   late FakeDutyRepository repo;
   late FakeTrackerControl tracker;
   late FixedClock time;
+  late FakeVisitsRepository visits;
 
   setUp(() {
+    visits = FakeVisitsRepository();
     repo = FakeDutyRepository()..dutyOnTime = ist(7);
     tracker = FakeTrackerControl();
     time = FixedClock(ist(7));
@@ -49,6 +52,7 @@ void main() {
           trackerControlProvider.overrideWithValue(tracker),
           serverClockProvider.overrideWithValue(time.clock),
           deviceIdStoreProvider.overrideWithValue(FakeDeviceIdStore()),
+          visitsRepositoryProvider.overrideWithValue(visits),
         ],
         child: MaterialApp(theme: AppTheme.light, home: const HomePage()),
       ),

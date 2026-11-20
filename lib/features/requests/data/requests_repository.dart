@@ -3,18 +3,11 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/config/env.dart';
 import '../../duty/domain/duty_day.dart';
 import '../domain/app_request.dart';
-import '../domain/request_failure.dart';
+import 'photo_upload.dart';
 
-/// Where to load a request's photo from: the photos function, signed in.
-class PhotoSource {
-  const PhotoSource({required this.url, required this.headers});
-
-  final String url;
-  final Map<String, String> headers;
-}
+export 'photo_upload.dart' show PhotoSource;
 
 abstract interface class RequestsRepository {
   /// The user's own requests, newest first.
@@ -167,39 +160,10 @@ class SupabaseRequestsRepository implements RequestsRepository {
       );
 
   @override
-  Future<String> uploadPhoto(Uint8List jpeg) async {
-    final FunctionResponse signed = await _client.functions.invoke(
-      'photos',
-      body: <String, Object?>{'action': 'sign'},
-    );
-    final Map<String, dynamic> data = signed.data as Map<String, dynamic>;
-    final http.MultipartRequest req =
-        http.MultipartRequest('POST', Uri.parse(data['upload_url'] as String))
-          ..fields.addAll(
-            (data['fields'] as Map<String, dynamic>).map(
-              (String k, dynamic v) => MapEntry<String, String>(k, '$v'),
-            ),
-          )
-          ..files.add(
-            http.MultipartFile.fromBytes('file', jpeg, filename: 'photo.jpg'),
-          );
-    final http.StreamedResponse res = await _http
-        .send(req)
-        .timeout(const Duration(seconds: 60));
-    await res.stream.drain<void>();
-    if (res.statusCode != 200) {
-      throw const RequestException(RequestFailure.photoUploadFailed);
-    }
-    return data['public_id'] as String;
-  }
+  Future<String> uploadPhoto(Uint8List jpeg) =>
+      uploadSignedPhoto(_client, _http, jpeg);
 
   @override
-  PhotoSource photo(int requestId) => PhotoSource(
-    url: '${Env.supabaseUrl}/functions/v1/photos?request_id=$requestId',
-    headers: <String, String>{
-      'apikey': Env.supabasePublishableKey,
-      'Authorization':
-          'Bearer ${_client.auth.currentSession?.accessToken ?? ''}',
-    },
-  );
+  PhotoSource photo(int requestId) =>
+      PhotoSource.of(_client, 'request_id=$requestId');
 }

@@ -7,6 +7,7 @@ import 'package:diamond_tracking/features/notifications/application/notification
 import 'package:diamond_tracking/features/notifications/application/push_service.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
 import 'package:diamond_tracking/features/users/application/users_providers.dart';
+import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -25,6 +26,7 @@ Future<void> pumpPage(
   FakeTrackerControl? tracker,
   List<Override> overrides = const <Override>[],
   FakeNotificationsRepository? notifications,
+  FakeVisitsRepository? visits,
   AuthStatus status = const SignedIn(
     userId: 'admin1',
     role: AppRole.admin,
@@ -69,6 +71,9 @@ Future<void> pumpPage(
           notifications ?? FakeNotificationsRepository(),
         ),
         pushServiceProvider.overrideWithValue(const NoPushService()),
+        visitsRepositoryProvider.overrideWithValue(
+          visits ?? FakeVisitsRepository(),
+        ),
         ...overrides,
       ],
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
@@ -86,6 +91,7 @@ Future<void> pumpPushed(
   FakeTrackerControl? tracker,
   List<Override> overrides = const <Override>[],
   FakeNotificationsRepository? notifications,
+  FakeVisitsRepository? visits,
   AuthStatus status = const SignedIn(
     userId: 'admin1',
     role: AppRole.admin,
@@ -119,6 +125,9 @@ Future<void> pumpPushed(
           notifications ?? FakeNotificationsRepository(),
         ),
         pushServiceProvider.overrideWithValue(const NoPushService()),
+        visitsRepositoryProvider.overrideWithValue(
+          visits ?? FakeVisitsRepository(),
+        ),
         ...overrides,
       ],
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),

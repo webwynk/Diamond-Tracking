@@ -20,6 +20,7 @@ abstract final class Routes {
   static const String userRequestLeave = '/home/requests/leave';
   static String userRequest(int id) => '/home/requests/$id';
   static const String userNotifications = '/home/notifications';
+  static String userAddVisit(int dayId) => '/home/visit/$dayId';
 
   static const String adminDashboard = '/admin';
   static const String adminLiveMap = '/admin/live';

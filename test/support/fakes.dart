@@ -16,11 +16,15 @@ import 'package:diamond_tracking/features/requests/data/requests_repository.dart
 import 'package:diamond_tracking/features/requests/domain/app_request.dart';
 import 'package:diamond_tracking/features/routes/data/route_repository.dart';
 import 'package:diamond_tracking/features/routes/domain/day_route.dart';
+import 'package:diamond_tracking/features/routes/domain/geo_point.dart';
 import 'package:diamond_tracking/features/routes/domain/live_position.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_control.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracking_session.dart';
 import 'package:diamond_tracking/features/users/data/users_repository.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
+import 'package:diamond_tracking/features/visits/data/current_location.dart';
+import 'package:diamond_tracking/features/visits/data/visits_repository.dart';
+import 'package:diamond_tracking/features/visits/domain/visit.dart';
 
 /// Records calls; throws [failWith] when set.
 class FakeAuthRepository implements AuthRepository {
@@ -582,4 +586,76 @@ class FakePushService implements PushService {
 
   @override
   Stream<int?> get opened => openedController.stream;
+}
+
+/// Visits in memory, by day. Saved visits go to [day] like the server's
+/// "today".
+class FakeVisitsRepository implements VisitsRepository {
+  final Map<int, List<Visit>> byDay = <int, List<Visit>>{};
+  final List<String> added = <String>[];
+  int uploads = 0;
+  int day = 5;
+  Exception? uploadError;
+  Exception? addError;
+  GeoPoint? lastLocation;
+
+  @override
+  Future<List<Visit>> forDay(int dayId) async =>
+      List<Visit>.of(byDay[dayId] ?? const <Visit>[]);
+
+  @override
+  Future<String> uploadPhoto(Uint8List jpeg) async {
+    final Exception? e = uploadError;
+    if (e != null) throw e;
+    uploads++;
+    return 'visit-00000000-0000-0000-0000-${uploads.toString().padLeft(12, '0')}';
+  }
+
+  @override
+  Future<void> add({
+    required String photoId,
+    required String storeName,
+    required String? note,
+    required GeoPoint? location,
+    required DateTime capturedAt,
+  }) async {
+    final Exception? e = addError;
+    if (e != null) throw e;
+    final String id = visitIdOf(photoId);
+    added.add(photoId);
+    lastLocation = location;
+    final List<Visit> list = byDay.putIfAbsent(day, () => <Visit>[]);
+    if (list.any((Visit v) => v.id == id)) return;
+    list.add(
+      Visit(
+        id: id,
+        storeName: storeName,
+        note: note,
+        fromGallery: location == null,
+        location: location,
+        capturedAt: capturedAt,
+      ),
+    );
+  }
+
+  @override
+  PhotoSource photo(String visitId) => PhotoSource(
+    url: 'https://photos.test/visit/$visitId',
+    headers: const <String, String>{},
+  );
+}
+
+/// Answers [results] in turn, then the last one again.
+class FakeLocation implements CurrentLocation {
+  FakeLocation([this.results = const <GeoPoint?>[GeoPoint(22.5, 88.3)]]);
+
+  final List<GeoPoint?> results;
+  int calls = 0;
+
+  @override
+  Future<GeoPoint?> find() async {
+    final GeoPoint? r = results[calls.clamp(0, results.length - 1)];
+    calls++;
+    return r;
+  }
 }
