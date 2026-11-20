@@ -28,6 +28,14 @@ export type ProfileChanges = Partial<
   Pick<Profile, 'full_name' | 'phone' | 'contact_email' | 'role' | 'is_active'>
 >;
 
+/** A stop that still needs an address. */
+export interface MissingPlace {
+  cell_lat: number;
+  cell_lng: number;
+  lat: number;
+  lng: number;
+}
+
 export interface Backend {
   /** The signed-in user behind an access token, or null if it is not valid. */
   userFromToken(
@@ -56,6 +64,12 @@ export interface Backend {
     action: string,
     target: string,
     details: Record<string, unknown>,
+  ): Promise<void>;
+  /** Stops of a day without an address, or 'not_allowed' for this caller. */
+  missingPlaces(dayId: number, callerId: string): Promise<MissingPlace[] | 'not_allowed'>;
+  savePlaces(
+    dayId: number,
+    places: { cell_lat: number; cell_lng: number; address: string }[],
   ): Promise<void>;
 }
 
@@ -164,6 +178,20 @@ export function supabaseBackend(): Backend {
     },
     async useResetCode(id, code) {
       return check(await db.rpc('svc_use_reset_code', { p_user: id, p_code: code })) === true;
+    },
+    async missingPlaces(dayId, callerId) {
+      const { data, error } = await db.rpc('svc_missing_places', {
+        p_day_id: dayId,
+        p_caller: callerId,
+      });
+      if (error) {
+        if (/not_allowed/.test(error.message)) return 'not_allowed';
+        throw new Error(error.message);
+      }
+      return (data ?? []) as MissingPlace[];
+    },
+    async savePlaces(dayId, places) {
+      check(await db.rpc('svc_save_places', { p_day_id: dayId, p_places: places }));
     },
     async logAdmin(adminId, action, target, details) {
       check(

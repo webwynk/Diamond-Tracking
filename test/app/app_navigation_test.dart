@@ -6,6 +6,7 @@ import 'package:diamond_tracking/core/time/clock_providers.dart';
 import 'package:diamond_tracking/features/auth/application/auth_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
+import 'package:diamond_tracking/features/routes/application/route_providers.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
 import 'package:diamond_tracking/features/users/application/users_providers.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
@@ -33,6 +34,8 @@ void main() {
             FixedClock(DateTime.utc(2026, 11, 20, 6)).clock,
           ),
           deviceIdStoreProvider.overrideWithValue(FakeDeviceIdStore()),
+          routeRepositoryProvider.overrideWithValue(FakeRouteRepository()),
+          showGoogleMapProvider.overrideWithValue(false),
           usersRepositoryProvider.overrideWithValue(
             FakeUsersRepository(<Profile>[
               profile('u', name: 'Asha Roy'),
@@ -75,6 +78,11 @@ void main() {
     await tester.tap(find.widgetWithText(NavigationDestination, 'Map'));
     await tester.pumpAndSettle();
     expect(find.text('My map'), findsWidgets);
+    expect(find.text('No route today'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(NavigationDestination, 'History'));
+    await tester.pumpAndSettle();
+    expect(find.text('No days yet'), findsOneWidget);
   });
 
   testWidgets('an admin gets the admin tabs, and sign-out returns to login', (
@@ -93,6 +101,9 @@ void main() {
       find.widgetWithText(NavigationDestination, 'Requests'),
       findsOneWidget,
     );
+    await tester.tap(find.widgetWithText(NavigationDestination, 'Live'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nobody on duty yet'), findsOneWidget);
 
     auth.add(const SignedOut());
     await tester.pumpAndSettle();

@@ -1,5 +1,5 @@
 // An in-memory Backend for the handler tests.
-import type { Backend, NewProfile, Profile, ProfileChanges } from './backend.ts';
+import type { Backend, MissingPlace, NewProfile, Profile, ProfileChanges } from './backend.ts';
 import type { Mailer } from './mailer.ts';
 
 export class FakeBackend implements Backend {
@@ -12,6 +12,10 @@ export class FakeBackend implements Backend {
   log: { admin: string; action: string; target: string }[] = [];
   codes = new Map<string, string>();
   failInsert = false;
+  /** day id -> owner id, and the stops still needing an address. */
+  dayOwners = new Map<number, string>();
+  missing: MissingPlace[] = [];
+  saved: { cell_lat: number; cell_lng: number; address: string }[] = [];
   private next = 1;
 
   addUser(
@@ -91,6 +95,18 @@ export class FakeBackend implements Backend {
     const ok = this.codes.get(id) === code;
     if (ok) this.codes.delete(id);
     return Promise.resolve(ok);
+  }
+  missingPlaces(dayId: number, callerId: string) {
+    const owner = this.dayOwners.get(dayId);
+    const caller = this.profiles.get(callerId);
+    if (!owner || !caller || (owner !== callerId && caller.role !== 'admin')) {
+      return Promise.resolve('not_allowed' as const);
+    }
+    return Promise.resolve(this.missing);
+  }
+  savePlaces(_dayId: number, places: { cell_lat: number; cell_lng: number; address: string }[]) {
+    this.saved.push(...places);
+    return Promise.resolve();
   }
   logAdmin(admin: string, action: string, target: string) {
     this.log.push({ admin, action, target });

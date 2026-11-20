@@ -14,6 +14,7 @@ abstract final class Routes {
   static const String userHistory = '/history';
   static const String userProfile = '/profile';
   static const String userChangePassword = '/profile/password';
+  static String userDay(int dayId) => '/history/day/$dayId';
 
   static const String adminDashboard = '/admin';
   static const String adminLiveMap = '/admin/live';
@@ -24,6 +25,8 @@ abstract final class Routes {
   static String adminUserEdit(String id) => '/admin/users/$id';
   static const String adminAccount = '/admin/account';
   static const String adminChangePassword = '/admin/account/password';
+  static String adminDay(int dayId) => '/admin/days/$dayId';
+  static String adminUserDays(String userId) => '/admin/users/$userId/days';
 
   static bool isAdminPath(String path) =>
       path == adminDashboard || path.startsWith('$adminDashboard/');
@@ -32,6 +35,7 @@ abstract final class Routes {
       path == userHome ||
       path == userMap ||
       path == userHistory ||
+      path.startsWith('$userHistory/') ||
       path == userProfile ||
       path.startsWith('$userProfile/');
 

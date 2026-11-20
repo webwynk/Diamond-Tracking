@@ -7,6 +7,7 @@ import 'package:diamond_tracking/features/tracking/application/tracker_providers
 import 'package:diamond_tracking/features/users/application/users_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -20,6 +21,7 @@ Future<void> pumpPage(
   FakeAuthRepository? auth,
   FakeUsersRepository? users,
   FakeTrackerControl? tracker,
+  List<Override> overrides = const <Override>[],
   AuthStatus status = const SignedIn(
     userId: 'admin1',
     role: AppRole.admin,
@@ -60,6 +62,7 @@ Future<void> pumpPage(
         trackerControlProvider.overrideWithValue(
           tracker ?? FakeTrackerControl(),
         ),
+        ...overrides,
       ],
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
     ),
@@ -74,6 +77,7 @@ Future<void> pumpPushed(
   FakeAuthRepository? auth,
   FakeUsersRepository? users,
   FakeTrackerControl? tracker,
+  List<Override> overrides = const <Override>[],
   AuthStatus status = const SignedIn(
     userId: 'admin1',
     role: AppRole.admin,
@@ -103,6 +107,7 @@ Future<void> pumpPushed(
         trackerControlProvider.overrideWithValue(
           tracker ?? FakeTrackerControl(),
         ),
+        ...overrides,
       ],
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
     ),
