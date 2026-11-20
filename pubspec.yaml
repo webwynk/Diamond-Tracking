@@ -6,65 +6,40 @@ publish_to: 'none'
 # version is <build-name>+<build-number>.
 # On Android, build-name becomes versionName and build-number becomes versionCode.
 # versionCode must increase on every Play upload and APK build (Rule 10).
-version: 1.6.8+33
+version: 2.0.0+34
 
 environment:
-  sdk: ^3.12.2
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
 
+# Phase 1 (foundation) adds only what the app shell needs. Each later phase adds
+# its own packages (maps, tracking, notifications, PDF), so every pull request
+# shows exactly which dependency it brings in and why.
 dependencies:
   flutter:
     sdk: flutter
 
   # Backend: Postgres, Auth, Realtime, Edge Functions.
-  # Supabase Storage is NOT used - visit photos go to Cloudinary.
-  # See docs/06-SUPABASE-BEST-PRACTICES.md.
   supabase_flutter: ^2.18.3
 
-  # Already pulled in by supabase_flutter; declared because the data layer
-  # catches its ClientException and tests inject its MockClient.
-  http: ^1.6.0
+  # State management for the whole app. Plain providers and Notifiers, no code
+  # generation, so the build stays simple.
+  flutter_riverpod: ^3.5.0
 
-  # State management for the whole app. Never mix in another approach.
-  # See CLAUDE.md locked decisions.
-  flutter_riverpod: ^3.4.3
+  # Declarative routing. One redirect decides login / user side / admin side.
+  go_router: ^18.1.0
 
-  # OS runtime permissions and battery optimization settings
-  permission_handler: ^11.4.0
-  geolocator: ^14.1.1
-  battery_plus: ^7.1.2
-  maplibre_gl: ^0.27.1
-  image_picker: ^1.1.2
-
-  # The app's private documents folder: a visit photo waiting to be sent is kept
-  # there, because the camera's cache folder can be cleared by Android.
-  # Already in the lock file through other packages.
-  path_provider: ^2.1.6
-
-  # On-phone database for the GPS queue: points, the active session and a
-  # pending duty-off must survive restarts and force-kills (docs/08 section 6).
-  drift: ^2.35.2
-  drift_flutter: ^0.3.1
-  # Already pulled in by drift; used directly to set WAL journalling and a busy
-  # timeout on the tracking database, which two isolates open at once.
-  sqlite3: ^3.5.2
-
-  # The Android foreground service that keeps GPS tracking alive with a visible
-  # notification, independent of any screen (PRD F3, docs/08 section 5).
-  flutter_foreground_task: ^11.0.3
-  pdf: ^3.13.1
-  printing: ^5.15.1
-  shared_preferences: ^2.5.6
+  # The signed-in session is kept in the encrypted key store, never in plain
+  # preferences.
   flutter_secure_storage: ^11.2.0
+
+  # Date and time formatting in India time (12-hour clock, "20 Nov 2026").
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
   flutter_lints: ^6.0.0
-
-  # Code generation for drift (generated mappers, never hand-written).
-  drift_dev: ^2.35.1
-  build_runner: ^2.15.1
 
 flutter:
   uses-material-design: true
