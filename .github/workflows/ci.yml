@@ -44,3 +44,26 @@ jobs:
       # no real keys are needed or available in CI.
       - name: Build debug APK
         run: flutter build apk --debug --dart-define-from-file=env.example.json
+
+  database:
+    name: Database tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        # Supabase runs Postgres 17.
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Migration, security and rules tests
+        run: supabase/tests/run_local.sh
