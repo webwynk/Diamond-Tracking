@@ -131,7 +131,8 @@ Deno.test('purge deletes old photos and marks the ones that are gone', async () 
   const res = await handler(post({ action: 'purge' }), b, deps);
   assertEquals(res.status, 200);
   assertEquals(await res.json(), { removed: 2, failed: 1 });
-  assertEquals(destroyed, [`visit-${VISIT}`, `req-${ID}`, failing]);
+  // Photos are deleted a few at a time, so the order of the calls is not fixed.
+  assertEquals(destroyed.toSorted(), [`req-${ID}`, `visit-${VISIT}`, failing].toSorted());
   assertEquals(b.removedPhotos, [`visit-${VISIT}`, `req-${ID}`]);
   // Only what is left is tried again.
   destroyed.length = 0;
