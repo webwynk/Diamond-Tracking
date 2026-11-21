@@ -8,9 +8,8 @@ import '../../core/theme/app_typography.dart';
 ///
 /// Features:
 /// - Offline reassurance banner (info tint, non-error, no retry).
-/// - Sync pending banner (stale warning tint with action).
-/// - Blocking GPS/permission banner (suspect error tint with settings action).
-/// - Reconnecting realtime banner (thin subtle amber strip).
+/// - Any other banner through the main constructor (title, icon, colours and
+///   an optional action).
 class AppBanner extends StatelessWidget {
   const AppBanner({
     required this.title,
@@ -35,46 +34,6 @@ class AppBanner extends StatelessWidget {
       iconColor: AppColors.info,
       title: 'No internet connection',
       subtitle: 'Your work is saved and will sync automatically.',
-    );
-  }
-
-  /// Sync pending banner.
-  factory AppBanner.syncPending({
-    required int pointCount,
-    VoidCallback? onDetails,
-  }) {
-    return AppBanner(
-      icon: Icons.upload_rounded,
-      backgroundColor: AppColors.warningBg,
-      iconColor: AppColors.warning,
-      title: '$pointCount points waiting to sync',
-      actionLabel: onDetails != null ? 'Details' : null,
-      onAction: onDetails,
-      isActionPill: false,
-    );
-  }
-
-  /// GPS turned off (blocking action required).
-  factory AppBanner.gpsOff({required VoidCallback onOpenSettings}) {
-    return AppBanner(
-      icon: Icons.location_off_rounded,
-      backgroundColor: AppColors.errorBg,
-      iconColor: AppColors.error,
-      title: 'Location is turned off',
-      subtitle: 'Turn on location to start duty.',
-      actionLabel: 'Open settings',
-      onAction: onOpenSettings,
-      isActionPill: true,
-    );
-  }
-
-  /// Realtime connection dropping / reconnecting banner.
-  factory AppBanner.reconnecting() {
-    return const AppBanner(
-      icon: Icons.sync_rounded,
-      backgroundColor: AppColors.warningBg,
-      iconColor: AppColors.warning,
-      title: 'Reconnecting…',
     );
   }
 

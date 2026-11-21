@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 /// One place for diagnostic logging.
@@ -7,8 +9,11 @@ import 'package:flutter/foundation.dart';
 abstract final class AppLog {
   const AppLog._();
 
-  /// Lets tests (and later a crash reporter) see every failure.
+  /// Lets tests see every failure.
   static void Function(String where, Object error)? onFailure;
+
+  /// Sends failures to the server (see ErrorReporter). Set at startup.
+  static Future<void> Function(String where, Object error)? reporter;
 
   static void info(String message) {
     if (kDebugMode) {
@@ -18,6 +23,8 @@ abstract final class AppLog {
 
   static void failure(String where, Object error, [StackTrace? stack]) {
     onFailure?.call(where, error);
+    final Future<void> Function(String, Object)? report = reporter;
+    if (report != null) unawaited(report(where, error));
     debugPrint('[failure] $where: $error');
     if (kDebugMode && stack != null) {
       debugPrint(stack.toString());

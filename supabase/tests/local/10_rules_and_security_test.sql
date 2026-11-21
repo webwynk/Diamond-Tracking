@@ -497,7 +497,11 @@ begin
                         now() - interval '70 minutes', false, 35);
   perform t.eq(v.lat_e6, 22500000, 'camera photo keeps GPS');
   perform t.eq(v.accuracy_m, 35, 'camera photo keeps its accuracy (L59)');
-  perform t.eq(v.captured_at >= now() - interval '1 hour', true, 'time not before duty on');
+  -- Never before the duty on of the day it was saved under. (Just after
+  -- midnight a time 70 minutes back is yesterday's duty, so the check is
+  -- against the visit's own day, not today's.)
+  perform t.eq(v.captured_at >= (select duty_on_at from public.duty_days where id = v.duty_day_id),
+               true, 'time not before duty on');
   perform t.expect_error($q$insert into public.visits (id, user_id, duty_day_id, from_gallery, captured_at)
     values (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', 1, true, now())$q$, 'permission denied');
   perform t.act_as_owner();
@@ -1852,6 +1856,52 @@ begin
   perform t.expect_error($q$select public.log_report_export('2026-11-01', '2026-11-30', true, 3)$q$,
                          'permission denied');
   perform t.act_as_owner();
+end;
+$$;
+
+-- L88: app errors are saved for the signed-in person, read by admins only,
+-- capped at 200 a person a day, and kept 30 days.
+do $$
+declare
+  v_emp uuid := '00000000-0000-0000-0000-000000000001';
+begin
+  perform t.act_as(null);
+  perform t.expect_error($q$select public.report_app_error('Home', 'boom', '2.0.0+46')$q$,
+                         'permission denied');
+  perform t.act_as(v_emp);
+  perform t.expect_error($q$select public.report_app_error(' ', 'boom', null)$q$,
+                         'validation_failed');
+  perform public.report_app_error('DutyHome.refresh', repeat('x', 900), '2.0.0+46',
+                                  now() - interval '1 year');
+  perform t.eq((select count(*)::int from public.app_errors), 0,
+               'an employee cannot read app errors');
+  perform t.expect_error($q$insert into public.app_errors (location, message) values ('a', 'b')$q$,
+                         'permission denied');
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.eq((select count(*)::int from public.app_errors where user_id = v_emp), 1,
+               'the admin reads it');
+  perform t.eq((select length(message) from public.app_errors where user_id = v_emp), 500,
+               'long messages are cut');
+  perform t.eq((select happened_at > now() - interval '1 minute' from public.app_errors
+                where user_id = v_emp), true, 'a far-off phone time is replaced');
+  perform t.act_as_owner();
+  insert into public.app_errors (user_id, created_at, location, message)
+  select v_emp, now(), 'Loop', 'again' from generate_series(1, 199);
+  insert into public.app_errors (user_id, created_at, location, message)
+  values (v_emp, now() - interval '31 days', 'Old', 'old');
+  perform t.act_as(v_emp);
+  perform public.report_app_error('Over', 'the limit', null);
+  perform t.act_as_owner();
+  perform t.eq((select count(*)::int from public.app_errors where location = 'Over'), 0,
+               'over 200 a day is dropped');
+  delete from public.app_errors where location = 'Loop';
+  perform t.act_as(v_emp);
+  perform public.report_app_error('New', 'after cleanup', null);
+  perform t.act_as_owner();
+  perform t.eq((select count(*)::int from public.app_errors where location = 'Old'), 0,
+               'entries older than 30 days are removed');
+  perform t.eq((select count(*)::int from public.app_errors where location = 'New'), 1,
+               'saved again under the limit');
 end;
 $$;
 

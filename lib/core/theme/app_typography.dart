@@ -34,17 +34,6 @@ abstract final class AppTypography {
     FontVariation('wght', 700),
   ];
 
-  /// 48/52 Bold. The one headline number on a screen (the admin Home's "On
-  /// duty now"). Use with tabular figures.
-  static const TextStyle displayLarge = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 48,
-    height: 52 / 48,
-    fontWeight: FontWeight.w700,
-    fontVariations: _w700,
-    color: AppColors.textPrimary,
-  );
-
   /// 32/40 Bold. The km and hours figures on the duty screen.
   static const TextStyle display = TextStyle(
     fontFamily: fontFamily,
