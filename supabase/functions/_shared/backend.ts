@@ -88,7 +88,9 @@ export interface Backend {
   visitPhoto(visitId: string, callerId: string): Promise<string | null | 'not_allowed'>;
   /** Counts one photo upload for today; false when today's 60 are used up. */
   countPhotoUpload(userId: string): Promise<boolean>;
-  /** Photos older than 90 days still on Cloudinary. */
+  /** Notes a signed photo id, so an unused one is deleted later (L56). */
+  noteSignedPhoto(photoId: string): Promise<void>;
+  /** Photos to delete: older than 90 days, or signed and never used. */
   photosToPurge(limit: number): Promise<string[]>;
   /** Marks photos as deleted from Cloudinary. */
   photosRemoved(photoIds: string[]): Promise<void>;
@@ -250,6 +252,9 @@ export function supabaseBackend(): Backend {
     },
     async countPhotoUpload(userId) {
       return check(await db.rpc('svc_count_photo_upload', { p_user: userId })) === true;
+    },
+    async noteSignedPhoto(photoId) {
+      check(await db.rpc('svc_note_signed_photo', { p_photo_id: photoId }));
     },
     async photosToPurge(limit) {
       const rows = check(await db.rpc('svc_photos_to_purge', { p_limit: limit })) as

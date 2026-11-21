@@ -105,11 +105,24 @@ export function uploadUrl(cloudName: string): string {
 }
 
 /**
- * The signed address of a photo: the first 8 characters of the URL-safe
- * base64 of SHA-1 over the public id plus the secret. It does not expire, so it
- * stays on the server; the function passes the bytes on instead.
+ * The small version for lists (L57): fills a 240 x 240 square and lets
+ * Cloudinary pick the format and quality, about 15-25 KB instead of the full
+ * photo.
  */
-export async function deliveryUrl(cfg: CloudinaryConfig, publicId: string): Promise<string> {
-  const signature = base64Url(await sha1(publicId + cfg.apiSecret)).slice(0, 8);
-  return `https://res.cloudinary.com/${cfg.cloudName}/image/authenticated/s--${signature}--/${publicId}`;
+export const THUMBNAIL_TRANSFORMATION = 'c_fill,h_240,w_240/f_auto,q_auto';
+
+/**
+ * The signed address of a photo: the first 8 characters of the URL-safe
+ * base64 of SHA-1 over the transformation (if any) and public id plus the
+ * secret. It does not expire, so it stays on the server; the function passes
+ * the bytes on instead.
+ */
+export async function deliveryUrl(
+  cfg: CloudinaryConfig,
+  publicId: string,
+  transformation = '',
+): Promise<string> {
+  const path = transformation ? `${transformation}/${publicId}` : publicId;
+  const signature = base64Url(await sha1(path + cfg.apiSecret)).slice(0, 8);
+  return `https://res.cloudinary.com/${cfg.cloudName}/image/authenticated/s--${signature}--/${path}`;
 }

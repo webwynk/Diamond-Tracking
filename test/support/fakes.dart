@@ -658,6 +658,10 @@ class FakeVisitsRepository implements VisitsRepository {
   Exception? addError;
   GeoPoint? lastLocation;
   bool? lastMocked;
+  int? lastAccuracyM;
+
+  /// Visit ids whose photo was asked for, with "small" when it was (L57).
+  final List<String> photosAsked = <String>[];
 
   @override
   Future<List<Visit>> forDay(int dayId) async =>
@@ -679,6 +683,7 @@ class FakeVisitsRepository implements VisitsRepository {
     required GeoPoint? location,
     required DateTime capturedAt,
     bool mocked = false,
+    int? accuracyM,
   }) async {
     final Exception? e = addError;
     if (e != null) throw e;
@@ -686,6 +691,7 @@ class FakeVisitsRepository implements VisitsRepository {
     added.add(photoId);
     lastLocation = location;
     lastMocked = mocked;
+    lastAccuracyM = accuracyM;
     final List<Visit> list = byDay.putIfAbsent(day, () => <Visit>[]);
     if (list.any((Visit v) => v.id == id)) return;
     list.add(
@@ -697,15 +703,19 @@ class FakeVisitsRepository implements VisitsRepository {
         location: location,
         capturedAt: capturedAt,
         mocked: mocked,
+        accuracyM: accuracyM,
       ),
     );
   }
 
   @override
-  PhotoSource photo(String visitId) => PhotoSource(
-    url: 'https://photos.test/visit/$visitId',
-    headers: const <String, String>{},
-  );
+  PhotoSource photo(String visitId, {bool small = false}) {
+    photosAsked.add(small ? '$visitId:small' : visitId);
+    return PhotoSource(
+      url: 'https://photos.test/visit/$visitId${small ? '?size=small' : ''}',
+      headers: const <String, String>{},
+    );
+  }
 }
 
 /// Answers [results] in turn, then the last one again.
@@ -718,11 +728,16 @@ class FakeLocation implements CurrentLocation {
   /// Answer as a fake-location app would.
   bool mocked = false;
 
+  /// The accuracy each answer carries, in metres.
+  int? accuracyM;
+
   @override
   Future<LocationFix?> find() async {
     final GeoPoint? r = results[calls.clamp(0, results.length - 1)];
     calls++;
-    return r == null ? null : LocationFix(r, mocked: mocked);
+    return r == null
+        ? null
+        : LocationFix(r, mocked: mocked, accuracyM: accuracyM);
   }
 }
 

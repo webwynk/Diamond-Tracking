@@ -11,12 +11,19 @@ import '../data/visit_outbox.dart';
 import '../domain/visit.dart';
 
 /// "Camera photo at 22.57261, 88.36389" or "Gallery photo, no location".
-/// A location from a fake-location app says so first.
-String visitPlace(Visit v) => switch (v.location) {
-  final p? when v.mocked => 'Fake GPS: camera photo at ${formatPoint(p)}',
-  final p? => 'Camera photo at ${formatPoint(p)}',
-  null => 'Gallery photo, no location',
-};
+/// A location from a fake-location app says so first; a poor one ends with
+/// "(approximate, ±300 m)" (L59).
+String visitPlace(Visit v) {
+  final String approx = v.isApproximate
+      ? ' (approximate, ±${v.accuracyM} m)'
+      : '';
+  return switch (v.location) {
+    final p? when v.mocked =>
+      'Fake GPS: camera photo at ${formatPoint(p)}$approx',
+    final p? => 'Camera photo at ${formatPoint(p)}$approx',
+    null => 'Gallery photo, no location',
+  };
+}
 
 /// A visit kept on the phone without internet, not yet sent (M10).
 class PendingVisitTile extends StatelessWidget {
@@ -90,7 +97,9 @@ class VisitPhoto extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final PhotoSource src = ref.watch(visitsRepositoryProvider).photo(visitId);
+    final PhotoSource src = ref
+        .watch(visitsRepositoryProvider)
+        .photo(visitId, small: small);
     return Image.network(
       src.url,
       headers: src.headers,

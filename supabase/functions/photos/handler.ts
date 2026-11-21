@@ -8,7 +8,8 @@
 //        visit's id. Cloudinary shrinks anything over 1280 px on arrival.
 //        429 photo_limit after 60 photos today for this person (L62).
 //   GET  ?request_id=N | ?visit_id=<uuid>    the owner or an admin
-//        200 the image bytes
+//        200 the image bytes. Add &size=small for the small list version
+//        (L57); if Cloudinary cannot make it, the full photo is sent.
 //   POST { action: "purge" }                 no sign-in (the nightly job)
 //        Deletes photos older than 90 days. Only the database decides which,
 //        so calling it early does nothing.
@@ -23,6 +24,7 @@ import {
   destroyUrl,
   isPhotoId,
   isUuid,
+  THUMBNAIL_TRANSFORMATION,
   uploadFields,
   uploadUrl,
 } from './cloudinary.ts';
@@ -66,6 +68,12 @@ export async function handler(req: Request, b: Backend, deps: PhotoDeps): Promis
   }
 
   const publicId = `${body.kind === 'visit' ? 'visit' : 'req'}-${deps.newId()}`;
+  try {
+    await b.noteSignedPhoto(publicId);
+  } catch (e) {
+    // Only the later clean-up of an unused photo depends on it.
+    console.error('noteSignedPhoto', e);
+  }
   return reply(200, {
     upload_url: uploadUrl(cfg.cloudName),
     public_id: publicId,
@@ -93,7 +101,22 @@ async function view(req: Request, b: Backend, deps: PhotoDeps): Promise<Response
   const cfg = deps.cloudinary;
   if (!cfg) return reply(503, { error: 'photos_not_configured' });
 
-  const res = await deps.fetcher(await deliveryUrl(cfg, photo), {
+  let res: Response | null = null;
+  if (params.get('size') === 'small') {
+    try {
+      res = await deps.fetcher(await deliveryUrl(cfg, photo, THUMBNAIL_TRANSFORMATION), {
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch {
+      res = null;
+    }
+    // Any problem with the small version: send the full photo instead.
+    if (res && (!res.ok || !res.body)) {
+      await res.body?.cancel();
+      res = null;
+    }
+  }
+  res ??= await deps.fetcher(await deliveryUrl(cfg, photo), {
     signal: AbortSignal.timeout(15000),
   });
   if (res.status === 404) return reply(404, { error: 'no_photo' });

@@ -492,9 +492,11 @@ begin
   perform t.eq(v.lat_e6, null::integer, 'gallery photo has no GPS');
   perform t.eq(v.store_name, 'Krishi Kendra', 'store name trimmed');
   v := public.add_visit(v_id, 'Krishi Kendra', 'Order taken', true, null, null, 'visit-' || v_id, now());
+  perform t.eq(v.accuracy_m, null::integer, 'gallery photo has no accuracy');
   v := public.add_visit(v_cam, 'Agro Store', null, false, 22500000, 88300000, 'visit-' || v_cam,
-                        now() - interval '70 minutes');
+                        now() - interval '70 minutes', false, 35);
   perform t.eq(v.lat_e6, 22500000, 'camera photo keeps GPS');
+  perform t.eq(v.accuracy_m, 35, 'camera photo keeps its accuracy (L59)');
   perform t.eq(v.captured_at >= now() - interval '1 hour', true, 'time not before duty on');
   perform t.expect_error($q$insert into public.visits (id, user_id, duty_day_id, from_gallery, captured_at)
     values (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', 1, true, now())$q$, 'permission denied');
@@ -1783,6 +1785,48 @@ begin
   perform t.eq((select count(*) from private.photo_upload_counts where day < v_today - 1), 0::bigint,
                'old days cleaned up');
   delete from private.photo_upload_counts;
+end;
+$$;
+
+\echo '--- unused photos are deleted after 4 days (L56)'
+do $$
+declare
+  v_used text;
+  v_orphan text := 'visit-' || gen_random_uuid();
+  v_young text := 'req-' || gen_random_uuid();
+begin
+  select photo_id into v_used from public.visits where photo_id is not null limit 1;
+  perform t.act_as('00000000-0000-0000-0000-000000000001');
+  perform t.expect_error(format('select public.svc_note_signed_photo(%L)', v_orphan), 'permission denied');
+  perform t.expect_error($q$select count(*) from private.signed_photos$q$, 'permission denied');
+  perform set_config('role', 'service_role', false);
+  perform public.svc_note_signed_photo(v_used);
+  perform public.svc_note_signed_photo(v_orphan);
+  perform public.svc_note_signed_photo(v_orphan);
+  perform t.eq((select count(*) from public.svc_photos_to_purge() where kind = 'orphan'), 0::bigint,
+               'a new photo is not an orphan yet');
+  perform t.act_as_owner();
+  update private.signed_photos set signed_at = now() - interval '5 days';
+  perform set_config('role', 'service_role', false);
+  perform public.svc_note_signed_photo(v_young);
+  perform t.eq((select array_agg(photo_id) from public.svc_photos_to_purge() where kind = 'orphan'),
+               array[v_orphan], 'only the old unused photo is listed');
+  perform t.act_as_owner();
+  perform t.eq((select count(*) from private.signed_photos where photo_id = v_used), 0::bigint,
+               'an old used photo is forgotten');
+  perform t.eq((select count(*) from private.signed_photos), 2::bigint, 'young and orphan kept');
+  perform set_config('role', 'service_role', false);
+  perform t.eq(public.svc_photos_removed(array[v_orphan]), 1, 'orphan removed');
+  perform t.eq((select count(*) from public.svc_photos_to_purge() where kind = 'orphan'), 0::bigint,
+               'orphan deleted once');
+  perform t.act_as_owner();
+  insert into private.app_settings values ('photos_url', 'https://x.test/functions/v1/photos');
+  update private.signed_photos set signed_at = now() - interval '5 days';
+  delete from t.pushed;
+  perform private.purge_photos();
+  perform t.eq((select body from t.pushed), '{"action": "purge"}'::jsonb, 'an orphan starts the purge');
+  delete from private.app_settings;
+  delete from private.signed_photos;
 end;
 $$;
 

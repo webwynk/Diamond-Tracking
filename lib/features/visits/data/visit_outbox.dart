@@ -19,6 +19,7 @@ class PendingVisit {
     this.note,
     this.location,
     this.mocked = false,
+    this.accuracyM,
     this.photoId,
   });
 
@@ -34,6 +35,7 @@ class PendingVisit {
           ? null
           : GeoPoint(lat.toDouble(), lng.toDouble()),
       mocked: json['mocked'] as bool? ?? false,
+      accuracyM: (json['acc'] as num?)?.toInt(),
       capturedAt: DateTime.parse(json['at']! as String).toUtc(),
       photoId: json['photo'] as String?,
     );
@@ -50,6 +52,9 @@ class PendingVisit {
   /// Camera photos only.
   final GeoPoint? location;
   final bool mocked;
+
+  /// How far off the location may be, in metres (L59).
+  final int? accuracyM;
   final DateTime capturedAt;
 
   /// Set once the photo is uploaded, so it is never uploaded twice. Its uuid
@@ -63,6 +68,7 @@ class PendingVisit {
     note: note,
     location: location,
     mocked: mocked,
+    accuracyM: accuracyM,
     capturedAt: capturedAt,
     photoId: photoId,
   );
@@ -75,6 +81,7 @@ class PendingVisit {
     'lat': location?.lat,
     'lng': location?.lng,
     'mocked': mocked,
+    'acc': accuracyM,
     'at': capturedAt.toUtc().toIso8601String(),
     'photo': photoId,
   };
