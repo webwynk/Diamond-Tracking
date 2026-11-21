@@ -57,6 +57,7 @@ class AppRequest {
     this.dates = const <DateTime>[],
     this.message,
     this.hasPhoto = false,
+    this.extraPhotos = 0,
     this.photoRemoved = false,
     this.decision,
     this.decisionNote,
@@ -81,6 +82,7 @@ class AppRequest {
     ],
     message: row['message'] as String?,
     hasPhoto: row['photo_id'] != null,
+    extraPhotos: (row['extra_photo_ids'] as List<dynamic>?)?.length ?? 0,
     photoRemoved: row['photo_removed_at'] != null,
     decision: row['decision'] == null
         ? null
@@ -105,6 +107,12 @@ class AppRequest {
   final List<DateTime> dates;
   final String? message;
   final bool hasPhoto;
+
+  /// Photos after the first (up to 2 more).
+  final int extraPhotos;
+
+  /// How many photos the request has.
+  int get photoCount => hasPhoto ? 1 + extraPhotos : 0;
 
   /// Photos are deleted after 90 days; the request stays (L69).
   final bool photoRemoved;

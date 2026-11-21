@@ -604,8 +604,8 @@ class FakeRequestsRepository implements RequestsRepository {
   }
 
   @override
-  PhotoSource photo(int requestId) => PhotoSource(
-    url: 'https://photos.test/$requestId',
+  PhotoSource photo(int requestId, {int index = 0}) => PhotoSource(
+    url: 'https://photos.test/$requestId/$index',
     headers: const <String, String>{},
   );
 }

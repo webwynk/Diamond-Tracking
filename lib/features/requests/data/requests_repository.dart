@@ -49,7 +49,8 @@ abstract interface class RequestsRepository {
   /// Uploads a JPEG and returns its photo id for a request.
   Future<String> uploadPhoto(Uint8List jpeg);
 
-  PhotoSource photo(int requestId);
+  /// Photo [index] of a request: 0 is the first, 1 and 2 the extra ones.
+  PhotoSource photo(int requestId, {int index = 0});
 }
 
 /// Requests loaded per page; "Show more" adds this many (L70).
@@ -77,7 +78,8 @@ class SupabaseRequestsRepository implements RequestsRepository {
 
   static const String _columns =
       'id, user_id, kind, status, day, duty_on_at, duty_off_at, leave_type, '
-      'dates, message, photo_id, photo_removed_at, decision, decision_note, '
+      'dates, message, photo_id, extra_photo_ids, photo_removed_at, decision, '
+      'decision_note, '
       'decided_at, created_at';
 
   List<AppRequest> _rows(List<Map<String, dynamic>> rows) =>
@@ -194,6 +196,8 @@ class SupabaseRequestsRepository implements RequestsRepository {
       uploadSignedPhoto(_client, _http, jpeg);
 
   @override
-  PhotoSource photo(int requestId) =>
-      PhotoSource.of(_client, 'request_id=$requestId');
+  PhotoSource photo(int requestId, {int index = 0}) => PhotoSource.of(
+    _client,
+    index == 0 ? 'request_id=$requestId' : 'request_id=$requestId&n=$index',
+  );
 }

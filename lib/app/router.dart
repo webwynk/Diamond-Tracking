@@ -17,6 +17,7 @@ import '../features/reports/presentation/reports_page.dart';
 import '../features/requests/presentation/admin_requests_page.dart';
 import '../features/requests/presentation/attendance_request_page.dart';
 import '../features/requests/presentation/leave_request_page.dart';
+import '../features/requests/presentation/my_request_detail_page.dart';
 import '../features/requests/presentation/my_requests_page.dart';
 import '../features/requests/presentation/request_detail_page.dart';
 import '../features/routes/presentation/day_route_page.dart';
@@ -173,9 +174,8 @@ StatefulShellRoute _userShell(
                   path: ':id',
                   parentNavigatorKey: rootKey,
                   builder: (BuildContext context, GoRouterState state) =>
-                      RequestDetailPage(
+                      MyRequestDetailPage(
                         requestId: int.parse(state.pathParameters['id']!),
-                        admin: false,
                       ),
                 ),
               ],
@@ -281,7 +281,6 @@ StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
                   builder: (BuildContext context, GoRouterState state) =>
                       RequestDetailPage(
                         requestId: int.parse(state.pathParameters['id']!),
-                        admin: true,
                       ),
                 ),
               ],

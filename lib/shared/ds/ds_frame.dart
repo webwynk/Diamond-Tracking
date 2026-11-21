@@ -270,3 +270,41 @@ class DsNavBar extends StatelessWidget {
     );
   }
 }
+
+/// A short yes/no question in a bottom sheet: a title, an optional line,
+/// the [confirm] button and "Keep it" under it. True when confirmed.
+Future<bool> showDsConfirm({
+  required BuildContext context,
+  required String title,
+  required String confirm,
+  String? message,
+  DsButtonKind kind = DsButtonKind.danger,
+  String keep = 'Keep it',
+}) async =>
+    await showDsSheet<bool>(
+      context: context,
+      builder: (BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(title, style: DsText.title),
+          if (message != null) ...<Widget>[
+            const SizedBox(height: DsSpace.xs),
+            Text(message, style: DsText.body.copyWith(color: DsColors.text2)),
+          ],
+          const SizedBox(height: DsSpace.xl),
+          DsButton(
+            label: confirm,
+            kind: kind,
+            onPressed: () => Navigator.pop(context, true),
+          ),
+          const SizedBox(height: 6),
+          Center(
+            child: DsTextLink(
+              label: keep,
+              onPressed: () => Navigator.pop(context, false),
+            ),
+          ),
+        ],
+      ),
+    ) ??
+    false;

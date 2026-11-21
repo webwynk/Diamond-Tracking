@@ -19,17 +19,12 @@ import '../domain/app_request.dart';
 import '../domain/request_failure.dart';
 import 'request_widgets.dart';
 
-/// One request. The admin decides it here; the employee can cancel it while
-/// it waits.
+/// One request, for the admin, who decides it here. (The employee's view
+/// is MyRequestDetailPage.)
 class RequestDetailPage extends ConsumerStatefulWidget {
-  const RequestDetailPage({
-    required this.requestId,
-    required this.admin,
-    super.key,
-  });
+  const RequestDetailPage({required this.requestId, super.key});
 
   final int requestId;
-  final bool admin;
 
   @override
   ConsumerState<RequestDetailPage> createState() => _RequestDetailPageState();
@@ -38,7 +33,6 @@ class RequestDetailPage extends ConsumerStatefulWidget {
 class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
   final TextEditingController _note = TextEditingController();
   DayStatus? _busyWith;
-  bool _cancelling = false;
   String? _error;
 
   @override
@@ -67,39 +61,6 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
     }
   }
 
-  Future<void> _cancel(AppRequest r) async {
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Cancel this request?'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Keep it'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Cancel request'),
-          ),
-        ],
-      ),
-    );
-    if (!(ok ?? false) || !mounted) return;
-    setState(() {
-      _cancelling = true;
-      _error = null;
-    });
-    try {
-      await ref.read(requestsRepositoryProvider).cancel(r.id);
-      if (mounted) refreshRequests(ref, r.id);
-    } on Object catch (e) {
-      if (mounted) setState(() => _error = mapRequestError(e).message);
-    } finally {
-      if (mounted) setState(() => _cancelling = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final AsyncValue<AppRequest?> req = ref.watch(
@@ -121,15 +82,13 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
   }
 
   Widget _body(AppRequest r) {
-    final String? person = widget.admin
-        ? ref
-              .watch(usersListProvider)
-              .value
-              ?.where((Profile p) => p.id == r.userId)
-              .firstOrNull
-              ?.fullName
-        : null;
-    final bool busy = _busyWith != null || _cancelling;
+    final String? person = ref
+        .watch(usersListProvider)
+        .value
+        ?.where((Profile p) => p.id == r.userId)
+        .firstOrNull
+        ?.fullName;
+    final bool busy = _busyWith != null;
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.x4),
       children: <Widget>[
@@ -164,7 +123,10 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
               ),
             )
           else
-            RequestPhoto(requestId: r.id),
+            for (int i = 0; i < r.photoCount; i++) ...<Widget>[
+              if (i > 0) const SizedBox(height: AppSpacing.x2),
+              RequestPhoto(requestId: r.id, index: i),
+            ],
         ],
         if (!r.isPending) ...<Widget>[
           const SizedBox(height: AppSpacing.x4),
@@ -180,7 +142,7 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
           const SizedBox(height: AppSpacing.x4),
           FormMessage.error(e),
         ],
-        if (widget.admin && r.isPending) ...<Widget>[
+        if (r.isPending) ...<Widget>[
           const SizedBox(height: AppSpacing.x4),
           TextField(
             controller: _note,
@@ -205,16 +167,6 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
             ),
             const SizedBox(height: AppSpacing.x2),
           ],
-        ],
-        if (!widget.admin && r.cancellable) ...<Widget>[
-          const SizedBox(height: AppSpacing.x4),
-          AppButton(
-            label: 'Cancel request',
-            isFullWidth: true,
-            variant: AppButtonVariant.secondary,
-            isLoading: _cancelling,
-            onPressed: busy ? null : () => _cancel(r),
-          ),
         ],
       ],
     );
@@ -250,9 +202,7 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            onPressed: () => context.push(
-              widget.admin ? Routes.adminDay(d.id) : Routes.userDay(d.id),
-            ),
+            onPressed: () => context.push(Routes.adminDay(d.id)),
             icon: const Icon(Icons.route_rounded),
             label: const Text('View route'),
           ),

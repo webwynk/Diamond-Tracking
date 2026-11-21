@@ -81,15 +81,18 @@ class RequestTile extends StatelessWidget {
 
 /// A request's photo, loaded through the photos function. Tap for full size.
 class RequestPhoto extends ConsumerWidget {
-  const RequestPhoto({required this.requestId, super.key});
+  const RequestPhoto({required this.requestId, this.index = 0, super.key});
 
   final int requestId;
+
+  /// 0 is the first photo, 1 and 2 the extra ones.
+  final int index;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final PhotoSource src = ref
         .watch(requestsRepositoryProvider)
-        .photo(requestId);
+        .photo(requestId, index: index);
     Widget image(BoxFit fit) => Image.network(
       src.url,
       headers: src.headers,
