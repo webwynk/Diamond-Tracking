@@ -9,6 +9,7 @@ import '../features/auth/presentation/change_password_page.dart';
 import '../features/auth/presentation/forgot_password_page.dart';
 import '../features/auth/presentation/login_page.dart';
 import '../features/auth/presentation/set_password_page.dart';
+import '../features/auth/presentation/signed_out_page.dart';
 import '../features/auth/presentation/splash_page.dart';
 import '../features/duty/presentation/home_page.dart';
 import '../features/notifications/presentation/notifications_page.dart';
@@ -65,6 +66,11 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         path: Routes.forgotPassword,
         builder: (BuildContext context, GoRouterState state) =>
             const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: Routes.signedOut,
+        builder: (BuildContext context, GoRouterState state) =>
+            const SignedOutPage(),
       ),
       GoRoute(
         path: Routes.setPassword,

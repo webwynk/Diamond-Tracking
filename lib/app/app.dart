@@ -21,6 +21,13 @@ class DiamondApp extends ConsumerWidget {
       // Light only: used outdoors in sunlight (see AppTheme).
       themeMode: ThemeMode.light,
       routerConfig: router,
+      // The phone's text-size setting is ignored (owner's decision,
+      // 2026-11-21): every screen is laid out for one size, so nothing is
+      // cut off or pushed off small phones.
+      builder: (BuildContext context, Widget? child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+        child: child!,
+      ),
     );
   }
 }

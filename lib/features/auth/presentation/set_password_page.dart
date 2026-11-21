@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_dimens.dart';
-import '../../../shared/widgets/app_button.dart';
-import '../../../shared/widgets/form_message.dart';
-import '../../../shared/widgets/password_field.dart';
+import '../../../core/design/ds_icons.dart';
+import '../../../shared/ds/ds_auth_frame.dart';
+import '../../../shared/ds/ds_button.dart';
+import '../../../shared/ds/ds_feedback.dart';
+import '../../../shared/ds/ds_field.dart';
 import '../application/auth_providers.dart';
+import '../data/auth_repository.dart';
 import '../domain/auth_failure.dart';
 import '../domain/credentials.dart';
-import 'widgets/auth_scaffold.dart';
+import 'password_rules.dart';
 
-/// After signing in with a temporary PIN, the user picks their own password.
+/// After signing in with a temporary PIN, the user picks their own password
+/// (design v2, Choose your password).
 class SetPasswordPage extends ConsumerStatefulWidget {
   const SetPasswordPage({super.key});
 
@@ -19,10 +22,11 @@ class SetPasswordPage extends ConsumerStatefulWidget {
 }
 
 class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
-  final GlobalKey<FormState> _form = GlobalKey<FormState>();
   final TextEditingController _password = TextEditingController();
   final TextEditingController _confirm = TextEditingController();
   bool _busy = false;
+  String? _passwordError;
+  String? _confirmError;
   AuthFailure? _failure;
 
   @override
@@ -32,12 +36,22 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (_busy || !(_form.currentState?.validate() ?? false)) return;
+  Future<void> _submit(String userCode) async {
+    if (_busy) return;
+    final String? passwordError = passwordProblem(
+      _password.text,
+      userCode: userCode,
+    );
+    final String? confirmError = _confirm.text == _password.text
+        ? null
+        : 'The passwords do not match';
     setState(() {
-      _busy = true;
+      _passwordError = passwordError;
+      _confirmError = confirmError;
       _failure = null;
     });
+    if (passwordError != null || confirmError != null) return;
+    setState(() => _busy = true);
     try {
       // On success the app moves on to the home screen by itself.
       await ref.read(authRepositoryProvider).setFirstPassword(_password.text);
@@ -48,64 +62,64 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
     }
   }
 
+  Future<void> _logOut() => ref
+      .read(authStatusProvider.notifier)
+      .signOutWith(() => ref.read(authRepositoryProvider).signOut());
+
   @override
   Widget build(BuildContext context) {
-    final String userCode =
-        ref.read(authRepositoryProvider).currentUserCode ?? '';
-    return AuthScaffold(
-      title: 'Choose your password',
-      subtitle:
-          'You signed in with a temporary PIN. Choose your own password to '
-          'continue.',
-      child: AutofillGroup(
-        child: Form(
-          key: _form,
+    final AuthRepository auth = ref.read(authRepositoryProvider);
+    final String userCode = auth.currentUserCode ?? '';
+    final String? name = auth.currentFirstName;
+    return DsAuthFrame(
+      title: name == null ? 'Welcome.' : 'Welcome, $name.',
+      accent: 'Choose your password.',
+      subtitle: 'Pick one only you know.',
+      footer: DsTextLink(
+        label: 'Not you? Log out',
+        onPressed: _busy ? null : _logOut,
+      ),
+      children: <Widget>[
+        AutofillGroup(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              PasswordField(
-                controller: _password,
+              DsTextField(
                 label: 'New password',
-                helperText: 'At least 8 characters, with a letter and a digit.',
+                controller: _password,
+                hint: '8+ characters, a letter and a digit',
+                icon: DsIcons.lock,
+                password: true,
+                error: _passwordError,
                 autofillHints: const <String>[AutofillHints.newPassword],
-                validator: (String? v) =>
-                    passwordProblem(v ?? '', userCode: userCode),
+                textInputAction: TextInputAction.next,
               ),
-              const SizedBox(height: AppSpacing.x4),
-              PasswordField(
-                controller: _confirm,
+              const SizedBox(height: 10),
+              PasswordRules(controller: _password, userCode: userCode),
+              const SizedBox(height: 14),
+              DsTextField(
                 label: 'Repeat new password',
+                controller: _confirm,
+                icon: DsIcons.lock,
+                password: true,
+                error: _confirmError,
                 autofillHints: const <String>[AutofillHints.newPassword],
                 textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _submit(),
-                validator: (String? v) =>
-                    v == _password.text ? null : 'The passwords do not match',
-              ),
-              const SizedBox(height: AppSpacing.x4),
-              if (_failure != null) ...<Widget>[
-                FormMessage.error(_failure!.message),
-                const SizedBox(height: AppSpacing.x4),
-              ],
-              AppButton(
-                label: 'Save password',
-                loadingLabel: 'Saving',
-                isLoading: _busy,
-                isFullWidth: true,
-                onPressed: _submit,
-              ),
-              const SizedBox(height: AppSpacing.x2),
-              AppButton(
-                label: 'Log out',
-                variant: AppButtonVariant.tertiary,
-                isFullWidth: true,
-                onPressed: _busy
-                    ? null
-                    : () => ref.read(authRepositoryProvider).signOut(),
+                onSubmitted: (_) => _submit(userCode),
               ),
             ],
           ),
         ),
-      ),
+        if (_failure != null)
+          DsBanner(kind: DsBannerKind.danger, title: _failure!.message),
+        DsButton(
+          label: 'Save and continue',
+          busyLabel: 'Saving',
+          busy: _busy,
+          arrow: true,
+          onPressed: () => _submit(userCode),
+        ),
+      ],
     );
   }
 }

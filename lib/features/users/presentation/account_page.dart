@@ -96,11 +96,13 @@ class AccountPage extends ConsumerWidget {
       ),
     );
     if (!(ok ?? false)) return;
-    // While still signed in: this phone stops getting the account's pushes.
-    await ref.read(pushRegistrarProvider).clear();
-    await ref.read(authRepositoryProvider).signOut();
-    await tracker.clear();
-    await outbox.clear();
+    await ref.read(authStatusProvider.notifier).signOutWith(() async {
+      // While still signed in: this phone stops getting the account's pushes.
+      await ref.read(pushRegistrarProvider).clear();
+      await ref.read(authRepositoryProvider).signOut();
+      await tracker.clear();
+      await outbox.clear();
+    });
   }
 
   @override

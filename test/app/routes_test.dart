@@ -36,6 +36,15 @@ void main() {
     expect(resolveRedirect(const SignedOut(), Routes.login), isNull);
   });
 
+  test('signed out without asking shows why first', () {
+    const SignedOut unexpected = SignedOut(unexpected: true);
+    expect(resolveRedirect(unexpected, Routes.userHome), Routes.signedOut);
+    expect(resolveRedirect(unexpected, Routes.login), Routes.signedOut);
+    expect(resolveRedirect(unexpected, Routes.signedOut), isNull);
+    // After "Sign in again" the status is a plain sign-out.
+    expect(resolveRedirect(const SignedOut(), Routes.signedOut), Routes.login);
+  });
+
   test('a temporary PIN forces the password change first', () {
     expect(resolveRedirect(newUser, Routes.userHome), Routes.setPassword);
     expect(resolveRedirect(newUser, Routes.setPassword), isNull);

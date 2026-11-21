@@ -14,6 +14,10 @@ abstract interface class AuthRepository {
   /// made in Supabase with a real email.
   String? get currentUserCode;
 
+  /// The signed-in user's first name, from the name the admin gave when
+  /// adding them; null when there is none.
+  String? get currentFirstName;
+
   /// Signs in and claims this phone. Throws [AuthFailure].
   Future<void> signIn({required String loginId, required String password});
 
@@ -49,6 +53,10 @@ class SupabaseAuthRepository implements AuthRepository {
   @override
   String? get currentUserCode =>
       userCodeFromLoginEmail(_client.auth.currentUser?.email);
+
+  @override
+  String? get currentFirstName =>
+      firstNameOf(_client.auth.currentUser?.userMetadata?['full_name']);
 
   @override
   Future<void> signIn({

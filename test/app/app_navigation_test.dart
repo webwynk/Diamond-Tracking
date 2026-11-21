@@ -69,7 +69,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await pumpApp(tester);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.bySemanticsLabel('Loading'), findsOneWidget);
 
     auth.add(const SignedOut());
     await tester.pumpAndSettle();
@@ -131,10 +131,17 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
+    // Signed out by someone else (here: the stream), not by Log out: the
+    // app says so before the sign-in screen.
     auth.add(const SignedOut());
     await tester.pumpAndSettle();
-    expect(find.text('Sign in'), findsWidgets);
+    expect(find.textContaining('You were signed out.'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
+    await tester.ensureVisible(find.text('Sign in again'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sign in again'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sign in'), findsWidgets);
   });
 
   testWidgets('a temporary PIN opens the set-password screen', (
@@ -149,7 +156,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Choose your password'), findsWidgets);
+    expect(find.textContaining('Choose your password.'), findsWidgets);
   });
 
   testWidgets('the Profile tab shows the user and logs out', (

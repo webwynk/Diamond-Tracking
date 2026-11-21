@@ -45,6 +45,9 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
   int _holds = 0;
   AuthStatus? _held;
 
+  /// True while a sign-out the user asked for runs.
+  bool _leaving = false;
+
   @override
   AuthStatus build() {
     final StreamSubscription<AuthStatus> sub = ref
@@ -54,12 +57,36 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
     return const AuthLoading();
   }
 
-  void _receive(AuthStatus status) {
+  void _receive(AuthStatus incoming) {
+    // Signed in, then signed out without the user asking: say so.
+    final AuthStatus status =
+        incoming is SignedOut && state is SignedIn && !_leaving
+        ? const SignedOut(unexpected: true)
+        : incoming;
     if (_holds > 0) {
       _held = status;
     } else {
       state = status;
     }
+  }
+
+  /// Runs a sign-out the user asked for ([action]: log out and clear the
+  /// phone), so it goes straight to the sign-in screen and is not shown as
+  /// "You were signed out".
+  Future<void> signOutWith(Future<void> Function() action) async {
+    _leaving = true;
+    try {
+      await action();
+    } finally {
+      // Lets the sign-out event sent by the action arrive first.
+      await Future<void>.delayed(Duration.zero);
+      _leaving = false;
+    }
+  }
+
+  /// The user read "You were signed out": go on to the sign-in screen.
+  void acknowledgeSignOut() {
+    if (state case SignedOut(unexpected: true)) state = const SignedOut();
   }
 
   /// Runs [action] without moving the app while it runs, then applies the

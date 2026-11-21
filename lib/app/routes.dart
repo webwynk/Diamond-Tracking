@@ -8,6 +8,7 @@ abstract final class Routes {
   static const String login = '/login';
   static const String setPassword = '/set-password';
   static const String forgotPassword = '/forgot-password';
+  static const String signedOut = '/signed-out';
 
   static const String userHome = '/home';
   static const String userMap = '/map';
@@ -59,6 +60,8 @@ String? resolveRedirect(AuthStatus status, String path) {
   switch (status) {
     case AuthLoading():
       return path == Routes.splash ? null : Routes.splash;
+    case SignedOut(unexpected: true):
+      return path == Routes.signedOut ? null : Routes.signedOut;
     case SignedOut():
       return Routes.isPublicPath(path) ? null : Routes.login;
     case SignedIn(mustChangePassword: true):
