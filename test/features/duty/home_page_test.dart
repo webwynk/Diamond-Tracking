@@ -92,6 +92,42 @@ void main() {
     expect(find.text('Since 7:00 AM'), findsOneWidget);
   });
 
+  testWidgets('a quick double tap on duty on sends one request (L6)', (
+    WidgetTester tester,
+  ) async {
+    await pumpHome(tester);
+    // Two taps before the button can show its spinner.
+    await tester.tap(find.text('Duty on'));
+    await tester.tap(find.text('Duty on'));
+    await tester.pumpAndSettle();
+
+    expect(repo.calls.where((String c) => c == 'dutyOn'), hasLength(1));
+    expect(tracker.calls.where((String c) => c.startsWith('start:')), <String>[
+      'start:100',
+    ]);
+    expect(find.text('On duty'), findsOneWidget);
+    expect(find.text('You have already done duty on today.'), findsNothing);
+  });
+
+  testWidgets('two duty on calls at once share one request (L6)', (
+    WidgetTester tester,
+  ) async {
+    await pumpHome(tester);
+    final ProviderContainer container = ProviderScope.containerOf(
+      tester.element(find.byType(HomePage)),
+    );
+    final DutyHomeController c = container.read(dutyHomeProvider.notifier);
+    final Future<void> first = c.dutyOn();
+    final Future<void> second = c.dutyOn();
+    await tester.pumpAndSettle();
+    await expectLater(Future.wait(<Future<void>>[first, second]), completes);
+
+    expect(repo.calls.where((String c) => c == 'dutyOn'), hasLength(1));
+    expect(tracker.calls.where((String c) => c.startsWith('start:')), <String>[
+      'start:100',
+    ]);
+  });
+
   testWidgets('missing permissions are asked for first', (
     WidgetTester tester,
   ) async {

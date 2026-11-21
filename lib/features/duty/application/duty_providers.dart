@@ -167,8 +167,16 @@ class DutyHomeController extends AsyncNotifier<DutyHome> {
   Future<List<TrackerRequirement>> missingRequirements() =>
       _tracker.missingRequirements();
 
+  Future<void>? _dutyOnRun;
+
   /// Duty on. Throws [DutyException] with the reason when it is refused.
-  Future<void> dutyOn() async {
+  ///
+  /// A second call while one is running joins it, so a double press sends
+  /// one request and both callers get the same result.
+  Future<void> dutyOn() =>
+      _dutyOnRun ??= _dutyOnOnce().whenComplete(() => _dutyOnRun = null);
+
+  Future<void> _dutyOnOnce() async {
     if (!await _clock.sync()) {
       throw const DutyException(DutyFailure.noInternet);
     }

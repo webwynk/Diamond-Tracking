@@ -194,8 +194,8 @@ begin
                 and target_user = e4), 3::bigint, 'allowed and revoked are logged');
   perform t.act_as(e4);
   perform t.eq(length(public.duty_on('dev-e4-0001')->>'upload_pass'), 64, 'duty on works with permission');
-  perform t.expect_error($q$select public.duty_on('dev-e4-0001')$q$,
-    case when v_closed then 'duty_on_closed' else 'already_on_duty_today' end);
+  -- A second press says "already on", not "closed" (L6).
+  perform t.expect_error($q$select public.duty_on('dev-e4-0001')$q$, 'already_on_duty_today');
   perform t.act_as_owner();
   if v_closed then
     perform t.eq((select used_at is not null from public.duty_permits where user_id = e4), true, 'permission used');
@@ -1245,5 +1245,75 @@ end;
 $$;
 delete from public.profiles where id = '00000000-0000-0000-0000-000000000008';
 delete from auth.users where id = '00000000-0000-0000-0000-000000000008';
+
+\echo '--- two duty on presses at the same moment: the second says already on (L6)'
+select t.act_as_owner();
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000009', 'e9@test');
+insert into public.profiles (id, user_code, full_name, role, created_at, active_device_id)
+values ('00000000-0000-0000-0000-000000000009', 'DA-009', 'Employee Nine', 'employee',
+        now() - interval '30 days', 'dev-e9-0001');
+-- Test-only stand-ins for the other press: each one starts the same duty
+-- exactly in the gap between this press's check and its insert.
+create function t.other_press_insert() returns trigger
+language plpgsql as $$
+begin
+  if pg_trigger_depth() = 1 then
+    insert into public.duty_days (user_id, day, status, duty_on_at)
+    values (new.user_id, new.day, 'on_duty', now());
+  end if;
+  return new;
+end;
+$$;
+create function t.other_press_permit() returns trigger
+language plpgsql as $$
+begin
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values (new.user_id, new.day, 'on_duty', now());
+  return null;  -- the other press used the permission, so ours finds none
+end;
+$$;
+do $$
+declare
+  v_time time := (now() at time zone 'Asia/Kolkata')::time;
+  v_closed boolean := v_time < time '05:00' or v_time >= time '08:31';
+  e9 constant uuid := '00000000-0000-0000-0000-000000000009';
+begin
+  if v_time >= time '23:00' then
+    return;  -- no permission can be given this late
+  end if;
+
+  -- The other press inserts the duty just before ours.
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform public.allow_duty_on(e9);
+  perform t.act_as_owner();
+  create trigger other_press before insert on public.duty_days
+    for each row execute function t.other_press_insert();
+  perform t.act_as(e9);
+  perform t.expect_error($q$select public.duty_on('dev-e9-0001')$q$, 'already_on_duty_today');
+  perform t.act_as_owner();
+  drop trigger other_press on public.duty_days;
+  -- (The refused call is rolled back, the other press's row with it.)
+  delete from public.duty_days where user_id = e9;
+  delete from public.duty_permits where user_id = e9;
+
+  -- Outside the window: the other press used the permission and started duty.
+  if v_closed then
+    perform t.act_as('00000000-0000-0000-0000-00000000000a');
+    perform public.allow_duty_on(e9);
+    perform t.act_as_owner();
+    create trigger other_press before update on public.duty_permits
+      for each row execute function t.other_press_permit();
+    perform t.act_as(e9);
+    perform t.expect_error($q$select public.duty_on('dev-e9-0001')$q$, 'already_on_duty_today');
+    perform t.act_as_owner();
+    drop trigger other_press on public.duty_permits;
+  end if;
+end;
+$$;
+select t.act_as_owner();
+drop function t.other_press_insert();
+drop function t.other_press_permit();
+delete from public.profiles where id = '00000000-0000-0000-0000-000000000009';
+delete from auth.users where id = '00000000-0000-0000-0000-000000000009';
 
 \echo 'ALL TESTS PASSED'
