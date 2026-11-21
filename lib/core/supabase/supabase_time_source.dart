@@ -6,7 +6,7 @@ import '../time/server_clock.dart';
 /// request (the Auth health check), so it works before any table exists.
 ///
 /// The header has whole-second precision, which is enough for minute-level
-/// rules. Phase 2 can switch this to a database function for milliseconds.
+/// rules, so no database function is needed for the time (L50).
 ServerTimeSource supabaseTimeSource({
   required String supabaseUrl,
   required String publishableKey,

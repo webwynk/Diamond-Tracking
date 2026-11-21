@@ -18,6 +18,12 @@ abstract final class TrackerServiceConfig {
   /// changed).
   static const int clockResyncTicks = 30;
 
+  /// Whether to read the server time on this tick: every tick until the first
+  /// read works (a phone restart with no internet, L44), then every
+  /// [clockResyncTicks].
+  static bool clockSyncDue(int tick, {required bool synced}) =>
+      !synced || tick % clockResyncTicks == 0;
+
   static void init() {
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
