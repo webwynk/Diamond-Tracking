@@ -25,12 +25,6 @@ export async function handler(req: Request, b: Backend): Promise<Response> {
   const password = typeof body.new_password === 'string' ? body.new_password : '';
   const problem = passwordProblem(password, caller.profile.user_code);
   if (problem) return reply(400, { error: 'validation_failed', fields: { new_password: problem } });
-  if (/^[0-9]{6}$/.test(password)) {
-    return reply(400, {
-      error: 'validation_failed',
-      fields: { new_password: 'Choose a new password, not a PIN' },
-    });
-  }
 
   await b.setPassword(caller.profile.id, password, { must_change_password: false });
   return reply(200, { ok: true });

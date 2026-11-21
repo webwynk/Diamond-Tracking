@@ -94,12 +94,11 @@ async function create(body: Json, admin: Profile, b: Backend): Promise<Response>
       created_by: admin.id,
     });
     if (inserted === 'code_taken') {
-      await b.deleteAuthUser(id);
+      await removeHalfMadeAccount(id, b);
       return reply(409, { error: 'user_code_taken' });
     }
   } catch (e) {
-    // Do not leave a sign-in account without a profile.
-    await b.deleteAuthUser(id);
+    await removeHalfMadeAccount(id, b);
     throw e;
   }
 
@@ -179,6 +178,20 @@ async function update(body: Json, admin: Profile, b: Backend): Promise<Response>
   }
   await b.logAdmin(admin.id, 'update_user', id, { changes: diff });
   return reply(200, { profile: updated });
+}
+
+// Do not leave a sign-in account without a profile. If removing it fails too,
+// the first error is kept (the caller re-throws it) and the leftover account is
+// logged, so an admin can delete it in Supabase (L29). The id is not secret.
+async function removeHalfMadeAccount(id: string, b: Backend): Promise<void> {
+  try {
+    await b.deleteAuthUser(id);
+  } catch (e) {
+    console.error(
+      `admin-users create: sign-in account ${id} has no profile and could not be removed:`,
+      e instanceof Error ? e.message : e,
+    );
+  }
 }
 
 async function resetPin(body: Json, admin: Profile, b: Backend): Promise<Response> {

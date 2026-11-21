@@ -3,6 +3,8 @@
 /// feedback in the form.
 library;
 
+import 'dart:convert';
+
 /// Sign-in emails are built from the user ID. The domain never receives mail;
 /// real contact emails are kept separately on the profile.
 const String loginEmailDomain = 'staff.diamondagritech.internal';
@@ -38,12 +40,19 @@ String? loginIdProblem(String value) {
   return userCodeProblem(v);
 }
 
+/// Shown when a password is 72 characters or fewer but over 72 bytes. Same
+/// text on the server (supabase/functions/_shared/rules.ts).
+const String passwordTooLong = 'Too long: use fewer non-English letters';
+
 /// The user's own password: 8 to 72 characters with a letter and a digit,
-/// not containing the user ID.
+/// not containing the user ID. Supabase Auth refuses more than 72 bytes
+/// (bcrypt's limit), and a Hindi or Bengali letter is 3 bytes, so a shorter
+/// password can still be too long.
 String? passwordProblem(String password, {String userCode = ''}) {
   if (password.length < 8 || password.length > 72) {
     return 'Use 8 to 72 characters';
   }
+  if (utf8.encode(password).length > 72) return passwordTooLong;
   if (!RegExp('[A-Za-z]').hasMatch(password) ||
       !RegExp('[0-9]').hasMatch(password)) {
     return 'Use at least one letter and one digit';
