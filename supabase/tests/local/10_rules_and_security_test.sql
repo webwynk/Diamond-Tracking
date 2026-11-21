@@ -752,10 +752,52 @@ begin
   drop function t.count_route_write();
   drop table t.route_writes;
 
+  -- A stop with no address is saved as "no address" and not asked again (L15).
+  update public.day_routes
+  set stops = stops || jsonb_build_array(jsonb_build_object('lat', 22.8, 'lng', 88.5))
+  where duty_day_id = v_day.id;
+  perform set_config('role', 'service_role', false);
+  perform t.eq((select count(*)::integer from public.svc_missing_places(v_day.id, e2)),
+               1, 'the field is looked up once');
+  perform public.svc_save_places(v_day.id,
+    jsonb_build_array(jsonb_build_object('cell_lat', 22800, 'cell_lng', 88500, 'address', '')));
+  perform t.eq((select count(*)::integer from public.svc_missing_places(v_day.id, e2)),
+               0, 'a place with no address is not looked up again');
+  perform t.act_as_owner();
+  perform t.eq((select stops->1 ? 'address' from public.day_routes where duty_day_id = v_day.id),
+               false, 'no empty address on the stop');
+  perform t.eq((select stops->0->>'address' from public.day_routes where duty_day_id = v_day.id),
+               'Krishi Kendra Rd, Barasat', 'real addresses unchanged');
+
+  -- Route builds of a day wait for each other, and today's refresh skips a
+  -- route another batch just rebuilt (L17).
+  update public.day_routes set built_at = now() - interval '1 minute', point_count = -1
+  where duty_day_id = v_day.id;
+  perform private.build_route_if_stale(v_day.id);
+  perform t.eq((select point_count from public.day_routes where duty_day_id = v_day.id),
+               -1, 'a fresh route is not rebuilt again');
+  update public.day_routes set built_at = now() - interval '6 minutes'
+  where duty_day_id = v_day.id;
+  perform private.build_route_if_stale(v_day.id);
+  perform t.eq((select point_count from public.day_routes where duty_day_id = v_day.id) > 0,
+               true, 'an old route is rebuilt');
+
   perform t.act_as(e2);
   perform t.expect_error($q$select public.svc_save_places(1, '[]')$q$, 'permission denied');
   perform t.expect_error($q$select count(*) from private.place_names$q$, 'permission denied');
   perform t.act_as_owner();
+end;
+$$;
+
+do $$
+begin
+  -- (Its own transaction, so no earlier build holds the lock already.)
+  perform t.eq((select count(*)::integer from pg_locks
+                where locktype = 'advisory' and pid = pg_backend_pid()), 0, 'no lock yet');
+  perform private.build_route((select min(id) from public.duty_days));
+  perform t.eq((select count(*)::integer from pg_locks
+                where locktype = 'advisory' and pid = pg_backend_pid()), 1,
+               'a route build holds the day''s lock (L17)');
 end;
 $$;
 

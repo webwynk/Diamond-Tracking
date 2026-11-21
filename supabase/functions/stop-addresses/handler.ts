@@ -4,6 +4,8 @@
 //        200 { looked_up, remaining }
 //
 // Addresses are saved per ~100 m square, so a place is looked up once ever.
+// A place with no address (a field, a river) is saved as '' so that Google
+// is not asked again for it (L15).
 // At most 10 lookups per call keeps the cost bounded; the app asks again
 // when it opens the route next time.
 import type { Backend } from '../_shared/backend.ts';
@@ -33,17 +35,20 @@ export async function handler(
     return reply(200, { looked_up: 0, remaining: missing.length });
   }
 
-  const found: { cell_lat: number; cell_lng: number; address: string }[] = [];
+  const done: { cell_lat: number; cell_lng: number; address: string }[] = [];
   for (const m of missing.slice(0, MAX_LOOKUPS)) {
     try {
       const address = await geocode(m.lat, m.lng);
-      if (address) found.push({ cell_lat: m.cell_lat, cell_lng: m.cell_lng, address });
+      done.push({ cell_lat: m.cell_lat, cell_lng: m.cell_lng, address: address ?? '' });
     } catch (e) {
       // Quota or network trouble: keep what we have, try again next time.
       console.error('geocode failed:', e instanceof Error ? e.message : 'unknown');
       break;
     }
   }
-  if (found.length > 0) await b.savePlaces(dayId, found);
-  return reply(200, { looked_up: found.length, remaining: missing.length - found.length });
+  if (done.length > 0) await b.savePlaces(dayId, done);
+  return reply(200, {
+    looked_up: done.filter((d) => d.address !== '').length,
+    remaining: missing.length - done.length,
+  });
 }
