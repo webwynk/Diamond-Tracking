@@ -1,9 +1,18 @@
 name: CI
 
+# Changes that touch only documentation (Markdown files, docs/) skip the
+# checks: nothing in them can break the app, the database or the functions.
+# A change that mixes docs and code still runs everything.
 on:
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
 
 concurrency:
   group: ci-${{ github.ref }}
