@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:diamond_tracking/core/supabase/supabase_providers.dart';
@@ -16,6 +17,7 @@ import 'package:diamond_tracking/features/tracking/domain/tracking_session.dart'
 import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -34,9 +36,10 @@ void main() {
     repo = FakeDutyRepository()..dutyOnTime = ist(7);
     tracker = FakeTrackerControl();
     time = FixedClock(ist(7));
+    FlutterSecureStorage.setMockInitialValues(<String, String>{});
   });
 
-  Future<void> pumpHome(WidgetTester tester) async {
+  Future<void> pumpHome(WidgetTester tester, {bool settle = true}) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -58,7 +61,7 @@ void main() {
         child: MaterialApp(theme: AppTheme.light, home: const HomePage()),
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) await tester.pumpAndSettle();
   }
 
   DutyDay onDuty() => DutyDay(
@@ -353,5 +356,117 @@ void main() {
     tracker.battery.add(15);
     await tester.pumpAndSettle();
     expect(find.text('Battery 15%'), findsOneWidget);
+  });
+
+  testWidgets(
+    'a silent server: the phone view and "No internet" show at once (L55)',
+    (WidgetTester tester) async {
+      repo.today = onDuty();
+      tracker.stored = sessionFor(repo.today!);
+      time.at = ist(9);
+      final Completer<void> gate = repo.forDayGate = Completer<void>();
+      await pumpHome(tester, settle: false);
+      await tester.pump(DutyHomeController.showPhoneViewAfter);
+      await tester.pump();
+      expect(find.text('No internet connection'), findsOneWidget);
+      expect(find.text('On duty'), findsOneWidget);
+      expect(find.text('Since 7:00 AM'), findsOneWidget);
+
+      // The server answers: the banner goes.
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('No internet connection'), findsNothing);
+      expect(find.text('On duty'), findsOneWidget);
+    },
+  );
+
+  testWidgets('a server that never answers gives up after 10 seconds (L55)', (
+    WidgetTester tester,
+  ) async {
+    repo.forDayGate = Completer<void>();
+    await pumpHome(tester, settle: false);
+    await tester.pump(DutyHomeController.showPhoneViewAfter);
+    expect(find.text('No internet connection'), findsOneWidget);
+    await tester.pump(DutyHomeController.serverTimeout);
+    await tester.pump();
+    expect(find.text('No internet connection'), findsOneWidget);
+    expect(find.text('Retry'), findsNothing);
+  });
+
+  testWidgets('a quick server answer shows no banner (L55)', (
+    WidgetTester tester,
+  ) async {
+    await pumpHome(tester);
+    expect(find.text('No internet connection'), findsNothing);
+    expect(find.text('Ready to start'), findsOneWidget);
+  });
+
+  testWidgets('a failed reload after duty off shows no error (L54)', (
+    WidgetTester tester,
+  ) async {
+    repo.today = onDuty();
+    tracker.stored = sessionFor(repo.today!);
+    time.at = ist(18);
+    await pumpHome(tester);
+    repo.forDayError = const PostgrestException(message: 'boom');
+    await tester.tap(find.text('Duty off'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Duty off'));
+    await tester.pumpAndSettle();
+    expect(find.text('Duty off done. Thank you.'), findsOneWidget);
+    expect(find.text('Retry'), findsNothing);
+    expect(find.textContaining('went wrong'), findsNothing);
+  });
+
+  testWidgets('a failed reload after duty on shows no error (L54)', (
+    WidgetTester tester,
+  ) async {
+    await pumpHome(tester);
+    repo.forDayError = const PostgrestException(message: 'boom');
+    await tester.tap(find.text('Duty on'));
+    await tester.pumpAndSettle();
+    expect(find.text('Duty on. Your route is being recorded.'), findsOneWidget);
+    expect(find.text('On duty'), findsOneWidget);
+    expect(find.textContaining('went wrong'), findsNothing);
+  });
+
+  group('the battery question (L52)', () {
+    setUp(() {
+      tracker.missing = <TrackerRequirement>[
+        TrackerRequirement.batteryOptimization,
+      ];
+    });
+
+    Future<int> asksAfterDutyOn(WidgetTester tester) async {
+      await pumpHome(tester);
+      await tester.tap(find.text('Duty on'));
+      await tester.pumpAndSettle();
+      expect(repo.calls, contains('dutyOn'));
+      return tracker.calls
+          .where((String c) => c == 'request:batteryOptimization')
+          .length;
+    }
+
+    testWidgets('asked the first time', (WidgetTester tester) async {
+      expect(await asksAfterDutyOn(tester), 1);
+    });
+
+    testWidgets('not asked again within a week', (WidgetTester tester) async {
+      FlutterSecureStorage.setMockInitialValues(<String, String>{
+        'battery_prompt_at': ist(7)
+            .subtract(const Duration(days: 6))
+            .toIso8601String(),
+      });
+      expect(await asksAfterDutyOn(tester), 0);
+    });
+
+    testWidgets('asked again after a week', (WidgetTester tester) async {
+      FlutterSecureStorage.setMockInitialValues(<String, String>{
+        'battery_prompt_at': ist(7)
+            .subtract(const Duration(days: 7))
+            .toIso8601String(),
+      });
+      expect(await asksAfterDutyOn(tester), 1);
+    });
   });
 }

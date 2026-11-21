@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:diamond_tracking/core/supabase/device_id.dart';
+import 'package:diamond_tracking/core/time/ist.dart';
 import 'package:diamond_tracking/core/time/server_clock.dart';
 import 'package:diamond_tracking/features/auth/data/auth_repository.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_failure.dart';
@@ -246,10 +247,19 @@ class FakeDutyRepository implements DutyRepository {
     if (e != null) throw e;
   }
 
+  /// Thrown by [forDay] only (the screen reload).
+  Exception? forDayError;
+
+  /// When set, [forDay] waits for it (a slow or silent server).
+  Completer<void>? forDayGate;
+
   @override
   Future<DutyDay?> forDay(String userId, DateTime day) async {
     calls.add('forDay');
+    await forDayGate?.future;
     _maybeFail();
+    final Exception? e = forDayError;
+    if (e != null) throw e;
     return today;
   }
 

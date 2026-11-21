@@ -54,7 +54,7 @@ class DutyHome {
   /// Set when duty is on but route recording could not be started.
   final String? trackingProblem;
 
-  /// The admin allowed duty on today outside the window (not used yet).
+  /// The admin allowed duty on today outside the window.
   final bool dutyOnAllowed;
 
   DutyPhase phaseAt(DateTime now) {

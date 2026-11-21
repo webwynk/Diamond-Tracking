@@ -112,10 +112,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (missing.any((TrackerRequirement r) => r.required)) {
       if (!await showTrackingSetup(context)) return;
     } else if (missing.contains(TrackerRequirement.batteryOptimization)) {
-      // Asked each time, but not required.
-      await ref
-          .read(trackerControlProvider)
-          .request(TrackerRequirement.batteryOptimization);
+      // Not required: asked at most once a week (L52).
+      await _controller.askBatteryIfDue();
     }
     if (!mounted) return;
     setState(() => _busy = true);
