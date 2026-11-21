@@ -62,6 +62,12 @@ void main() {
     hasPhoto: true,
   );
 
+  /// A card title as shown: the date part never breaks.
+  String cardTitle(String t) {
+    final int i = t.indexOf('· ') + 2;
+    return t.substring(0, i) + t.substring(i).replaceAll(' ', '\u00A0');
+  }
+
   /// A tall screen, so whole forms are built and tappable.
   void tall(WidgetTester tester) {
     tester.view.physicalSize = const Size(1080, 4000);
@@ -224,12 +230,12 @@ void main() {
       status: employee,
       overrides: overrides(duty: duty),
     );
-    expect(find.text('Short duty · Fri, 20 Nov'), findsOneWidget);
+    expect(find.text(cardTitle('Short duty · Fri, 20 Nov')), findsOneWidget);
     expect(find.text('7h 40m worked · sent by the app'), findsOneWidget);
-    expect(find.text('Attendance · 19 Nov'), findsOneWidget);
-    expect(find.text('Casual leave · 24 – 26 Nov'), findsOneWidget);
+    expect(find.text(cardTitle('Attendance · 19 Nov')), findsOneWidget);
+    expect(find.text(cardTitle('Casual leave · 24 – 26 Nov')), findsOneWidget);
     expect(find.text('2 days · sent 12 Nov'), findsOneWidget);
-    expect(find.text('Attendance · 28 Oct'), findsOneWidget);
+    expect(find.text(cardTitle('Attendance · 28 Oct')), findsOneWidget);
     expect(find.textContaining('No photo of work.'), findsOneWidget);
     expect(find.text('Admin reviewing'), findsNWidgets(2));
     expect(find.byType(MyRequestCard), findsNWidgets(4));
@@ -243,7 +249,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(MyRequestCard), findsOneWidget);
 
-    await tester.tap(find.text('Attendance · 28 Oct'));
+    await tester.tap(find.text(cardTitle('Attendance · 28 Oct')));
     await tester.pumpAndSettle();
     expect(find.text('route /home/requests/8'), findsOneWidget);
   });

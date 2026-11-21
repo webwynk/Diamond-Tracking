@@ -328,11 +328,19 @@ String requestDays(AppRequest r) {
 }
 
 /// The card title: "Short duty · Fri, 20 Nov", "Sick leave · 24 – 26 Nov".
-String myRequestTitle(AppRequest r) => switch (r.kind) {
-  RequestKind.shortDuty => 'Short duty · ${IstFormat.weekdayDay(r.day!)}',
-  RequestKind.attendance => 'Attendance · ${requestDays(r)}',
-  RequestKind.leave => '${r.leaveType?.label ?? 'Leave'} · ${requestDays(r)}',
-};
+/// The date never breaks across lines.
+String myRequestTitle(AppRequest r) {
+  final String days = switch (r.kind) {
+    RequestKind.shortDuty => IstFormat.weekdayDay(r.day!),
+    _ => requestDays(r),
+  }.replaceAll(' ', '\u00A0');
+  final String kind = switch (r.kind) {
+    RequestKind.shortDuty => 'Short duty',
+    RequestKind.attendance => 'Attendance',
+    RequestKind.leave => r.leaveType?.label ?? 'Leave',
+  };
+  return '$kind · $days';
+}
 
 /// The pill colour and word for a request's status.
 (DsStatus, String) requestStatusLook(RequestStatus s) => switch (s) {
