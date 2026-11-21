@@ -24,14 +24,12 @@ A. DATABASE (Supabase dashboard > SQL editor)
    and pg_net (phone push: without it, notifications only show inside the
    app, even when push_url is set; deleting photos after 90 days needs it
    too, with photos_url, or Cloudinary keeps filling up).
-   Then paste and run, in this order:
-     supabase/migrations/20261120000000_rewrite_baseline.sql
-     supabase/migrations/20261121000000_login_and_devices.sql
-     supabase/migrations/20261122000000_duty_tracking.sql
-     supabase/migrations/20261123000000_maps.sql
-     supabase/migrations/20261124000000_requests_push.sql
-     supabase/migrations/20261125000000_visits.sql
-     supabase/migrations/20261126000000_duty_on_permit.sql
+   Then paste and run every file in supabase/migrations, one at a time,
+   oldest first (the file names start with the date, so name order is the
+   right order). There are 28 as of 2026-11-22, from
+     20261120000000_rewrite_baseline.sql   to
+     20261217000000_test_clock.sql
+   Each one should say "Success. No rows returned".
 
 3. Paste and run supabase/reset/03_restore_users.sql
    The last query lists the kept users. Check them.
@@ -50,14 +48,16 @@ B. SIGN-IN SETTINGS (Supabase dashboard > Authentication)
 C. SERVER FUNCTIONS (on your computer, in the project folder)
 -------------------------------------------------------------
 
-5. Deploy the three new functions:
+5. Deploy all six server functions:
      npx supabase login
      npx supabase functions deploy --project-ref YOUR_PROJECT_REF
-   This deploys admin-users, account and password-reset with the settings
-   in supabase/config.toml.
+   This deploys admin-users, account, password-reset, photos, push and
+   stop-addresses with the settings in supabase/config.toml ("Verify JWT"
+   off for all six). Then set their secrets and settings: see section E.
 
 6. Edge Functions: delete the old employee-auth, create-employee and
-   visit-photos functions (phase 7 deploys a new photo function).
+   visit-photos functions if they are still there (photos replaces
+   visit-photos).
 
 7. Password reset by email (optional, can be done later):
    - Make a free account at resend.com, add and verify your domain, and

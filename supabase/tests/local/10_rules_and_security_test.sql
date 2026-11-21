@@ -67,6 +67,21 @@ update public.profiles set active_device_id = 'dev-e1-0001' where user_code = 'D
 update public.profiles set active_device_id = 'dev-e2-0001' where user_code = 'DA-002';
 update public.profiles set active_device_id = 'dev-e3-0001' where user_code = 'DA-003';
 
+-- Sets the database clock to a time today (India date), or back to the real
+-- time (L94). Only private.now() reads it: duty on, permissions, resume.
+create function t.set_clock(p_time time) returns void language plpgsql as $$
+begin
+  delete from private.test_clock;
+  insert into private.test_clock (at)
+  values (private.ist_at((now() at time zone 'Asia/Kolkata')::date, p_time));
+end;
+$$;
+create function t.real_clock() returns void language plpgsql as $$
+begin
+  delete from private.test_clock;
+end;
+$$;
+
 \echo '--- helpers'
 do $$
 begin
@@ -116,11 +131,11 @@ select t.expect_error($$select public.duty_on('dev-ad-0001')$$, 'not_active_empl
 select t.act_as_owner();
 
 \echo '--- duty on follows the 05:00 to 08:30 IST window'
-select t.act_as('00000000-0000-0000-0000-000000000003');
-do $$
+create function t.window_checks() returns void language plpgsql as $$
 declare
-  v_time time := (now() at time zone 'Asia/Kolkata')::time;
+  v_time time := (private.now() at time zone 'Asia/Kolkata')::time;
 begin
+  perform t.act_as('00000000-0000-0000-0000-000000000003');
   if v_time >= time '05:00' and v_time < time '08:31' then
     perform t.eq(length(public.duty_on('dev-e3-0001')->>'upload_pass'), 64, 'duty on gives an upload pass');
     perform t.expect_error($q$select public.duty_on('dev-e3-0001')$q$, 'already_on_duty_today');
@@ -130,8 +145,16 @@ begin
   else
     perform t.expect_error($q$select public.duty_on('dev-e3-0001')$q$, 'duty_on_closed');
   end if;
+  perform t.act_as_owner();
 end;
 $$;
+-- Every run checks both sides of the window, whatever the real time (L94).
+select t.set_clock('04:59'), t.window_checks();
+select t.set_clock('05:00'), t.window_checks();
+select t.set_clock('08:30'), t.window_checks();
+select t.set_clock('08:31'), t.window_checks();
+select t.real_clock(), t.window_checks();
+drop function t.window_checks();
 select t.act_as_owner();
 
 \echo '--- permissions end at 9:00 PM India time (L28)'
@@ -147,12 +170,14 @@ insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000004
 insert into public.profiles (id, user_code, full_name, role, created_at, active_device_id)
 values ('00000000-0000-0000-0000-000000000004', 'DA-004', 'Employee Four', 'employee',
         now() - interval '30 days', 'dev-e4-0001');
-do $$
+create function t.permit_checks() returns void language plpgsql as $$
 declare
-  v_time time := (now() at time zone 'Asia/Kolkata')::time;
+  v_time time := (private.now() at time zone 'Asia/Kolkata')::time;
   v_closed boolean := v_time < time '05:00' or v_time >= time '08:31';
   v_late boolean := v_time >= time '21:00';  -- permission cut-off (L28)
   e4 constant uuid := '00000000-0000-0000-0000-000000000004';
+  v_logs bigint := (select count(*) from public.admin_log
+                    where action in ('allow_duty_on', 'revoke_duty_on') and target_user = e4);
 begin
   -- Only an admin can allow, and only for an active employee.
   perform t.act_as(e4);
@@ -208,7 +233,7 @@ begin
   perform t.eq((select count(*) from public.notifications
                 where user_id = e4 and kind = 'duty_on_allowed'), 2::bigint, 'the employee is told');
   perform t.eq((select count(*) from public.admin_log where action in ('allow_duty_on', 'revoke_duty_on')
-                and target_user = e4), 3::bigint, 'allowed and revoked are logged');
+                and target_user = e4) - v_logs, 3::bigint, 'allowed and revoked are logged');
   perform t.act_as(e4);
   perform t.eq(length(public.duty_on('dev-e4-0001')->>'upload_pass'), 64, 'duty on works with permission');
   -- A second press says "already on", not "closed" (L6).
@@ -232,6 +257,13 @@ begin
   delete from public.notifications where user_id = e4;
 end;
 $$;
+-- Inside the window, outside it, and after the 9:00 PM cut-off (L94).
+select t.set_clock('06:00'), t.permit_checks();
+select t.set_clock('10:00'), t.permit_checks();
+select t.set_clock('20:59'), t.permit_checks();
+select t.set_clock('21:00'), t.permit_checks();
+select t.real_clock(), t.permit_checks();
+drop function t.permit_checks();
 select t.act_as_owner();
 delete from public.profiles where id = '00000000-0000-0000-0000-000000000004';
 delete from auth.users where id = '00000000-0000-0000-0000-000000000004';
@@ -620,20 +652,24 @@ declare
   v_pass text;
   v_pts jsonb;
   r jsonb;
-  v_before_11 boolean;
 begin
   -- Resume: e1's duty from the visits test is still on today.
   select * into v_today from public.duty_days where user_id = e1 and day = private.ist_today();
-  v_before_11 := now() < private.auto_off_at(v_today.day);
   perform t.act_as(e1);
   perform t.expect_error($q$select public.duty_resume('other-phone-1')$q$, 'signed_in_elsewhere');
-  if v_before_11 then
-    r := public.duty_resume('dev-e1-0001');
-    perform t.eq((r->'day'->>'id')::bigint, v_today.id, 'resume returns today''s duty');
-    perform t.eq(length(r->>'upload_pass'), 64, 'resume gives a new pass');
-  else
-    perform t.expect_error($q$select public.duty_resume('dev-e1-0001')$q$, 'not_on_duty');
-  end if;
+  -- Before and after 11 PM, whatever the real time (L94).
+  perform t.act_as_owner();
+  perform t.set_clock('22:59');
+  perform t.act_as(e1);
+  r := public.duty_resume('dev-e1-0001');
+  perform t.eq((r->'day'->>'id')::bigint, v_today.id, 'resume returns today''s duty');
+  perform t.eq(length(r->>'upload_pass'), 64, 'resume gives a new pass');
+  perform t.act_as_owner();
+  perform t.set_clock('23:00');
+  perform t.act_as(e1);
+  perform t.expect_error($q$select public.duty_resume('dev-e1-0001')$q$, 'not_on_duty');
+  perform t.act_as_owner();
+  perform t.real_clock();
   perform t.act_as(e3);
   perform t.expect_error($q$select public.duty_resume('dev-e3-0001')$q$, 'not_on_duty');
   perform t.act_as_owner();
@@ -1423,9 +1459,9 @@ begin
   return null;  -- the other press used the permission, so ours finds none
 end;
 $$;
-do $$
+create function t.double_press_checks() returns void language plpgsql as $$
 declare
-  v_time time := (now() at time zone 'Asia/Kolkata')::time;
+  v_time time := (private.now() at time zone 'Asia/Kolkata')::time;
   v_closed boolean := v_time < time '05:00' or v_time >= time '08:31';
   e9 constant uuid := '00000000-0000-0000-0000-000000000009';
 begin
@@ -1458,9 +1494,17 @@ begin
     perform t.expect_error($q$select public.duty_on('dev-e9-0001')$q$, 'already_on_duty_today');
     perform t.act_as_owner();
     drop trigger other_press on public.duty_permits;
+    delete from public.duty_days where user_id = e9;
+    delete from public.duty_permits where user_id = e9;
   end if;
 end;
 $$;
+-- Inside and outside the window, and after 9:00 PM (L94).
+select t.set_clock('06:00'), t.double_press_checks();
+select t.set_clock('10:00'), t.double_press_checks();
+select t.set_clock('21:30'), t.double_press_checks();
+select t.real_clock(), t.double_press_checks();
+drop function t.double_press_checks();
 select t.act_as_owner();
 drop function t.other_press_insert();
 drop function t.other_press_permit();
@@ -1859,6 +1903,7 @@ begin
 end;
 $$;
 
+\echo '--- app errors: saved for the signed-in person, read by admins, 200 a day, 30 days (L88)'
 -- L88: app errors are saved for the signed-in person, read by admins only,
 -- capped at 200 a person a day, and kept 30 days.
 do $$
