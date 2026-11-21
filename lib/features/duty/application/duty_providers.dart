@@ -38,6 +38,9 @@ class DutyHomeController extends AsyncNotifier<DutyHome> {
   TrackerControl get _tracker => ref.read(trackerControlProvider);
   ServerClock get _clock => ref.read(serverClockProvider);
 
+  /// The server time is checked again when it is older than this.
+  static const Duration _clockMaxAge = Duration(minutes: 10);
+
   late String _userId;
 
   @override
@@ -56,7 +59,7 @@ class DutyHomeController extends AsyncNotifier<DutyHome> {
   }
 
   Future<DutyHome> _load() async {
-    if (!_clock.isSynced) await _clock.sync();
+    await _clock.syncIfStale(_clockMaxAge);
     final DateTime now = _clock.now();
     final DateTime today = Ist.dateOf(now);
     TrackingSession? session = await _tracker.session();
