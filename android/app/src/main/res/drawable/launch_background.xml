@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
+<!-- The screen shown while the app starts (Android 8 to 11): brand blue with
+     the white logo, the same as the app's own start screen, so there is no
+     white flash (L90). Android 12 and newer use values-v31/styles.xml. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
-
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+    <item android:drawable="@color/brand_blue" />
+    <item
+        android:width="160dp"
+        android:height="142dp"
+        android:gravity="center"
+        android:drawable="@drawable/launch_logo" />
 </layer-list>
