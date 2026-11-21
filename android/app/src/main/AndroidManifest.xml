@@ -1,22 +1,27 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Network connectivity -->
+    <!-- Talking to the server, and knowing when the phone is offline. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Foreground and background GPS tracking (BR-1, BR-7, PRD F3/F4) -->
+    <!-- GPS during duty. "Allow all the time" (background location) lets the
+         tracker keep going with the screen off and start again after a phone
+         restart. Google Play needs a declaration form and a short video for
+         it before publishing there (L91). -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
-    <!-- Foreground service and persistent duty notification -->
+    <!-- The duty tracker runs as a service with its "On duty" notification. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Exemption from OEM task-killing battery optimizations -->
+    <!-- Lets the app ask for "no battery limits", so phone makers' battery
+         savers do not stop the tracker mid-day. Google Play restricts it and
+         would need a reason for it (L91). -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-    <!-- In-situ photo capture (PRD F10) -->
+    <!-- Visit and attendance photos taken with the camera. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 

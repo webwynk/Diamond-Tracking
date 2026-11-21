@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#016893</color>
+    <!-- Brand blue, the start screen background (L90). -->
+    <color name="brand_blue">#016893</color>
 </resources>
