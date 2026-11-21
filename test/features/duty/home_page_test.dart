@@ -17,6 +17,7 @@ import 'package:diamond_tracking/features/tracking/application/tracker_control.d
 import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracker_status.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracking_session.dart';
+import 'package:diamond_tracking/features/tracking/presentation/duty_setup_page.dart';
 import 'package:diamond_tracking/features/users/application/users_providers.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
@@ -154,7 +155,9 @@ void main() {
     await pumpHome(tester);
     await tester.tap(find.text('Duty on'));
     await tester.pumpAndSettle();
-    expect(find.text('Before duty on'), findsOneWidget);
+    expect(find.text('Get ready for duty'), findsOneWidget);
+    expect(find.text('2 of 5 done'), findsOneWidget);
+    expect(find.text('Allow 2 more to start'), findsOneWidget);
     expect(repo.calls, isNot(contains('dutyOn')));
 
     // Battery saver is optional; the other two are needed.
@@ -162,7 +165,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Allow').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Continue'));
+    await tester.tap(find.text('Start duty'));
     await tester.pumpAndSettle();
 
     expect(tracker.calls.where((String c) => c != 'ensureRunning'), <String>[
@@ -656,4 +659,44 @@ void main() {
       expect(await asksAfterDutyOn(tester), 1);
     });
   });
+
+  for (final double width in <double>[360, 390, 430]) {
+    testWidgets('home, duty off sheet and setup fit a $width wide phone', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = Size(width * 3, 800 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      repo.today = DutyDay(
+        id: 5,
+        day: DateTime.utc(2026, 11, 20),
+        status: DayStatus.onDuty,
+        dutyOnAt: ist(7, 5),
+        distanceM: 152000,
+      );
+      tracker.stored = sessionFor(repo.today!);
+      time.at = ist(14, 45);
+      await pumpHome(tester);
+      tracker.status.add(
+        TrackerStatus(
+          pendingPoints: 1214,
+          offline: true,
+          problem: TrackerProblem.locationOff,
+          problemSince: ist(11, 5),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Duty off'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Keep working'));
+      await tester.pumpAndSettle();
+      tracker.missing = List<TrackerRequirement>.of(TrackerRequirement.values);
+      unawaited(showTrackingSetup(tester.element(find.byType(HomePage))));
+      await tester.pumpAndSettle();
+      expect(find.text('0 of 5 done'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

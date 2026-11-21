@@ -25,7 +25,7 @@ import '../../requests/domain/app_request.dart';
 import '../../tracking/application/tracker_control.dart';
 import '../../tracking/application/tracker_providers.dart';
 import '../../tracking/domain/tracker_status.dart';
-import '../../tracking/presentation/tracking_setup_sheet.dart';
+import '../../tracking/presentation/duty_setup_page.dart';
 import '../../tracking/service/battery_alerts.dart';
 import '../../users/application/users_providers.dart';
 import '../../visits/application/visits_providers.dart';

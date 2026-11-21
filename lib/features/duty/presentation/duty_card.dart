@@ -303,10 +303,15 @@ class _OnDutyCard extends ConsumerWidget {
           Row(
             children: <Widget>[
               const DsStatusPill(status: DsStatus.present, label: 'On duty'),
-              const Spacer(),
-              Text(
-                'Started ${IstFormat.time(day.dutyOnAt!)}',
-                style: DsText.label.merge(soft),
+              const SizedBox(width: DsSpace.sm),
+              Expanded(
+                child: Text(
+                  'Started ${IstFormat.time(day.dutyOnAt!)}',
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DsText.label.merge(soft),
+                ),
               ),
             ],
           ),
