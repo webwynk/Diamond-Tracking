@@ -30,7 +30,8 @@ class SupabaseDutyRepository implements DutyRepository {
   final SupabaseClient _client;
 
   static const String _columns =
-      'id, day, status, duty_on_at, duty_off_at, end_reason, worked_minutes';
+      'id, day, status, duty_on_at, duty_off_at, end_reason, worked_minutes, '
+      'distance_m, leave_type';
 
   @override
   Future<DutyDay?> forDay(String userId, DateTime day) async {

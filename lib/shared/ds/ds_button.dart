@@ -24,6 +24,9 @@ enum DsButtonKind {
 
   /// White button on a deep card or header: Duty on now.
   onDeep,
+
+  /// White button with red text on a deep card: Duty off.
+  dangerOnDeep,
 }
 
 /// A main button: 56 tall, pill shaped, 16 bold.
@@ -107,6 +110,12 @@ class DsButton extends StatelessWidget {
       DsButtonKind.onDeep => (
         bg: DsColors.white,
         fg: DsColors.deep,
+        border: null,
+        shadow: const <BoxShadow>[],
+      ),
+      DsButtonKind.dangerOnDeep => (
+        bg: DsColors.white,
+        fg: DsColors.dangerText,
         border: null,
         shadow: const <BoxShadow>[],
       ),

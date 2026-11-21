@@ -38,4 +38,14 @@ abstract final class DsIcons {
   static const IconData error = LucideIcons.circleAlert;
   static const IconData info = LucideIcons.info;
   static const IconData empty = LucideIcons.inbox;
+
+  // Duty
+  static const IconData dutyOn = LucideIcons.play;
+  static const IconData dutyOff = LucideIcons.square;
+  static const IconData closed = LucideIcons.calendarX;
+  static const IconData dayDone = LucideIcons.circleCheck;
+  static const IconData waiting = LucideIcons.hourglass;
+  static const IconData upload = LucideIcons.cloudUpload;
+  static const IconData sickLeave = LucideIcons.heartPulse;
+  static const IconData casualLeave = LucideIcons.palmtree;
 }

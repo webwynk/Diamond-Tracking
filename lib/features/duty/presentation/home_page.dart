@@ -20,7 +20,6 @@ import '../../../core/time/ist_format.dart';
 import '../../../shared/ds/ds_button.dart';
 import '../../../shared/ds/ds_chips.dart';
 import '../../../shared/ds/ds_feedback.dart';
-import '../../../shared/widgets/app_button.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/auth_status.dart';
 import '../../notifications/application/notifications_providers.dart';
@@ -38,9 +37,11 @@ import '../../visits/data/visit_outbox.dart';
 import '../../visits/domain/visit.dart';
 import '../../visits/presentation/visit_rows.dart';
 import '../application/duty_providers.dart';
+import '../application/phone_battery.dart';
 import '../domain/duty_day.dart';
 import '../domain/duty_failure.dart';
 import '../domain/duty_home.dart';
+import 'duty_card.dart';
 
 /// The employee's home: duty on, duty off, and today's status.
 class HomePage extends ConsumerStatefulWidget {
@@ -75,6 +76,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       setState(() {});
       // Visits kept on the phone without internet: try once a minute.
       if (t.tick.isEven) unawaited(_sendWaitingVisits());
+      // On duty: the km on the card and the battery, every 5 minutes.
+      if (t.tick % 10 == 0 && _onDutyNow()) {
+        ref.invalidate(phoneBatteryProvider);
+        unawaited(_controller.refresh());
+      }
     });
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => unawaited(_sendWaitingVisits()),
@@ -100,6 +106,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   DutyHomeController get _controller => ref.read(dutyHomeProvider.notifier);
+
+  bool _onDutyNow() =>
+      ref
+          .read(dutyHomeProvider)
+          .value
+          ?.phaseAt(ref.read(serverClockProvider).now()) ==
+      DutyPhase.onDuty;
 
   /// True from the first tap until duty on has finished, so a quick second
   /// tap (before the button shows its spinner) does nothing.
@@ -388,7 +401,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         banner,
       ],
       const SizedBox(height: DsSpace.lg),
-      _DutyCard(
+      DutyCard(
         home: value,
         now: now,
         busy: _busy,
@@ -654,189 +667,6 @@ class _ActionTile extends StatelessWidget {
           ),
         ),
       ),
-    ),
-  );
-}
-
-class _DutyCard extends StatelessWidget {
-  const _DutyCard({
-    required this.home,
-    required this.now,
-    required this.busy,
-    required this.onDutyOn,
-    required this.onDutyOff,
-  });
-
-  final DutyHome home;
-  final DateTime now;
-  final bool busy;
-  final VoidCallback onDutyOn;
-  final void Function(DutyDay day) onDutyOff;
-
-  @override
-  Widget build(BuildContext context) {
-    final DutyDay? day = home.today;
-    final List<Widget> children = switch (home.phaseAt(now)) {
-      DutyPhase.beforeWindow => <Widget>[
-        const _Heading(icon: Icons.schedule_rounded, title: 'Not on duty'),
-        const _Line('Duty on opens at 5:00 AM.'),
-        const SizedBox(height: AppSpacing.x4),
-        const AppButton(
-          label: 'Duty on',
-          isFullWidth: true,
-          onPressed: null,
-          disabledReason: 'Duty on opens at 5:00 AM',
-        ),
-      ],
-      DutyPhase.canDutyOn => <Widget>[
-        const _Heading(icon: Icons.wb_sunny_rounded, title: 'Ready to start'),
-        const _Line('Duty on is open until 8:30 AM.'),
-        const SizedBox(height: AppSpacing.x4),
-        AppButton(
-          label: 'Duty on',
-          isFullWidth: true,
-          isLoading: busy,
-          loadingLabel: 'Starting…',
-          icon: const Icon(Icons.play_arrow_rounded),
-          onPressed: onDutyOn,
-        ),
-      ],
-      DutyPhase.allowedByAdmin => <Widget>[
-        const _Heading(icon: Icons.verified_rounded, title: 'Ready to start'),
-        const _Line(
-          'The admin allowed you to do duty on today. It works once, until '
-          '9:00 PM.',
-        ),
-        const SizedBox(height: AppSpacing.x4),
-        AppButton(
-          label: 'Duty on',
-          isFullWidth: true,
-          isLoading: busy,
-          loadingLabel: 'Starting…',
-          icon: const Icon(Icons.play_arrow_rounded),
-          onPressed: onDutyOn,
-        ),
-      ],
-      DutyPhase.windowClosed => <Widget>[
-        const _Heading(
-          icon: Icons.event_busy_rounded,
-          title: 'Duty on is closed for today',
-        ),
-        const _Line(
-          'Duty on is allowed from 5:00 AM to 8:30 AM. If you worked today, '
-          'use Request attendance below.',
-        ),
-      ],
-      DutyPhase.onDuty => <Widget>[
-        const _Heading(
-          icon: Icons.directions_walk_rounded,
-          title: 'On duty',
-          color: AppColors.success,
-        ),
-        _Line('Since ${IstFormat.time(day!.dutyOnAt!)}'),
-        const SizedBox(height: AppSpacing.x2),
-        Text(
-          IstFormat.duration(now.difference(day.dutyOnAt!)),
-          style: AppTypography.display,
-        ),
-        const _Line('Duty ends by itself at 11:00 PM.'),
-        const SizedBox(height: AppSpacing.x4),
-        AppButton(
-          label: 'Duty off',
-          variant: AppButtonVariant.destructive,
-          isFullWidth: true,
-          isLoading: busy,
-          loadingLabel: 'Ending…',
-          icon: const Icon(Icons.stop_rounded),
-          onPressed: () => onDutyOff(day),
-        ),
-      ],
-      DutyPhase.offSaved => <Widget>[
-        const _Heading(
-          icon: Icons.cloud_upload_rounded,
-          title: 'Duty off saved',
-        ),
-        _Line(
-          'Duty off at ${IstFormat.time(home.session!.offAt!)}. It will be '
-          'sent by itself when the internet is back.',
-        ),
-      ],
-      DutyPhase.ended => <Widget>[
-        _Heading(
-          icon: Icons.check_circle_rounded,
-          title: day!.status.label,
-          color: day.status == DayStatus.absent
-              ? AppColors.error
-              : AppColors.primary600,
-        ),
-        if (day.dutyOnAt case final DateTime on)
-          _Line(
-            'Duty ${IstFormat.time(on)} to '
-            '${IstFormat.time(day.dutyOffAt ?? home.session?.offAt ?? now)}'
-            '${day.workedMinutes == null ? '' : ' (${IstFormat.duration(Duration(minutes: day.workedMinutes!))})'}',
-          ),
-        if (day.autoEnded) const _Line('Ended by itself at 11:00 PM.'),
-        if (day.status == DayStatus.pending)
-          const _Line(
-            'Less than 10 hours, so not counted for attendance yet. The '
-            'admin will decide.',
-          ),
-      ],
-      DutyPhase.onLeave => <Widget>[
-        const _Heading(icon: Icons.beach_access_rounded, title: 'On leave'),
-        const _Line('You are on leave today.'),
-      ],
-    };
-    return Container(
-      padding: AppSpacing.card,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.lgAll,
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: children,
-      ),
-    );
-  }
-}
-
-class _Heading extends StatelessWidget {
-  const _Heading({
-    required this.icon,
-    required this.title,
-    this.color = AppColors.primary600,
-  });
-
-  final IconData icon;
-  final String title;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: AppSpacing.x2),
-    child: Row(
-      children: <Widget>[
-        Icon(icon, color: color),
-        const SizedBox(width: AppSpacing.x2),
-        Expanded(child: Text(title, style: AppTypography.h3)),
-      ],
-    ),
-  );
-}
-
-class _Line extends StatelessWidget {
-  const _Line(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 2),
-    child: Text(
-      text,
-      style: AppTypography.body.copyWith(color: AppColors.textSecondary),
     ),
   );
 }

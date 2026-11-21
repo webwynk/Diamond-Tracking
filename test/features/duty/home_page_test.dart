@@ -94,7 +94,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await pumpHome(tester);
-    expect(find.text('Ready to start'), findsOneWidget);
+    expect(find.text('Ready to start?'), findsOneWidget);
 
     await tester.tap(find.text('Duty on'));
     await tester.pumpAndSettle();
@@ -104,7 +104,7 @@ void main() {
     expect(tracker.stored?.pass, 'pass-100');
     expect(tracker.stored?.autoOffAt, ist(23));
     expect(find.text('On duty'), findsOneWidget);
-    expect(find.text('Since 7:00 AM'), findsOneWidget);
+    expect(find.text('Started 7:00 AM'), findsOneWidget);
   });
 
   testWidgets('a quick double tap on duty on sends one request (L6)', (
@@ -176,7 +176,7 @@ void main() {
   testWidgets('after 8:30 AM duty on is closed', (WidgetTester tester) async {
     time.at = ist(9);
     await pumpHome(tester);
-    expect(find.text('Duty on is closed for today'), findsOneWidget);
+    expect(find.text('Duty on is closed'), findsOneWidget);
     expect(find.text('Duty on'), findsNothing);
   });
 
@@ -187,8 +187,8 @@ void main() {
     time.at = ist(18);
     repo.dutyOnTime = ist(18);
     await pumpHome(tester);
-    expect(find.text('Duty on is closed for today'), findsNothing);
-    expect(find.textContaining('The admin allowed you'), findsOneWidget);
+    expect(find.text('Duty on is closed'), findsNothing);
+    expect(find.text('Allowed by your admin'), findsOneWidget);
     await tester.tap(find.text('Duty on'));
     await tester.pumpAndSettle();
     expect(tracker.calls, contains('start:100'));
@@ -200,7 +200,7 @@ void main() {
     (WidgetTester tester) async {
       time.at = ist(18);
       await pumpHome(tester);
-      expect(find.text('Duty on is closed for today'), findsOneWidget);
+      expect(find.text('Duty on is closed'), findsOneWidget);
       expect(find.text('Duty on'), findsNothing);
       // The permission is only looked up when duty on is closed.
       time.at = ist(7);
@@ -260,7 +260,7 @@ void main() {
     repo.error = null;
     await tester.tap(find.text('Try again'));
     await tester.pumpAndSettle();
-    expect(find.text('Ready to start'), findsOneWidget);
+    expect(find.text('Ready to start?'), findsOneWidget);
   });
 
   testWidgets('a short duty off warns, then says not eligible', (
@@ -270,7 +270,7 @@ void main() {
     tracker.stored = sessionFor(repo.today!);
     time.at = ist(15);
     await pumpHome(tester);
-    expect(find.text('8 h 00 min'), findsOneWidget);
+    expect(find.text('8h 00m'), findsOneWidget);
 
     await tester.tap(find.text('Duty off'));
     await tester.pumpAndSettle();
@@ -368,6 +368,58 @@ void main() {
     tracker.battery.add(15);
     await tester.pumpAndSettle();
     expect(find.text('Battery 15%'), findsOneWidget);
+  });
+
+  testWidgets('on leave shows sick or casual', (WidgetTester tester) async {
+    repo.today = DutyDay(
+      id: 6,
+      day: DateTime.utc(2026, 11, 20),
+      status: DayStatus.leave,
+      leaveType: LeaveType.sick,
+    );
+    time.at = ist(9);
+    await pumpHome(tester);
+    expect(find.text('On leave today'), findsOneWidget);
+    expect(find.text('Sick leave · approved. Get well soon.'), findsOneWidget);
+  });
+
+  testWidgets('on duty shows km from the server and today\'s visits', (
+    WidgetTester tester,
+  ) async {
+    repo.today = DutyDay(
+      id: 5,
+      day: DateTime.utc(2026, 11, 20),
+      status: DayStatus.onDuty,
+      dutyOnAt: ist(7, 12),
+      distanceM: 38400,
+    );
+    tracker.stored = sessionFor(repo.today!);
+    visits.byDay[5] = <Visit>[
+      for (int i = 0; i < 3; i++)
+        Visit(
+          id: 'v$i',
+          storeName: 'Store $i',
+          fromGallery: true,
+          capturedAt: ist(8 + i),
+          hasPhoto: false,
+        ),
+    ];
+    time.at = ist(11, 24);
+    await pumpHome(tester);
+    expect(find.text('4h 12m'), findsOneWidget);
+    expect(find.text('5h 48m'), findsOneWidget);
+    expect(find.text('42% of the day'), findsOneWidget);
+    expect(find.text('Auto off 11:00 PM'), findsOneWidget);
+    expect(find.text('38 km'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+  });
+
+  testWidgets('duty on closed offers Request attendance', (
+    WidgetTester tester,
+  ) async {
+    time.at = ist(10);
+    await pumpHome(tester);
+    expect(find.text('Request attendance'), findsOneWidget);
   });
 
   testWidgets('the header greets the employee by first name', (
@@ -485,7 +537,7 @@ void main() {
       await tester.pump();
       expect(find.text("You're offline"), findsOneWidget);
       expect(find.text('On duty'), findsOneWidget);
-      expect(find.text('Since 7:00 AM'), findsOneWidget);
+      expect(find.text('Started 7:00 AM'), findsOneWidget);
 
       // The server answers: the banner goes.
       gate.complete();
@@ -513,7 +565,7 @@ void main() {
   ) async {
     await pumpHome(tester);
     expect(find.text("You're offline"), findsNothing);
-    expect(find.text('Ready to start'), findsOneWidget);
+    expect(find.text('Ready to start?'), findsOneWidget);
   });
 
   testWidgets('a failed reload after duty off shows no error (L54)', (
