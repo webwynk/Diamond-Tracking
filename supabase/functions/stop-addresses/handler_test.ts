@@ -25,6 +25,13 @@ Deno.test('looks up and saves the missing addresses', async () => {
   assertEquals(b.saved, [{ cell_lat: 22700, cell_lng: 88400, address: 'Main Rd, Barasat' }]);
 });
 
+Deno.test('a place with no address is saved as unknown, not asked again (L15)', async () => {
+  const b = setup();
+  const res = await handler(post({ day_id: 7 }, 'emp'), b, () => Promise.resolve(null));
+  assertEquals(await res.json(), { looked_up: 0, remaining: 0 });
+  assertEquals(b.saved, [{ cell_lat: 22700, cell_lng: 88400, address: '' }]);
+});
+
 Deno.test('admins may ask, other employees may not', async () => {
   const b = setup();
   const geo = () => Promise.resolve('X');
