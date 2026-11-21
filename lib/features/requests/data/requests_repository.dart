@@ -31,6 +31,7 @@ abstract interface class RequestsRepository {
     required int dutyOffMinute,
     required String message,
     required String photoId,
+    List<String> extraPhotoIds = const <String>[],
   });
 
   Future<void> requestLeave({
@@ -52,6 +53,9 @@ abstract interface class RequestsRepository {
 
 /// Requests loaded per page; "Show more" adds this many (L70).
 const int requestPageSize = 100;
+
+/// Photos on one attendance or leave request (decided 2026-11-21).
+const int maxRequestPhotos = 3;
 
 /// "My requests" lists the last 90 days at once, so its counts are right.
 const Duration myRequestsWindow = Duration(days: 90);
@@ -136,6 +140,7 @@ class SupabaseRequestsRepository implements RequestsRepository {
     required int dutyOffMinute,
     required String message,
     required String photoId,
+    List<String> extraPhotoIds = const <String>[],
   }) => _client.rpc<Object?>(
     'request_attendance',
     params: <String, Object?>{
@@ -144,6 +149,7 @@ class SupabaseRequestsRepository implements RequestsRepository {
       'p_duty_off': _hhmm(dutyOffMinute),
       'p_message': message,
       'p_photo_id': photoId,
+      if (extraPhotoIds.isNotEmpty) 'p_extra_photo_ids': extraPhotoIds,
     },
   );
 

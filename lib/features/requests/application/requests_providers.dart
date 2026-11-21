@@ -8,6 +8,7 @@ import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/auth_status.dart';
 import '../../duty/application/duty_providers.dart';
 import '../../duty/domain/duty_day.dart';
+import '../../routes/application/route_providers.dart';
 import '../data/photo_picker.dart';
 import '../data/requests_repository.dart';
 import '../domain/app_request.dart';
@@ -54,6 +55,41 @@ final FutureProviderFamily<DutyDay?, (String, DateTime)> requestDayProvider =
           ref.watch(dutyRepositoryProvider).forDay(key.$1, key.$2),
       retry: (int count, Object error) => null,
     );
+
+/// Why a day can't get an attendance request.
+enum BlockedDay {
+  /// Duty was on that day.
+  hadDuty,
+
+  /// A request for that day is already waiting.
+  asked,
+}
+
+/// Days of the attendance window that the server would refuse, so the form
+/// greys them out. Empty while loading or when the lists can't load; the
+/// server still checks.
+final Provider<Map<DateTime, BlockedDay>> attendanceBlockedDaysProvider =
+    Provider.autoDispose<Map<DateTime, BlockedDay>>((Ref ref) {
+      final AuthStatus status = ref.watch(authStatusProvider);
+      if (status is! SignedIn) return const <DateTime, BlockedDay>{};
+      final Map<DateTime, BlockedDay> blocked = <DateTime, BlockedDay>{};
+      for (final AppRequest r
+          in ref.watch(myRequestsProvider).value ?? const <AppRequest>[]) {
+        if (!r.isPending) continue;
+        for (final DateTime d
+            in r.kind == RequestKind.leave
+                ? r.dates
+                : <DateTime>[if (r.kind == RequestKind.attendance) r.day!]) {
+          blocked[d] = BlockedDay.asked;
+        }
+      }
+      for (final DutyDay d
+          in ref.watch(historyProvider(status.userId)).value ??
+              const <DutyDay>[]) {
+        if (d.dutyOnAt != null) blocked[d.day] = BlockedDay.hadDuty;
+      }
+      return blocked;
+    });
 
 /// The admin's list: true for waiting requests, false for the latest of all.
 final FutureProviderFamily<List<AppRequest>, bool> adminRequestsProvider =

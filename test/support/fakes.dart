@@ -546,12 +546,14 @@ class FakeRequestsRepository implements RequestsRepository {
     required int dutyOffMinute,
     required String message,
     required String photoId,
+    List<String> extraPhotoIds = const <String>[],
   }) async {
     _maybeFail();
     final Exception? e = sendError;
     if (e != null) throw e;
     calls.add(
-      'attendance:${isoDate(day)}:$dutyOnMinute-$dutyOffMinute:$message:$photoId',
+      'attendance:${isoDate(day)}:$dutyOnMinute-$dutyOffMinute:$message:$photoId'
+      '${extraPhotoIds.map((String id) => '+$id').join()}',
     );
   }
 
