@@ -23,6 +23,7 @@ abstract interface class VisitsRepository {
     required String? note,
     required GeoPoint? location,
     required DateTime capturedAt,
+    bool mocked = false,
   });
 
   PhotoSource photo(String visitId);
@@ -44,7 +45,7 @@ class SupabaseVisitsRepository implements VisitsRepository {
         .from('visits')
         .select(
           'id, store_name, note, from_gallery, lat_e6, lng_e6, photo_id, '
-          'photo_removed_at, captured_at',
+          'photo_removed_at, captured_at, mocked',
         )
         .eq('duty_day_id', dayId)
         .order('captured_at');
@@ -62,6 +63,7 @@ class SupabaseVisitsRepository implements VisitsRepository {
     required String? note,
     required GeoPoint? location,
     required DateTime capturedAt,
+    bool mocked = false,
   }) => _client.rpc<Object?>(
     'add_visit',
     params: <String, Object?>{
@@ -73,6 +75,7 @@ class SupabaseVisitsRepository implements VisitsRepository {
       'p_lng_e6': location == null ? null : (location.lng * 1e6).round(),
       'p_photo_id': photoId,
       'p_captured_at': capturedAt.toUtc().toIso8601String(),
+      'p_mocked': location != null && mocked,
     },
   );
 

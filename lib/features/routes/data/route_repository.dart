@@ -47,7 +47,10 @@ class SupabaseRouteRepository implements RouteRepository {
     final List<Object?> results = await Future.wait(<Future<Object?>>[
       _client
           .from('day_routes')
-          .select('duty_day_id, segments, stops, gaps, point_count, distance_m')
+          .select(
+            'duty_day_id, segments, stops, gaps, point_count, distance_m, '
+            'mocked_points',
+          )
           .eq('duty_day_id', dayId)
           .maybeSingle(),
       _client

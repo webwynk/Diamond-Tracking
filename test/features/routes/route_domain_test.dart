@@ -62,7 +62,9 @@ void main() {
       'gaps': <Map<String, dynamic>>[],
       'distance_m': 4200,
       'point_count': 52,
+      'mocked_points': 3,
     }, const <TrackBreak>[]);
+    expect(r.mockedPoints, 3);
     expect(r.segments.single, hasLength(2));
     expect(r.stops.single.length, const Duration(minutes: 40));
     expect(r.needsAddresses, isTrue);

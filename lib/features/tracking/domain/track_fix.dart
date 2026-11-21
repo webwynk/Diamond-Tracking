@@ -5,6 +5,7 @@ class TrackFix {
     required this.latitude,
     required this.longitude,
     required this.accuracyM,
+    this.mocked = false,
   });
 
   /// When the fix was taken, by the phone's clock (UTC).
@@ -14,4 +15,7 @@ class TrackFix {
 
   /// Horizontal accuracy in metres (68% confidence).
   final double accuracyM;
+
+  /// Android says the fix came from a fake-location ("mock location") app.
+  final bool mocked;
 }

@@ -117,6 +117,7 @@ class TrackerEngine {
       latitude: fix.latitude,
       longitude: fix.longitude,
       accuracyM: fix.accuracyM,
+      mocked: fix.mocked,
     );
     if (!_filter.accept(shifted)) return;
     files.queue.addPoint(session.dayId, session.pass, <String, Object?>{
@@ -125,6 +126,8 @@ class TrackerEngine {
       'lo': (fix.longitude * 1e6).round(),
       'a': fix.accuracyM.round(),
       'b': ?_battery,
+      // Only sent when true: the server reads a missing mark as "not fake".
+      if (fix.mocked) 'm': true,
     });
   }
 
