@@ -14,6 +14,9 @@ import 'track_uploader.dart';
 ///   first line names the duty day and its upload pass.
 /// - Before an upload the open file is renamed to `batch-<time>.jsonl`
 ///   (a rename is atomic, so a batch is always complete).
+/// - A batch refused for its pass (a password reset) is renamed
+///   `held-<time>.jsonl`: it does not count as waiting work, but every drain
+///   tries it again for up to 2 days.
 /// - A batch file is deleted only after the server accepted all of it.
 ///   Uploads are idempotent (the server skips duplicates), so sending a batch
 ///   twice after a crash is harmless.
@@ -89,16 +92,30 @@ class PointQueue {
   /// the new pass. With [keepOnRefusedPass] a batch of the running duty that
   /// the server refuses because of its pass is kept, and the drain stops
   /// ([DrainResult.passRefused]): the app can still get a new pass.
+  ///
+  /// Any other batch refused for its pass waits up to [keepRefusedFor] (how
+  /// long a pass lives) and is tried again on later drains: after a password
+  /// reset, the pass works again once this phone is signed in again. Older
+  /// refused batches, and batches refused for another reason, are dropped.
   Future<DrainResult> drain(
     TrackUploader uploader, {
     String? Function(int dayId)? passFor,
     bool keepOnRefusedPass = false,
+    Duration keepRefusedFor = const Duration(days: 2),
+    DateTime Function() now = DateTime.now,
   }) async {
     if (!dir.existsSync()) return const DrainResult();
     seal();
     int sent = 0;
     int dropped = 0;
-    for (final File file in _batches()) {
+    int waiting = 0;
+    final List<File> files = <File>[..._sorted('held-'), ..._batches()]
+      ..sort(
+        (File a, File b) => a.uri.pathSegments.last
+            .substring(5)
+            .compareTo(b.uri.pathSegments.last.substring(5)),
+      );
+    for (final File file in files) {
       final _Header? header = _readHeader(file);
       final List<Map<String, Object?>> records = _records(file);
       if (header == null) {
@@ -132,16 +149,63 @@ class PointQueue {
         if (keepOnRefusedPass &&
             e.reason == UploadRejected.badPass &&
             passFor?.call(header.dayId) != null) {
-          return DrainResult(sent: sent, dropped: dropped, passRefused: true);
+          return DrainResult(
+            sent: sent,
+            dropped: dropped,
+            waiting: waiting,
+            passRefused: true,
+          );
+        }
+        final DateTime? sealedAt = _sealedAt(file);
+        if (e.reason == UploadRejected.badPass &&
+            sealedAt != null &&
+            now().difference(sealedAt) < keepRefusedFor) {
+          waiting += records.length;
+          if (!_isHeld(file)) {
+            file.renameSync(
+              '${dir.path}/${file.uri.pathSegments.last.replaceFirst('batch-', 'held-')}',
+            );
+          }
+          continue;
         }
         dropped += records.length;
       } on Object catch (e, st) {
         AppLog.failure('PointQueue.drain', e, st);
-        return DrainResult(sent: sent, dropped: dropped, failed: true);
+        return DrainResult(
+          sent: sent,
+          dropped: dropped,
+          waiting: waiting,
+          failed: true,
+        );
       }
       if (file.existsSync()) file.deleteSync();
     }
-    return DrainResult(sent: sent, dropped: dropped);
+    return DrainResult(sent: sent, dropped: dropped, waiting: waiting);
+  }
+
+  static bool _isHeld(File file) =>
+      file.uri.pathSegments.last.startsWith('held-');
+
+  /// Records refused for their pass, kept to try again (not counted in
+  /// [pendingCount]).
+  int get heldCount {
+    if (!dir.existsSync()) return 0;
+    int count = 0;
+    for (final File f in _sorted('held-')) {
+      count += _records(f).length;
+    }
+    return count;
+  }
+
+  /// When a batch was sealed, from its name (`batch-<microseconds>.jsonl`).
+  static DateTime? _sealedAt(File file) {
+    final String name = file.uri.pathSegments.last;
+    final RegExpMatch? m = RegExp(r'^(?:batch|held)-(\d+)\.jsonl$')
+        .firstMatch(name);
+    final int? micros = m == null ? null : int.tryParse(m.group(1)!);
+    return micros == null
+        ? null
+        : DateTime.fromMicrosecondsSinceEpoch(micros, isUtc: true);
   }
 
   /// Deletes everything (used when the account is signed out).
@@ -149,12 +213,14 @@ class PointQueue {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   }
 
-  List<File> _batches() {
+  List<File> _batches() => _sorted('batch-');
+
+  List<File> _sorted(String prefix) {
     final List<File> files =
         dir
             .listSync()
             .whereType<File>()
-            .where((File f) => f.uri.pathSegments.last.startsWith('batch-'))
+            .where((File f) => f.uri.pathSegments.last.startsWith(prefix))
             .toList()
           ..sort((File a, File b) => a.path.compareTo(b.path));
     return files;
@@ -216,6 +282,7 @@ class DrainResult {
   const DrainResult({
     this.sent = 0,
     this.dropped = 0,
+    this.waiting = 0,
     this.failed = false,
     this.passRefused = false,
   });
@@ -225,6 +292,10 @@ class DrainResult {
 
   /// Records dropped because the server refused them for good.
   final int dropped;
+
+  /// Records refused for their pass, held for a later try (the phone may be
+  /// signed in again after a password reset).
+  final int waiting;
 
   /// A network error stopped the upload; the rest waits for the next try.
   final bool failed;

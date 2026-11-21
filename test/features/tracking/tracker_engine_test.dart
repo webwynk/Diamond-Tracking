@@ -141,16 +141,20 @@ void main() {
     },
   );
 
-  test('refused points are dropped once the duty is over', () async {
-    await engine.start();
-    up.reject = true;
-    engine.onFix(fixAt(now, 0));
-    await engine.tick();
-    expect(engine.pendingCount, 1);
-    now = autoOff.add(const Duration(minutes: 1));
-    expect(await engine.tick(), TrackerMode.stop);
-    expect(engine.pendingCount, 0);
-  });
+  test(
+    'refused points are held after the duty, and the tracker stops (L13)',
+    () async {
+      await engine.start();
+      up.reject = true;
+      engine.onFix(fixAt(now, 0));
+      await engine.tick();
+      expect(engine.pendingCount, 1);
+      now = autoOff.add(const Duration(minutes: 1));
+      expect(await engine.tick(), TrackerMode.stop);
+      expect(engine.pendingCount, 0);
+      expect(files.queue.heldCount, 1);
+    },
+  );
 
   test('a fix from a fake-location app is sent with the fake mark', () async {
     await engine.start();
