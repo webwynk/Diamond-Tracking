@@ -48,4 +48,8 @@ abstract final class DsIcons {
   static const IconData upload = LucideIcons.cloudUpload;
   static const IconData sickLeave = LucideIcons.heartPulse;
   static const IconData casualLeave = LucideIcons.palmtree;
+
+  // Map
+  static const IconData locate = LucideIcons.locateFixed;
+  static const IconData route = LucideIcons.route;
 }

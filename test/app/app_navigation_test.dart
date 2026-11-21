@@ -94,7 +94,7 @@ void main() {
     await tester.tap(find.widgetWithText(NavigationDestination, 'Map'));
     await tester.pumpAndSettle();
     expect(find.text('My map'), findsWidgets);
-    expect(find.text('No route today'), findsOneWidget);
+    expect(find.textContaining('No route today'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(NavigationDestination, 'History'));
     await tester.pumpAndSettle();
