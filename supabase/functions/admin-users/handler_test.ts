@@ -78,6 +78,20 @@ Deno.test('a failed profile insert removes the new sign-in account', async () =>
   assertEquals(b.emails.has('da-050@staff.diamondagritech.internal'), false);
 });
 
+Deno.test('a failed clean-up keeps the first error (L29)', async () => {
+  const { b } = setup();
+  b.failInsert = true;
+  b.failNext.add('deleteAuthUser');
+  let message = '';
+  try {
+    await handler(post(create, 'admin-token'), b);
+  } catch (e) {
+    message = e instanceof Error ? e.message : '';
+  }
+  // The profile insert's error, not the clean-up's.
+  assertEquals(message, 'db down');
+});
+
 Deno.test('deactivating a user signs them out everywhere', async () => {
   const { b, empId } = setup();
   const res = await handler(

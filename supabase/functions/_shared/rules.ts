@@ -35,9 +35,17 @@ export function pinProblem(pin: string): string | null {
   return null;
 }
 
-/** The user's own password: 8 to 72 characters with a letter and a digit. */
+/** Same text in the app (lib/features/auth/domain/credentials.dart). */
+export const PASSWORD_TOO_LONG = 'Too long: use fewer non-English letters';
+
+/**
+ * The user's own password: 8 to 72 characters with a letter and a digit.
+ * Supabase Auth refuses more than 72 bytes (bcrypt's limit), and a Hindi or
+ * Bengali letter is 3 bytes, so a shorter password can still be too long (L36).
+ */
 export function passwordProblem(password: string, userCode: string): string | null {
   if (password.length < 8 || password.length > 72) return 'Use 8 to 72 characters';
+  if (new TextEncoder().encode(password).length > 72) return PASSWORD_TOO_LONG;
   if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
     return 'Use at least one letter and one digit';
   }

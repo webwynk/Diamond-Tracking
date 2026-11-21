@@ -32,6 +32,17 @@ void main() {
     expect(passwordProblem('abcdefgh'), isNotNull);
     expect(passwordProblem('12345678'), isNotNull);
     expect(passwordProblem('x' * 72 + '1'), isNotNull);
+    // 72 English characters are 72 bytes: allowed.
+    expect(passwordProblem('a1' * 36), isNull);
+  });
+
+  test('a password over 72 bytes is too long, even under 72 characters', () {
+    // Each Hindi letter is 3 bytes: 30 letters + "ab12" = 94 bytes.
+    final String hindi = '${'क' * 30}ab12';
+    expect(hindi.length, 34);
+    expect(passwordProblem(hindi), passwordTooLong);
+    // 22 Hindi letters + "ab12" = 70 bytes: allowed.
+    expect(passwordProblem('${'क' * 22}ab12'), isNull);
     expect(passwordProblem('Emp01pass9', userCode: 'emp01'), isNotNull);
   });
 

@@ -9,6 +9,14 @@ import type {
 } from './backend.ts';
 import type { Mailer } from './mailer.ts';
 
+/** Calls a test can make fail once with failNext. */
+type FailingCall =
+  | 'updateProfile'
+  | 'mergeAppMetadata'
+  | 'setPassword'
+  | 'revokeSessions'
+  | 'deleteAuthUser';
+
 export class FakeBackend implements Backend {
   profiles = new Map<string, Profile>();
   tokens = new Map<string, string>(); // token -> user id
@@ -20,8 +28,8 @@ export class FakeBackend implements Backend {
   /** The details saved with each admin log entry, in the same order. */
   logDetails: Record<string, unknown>[] = [];
   /** Makes the next call of that name fail, like a dropped connection. */
-  failNext = new Set<'updateProfile' | 'mergeAppMetadata' | 'setPassword' | 'revokeSessions'>();
-  private fails(name: 'updateProfile' | 'mergeAppMetadata' | 'setPassword' | 'revokeSessions') {
+  failNext = new Set<FailingCall>();
+  private fails(name: FailingCall) {
     return this.failNext.delete(name);
   }
   codes = new Map<string, string>();
@@ -85,6 +93,7 @@ export class FakeBackend implements Backend {
     return Promise.resolve(id);
   }
   deleteAuthUser(id: string) {
+    if (this.fails('deleteAuthUser')) return Promise.reject(new Error('auth down'));
     for (const [e, i] of this.emails) if (i === id) this.emails.delete(e);
     this.meta.delete(id);
     return Promise.resolve();

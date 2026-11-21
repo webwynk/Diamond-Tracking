@@ -2,6 +2,9 @@
 
 export type Json = Record<string, unknown>;
 
+// Browser access (CORS) is open on purpose: kept for the admin web dashboard
+// (Phase 2). Decided by the owner on 2026-11-21 (review L33). Every call still
+// needs a valid sign-in. When the dashboard is built, allow only its address.
 const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
