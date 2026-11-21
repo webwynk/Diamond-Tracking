@@ -39,3 +39,10 @@ abstract final class Ist {
     return wall.hour * 60 + wall.minute;
   }
 }
+
+/// A calendar date as the database writes it, for example "2026-11-20"
+/// (L53: the one copy used by every repository).
+String isoDate(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/time/ist.dart';
 import '../../duty/domain/duty_day.dart';
 import '../domain/app_request.dart';
 import 'photo_upload.dart';
@@ -43,11 +44,6 @@ abstract interface class RequestsRepository {
 
   PhotoSource photo(int requestId);
 }
-
-String isoDate(DateTime d) =>
-    '${d.year.toString().padLeft(4, '0')}-'
-    '${d.month.toString().padLeft(2, '0')}-'
-    '${d.day.toString().padLeft(2, '0')}';
 
 String _hhmm(int minute) =>
     '${(minute ~/ 60).toString().padLeft(2, '0')}:'

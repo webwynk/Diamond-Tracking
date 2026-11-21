@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/time/ist.dart';
 import '../../duty/domain/duty_day.dart';
 import '../../tracking/domain/track_break.dart';
 import '../domain/day_route.dart';
@@ -36,11 +37,6 @@ class SupabaseRouteRepository implements RouteRepository {
   static const String _dayColumns =
       'id, user_id, day, status, duty_on_at, duty_off_at, end_reason, '
       'worked_minutes, distance_m';
-
-  static String _date(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-'
-      '${d.month.toString().padLeft(2, '0')}-'
-      '${d.day.toString().padLeft(2, '0')}';
 
   @override
   Future<DayRoute?> dayRoute(int dayId) async {
@@ -89,7 +85,7 @@ class SupabaseRouteRepository implements RouteRepository {
         .from('duty_days')
         .select(_dayColumns)
         .eq('user_id', userId)
-        .gte('day', _date(since))
+        .gte('day', isoDate(since))
         .order('day', ascending: false);
     return rows.map(DutyDay.fromJson).toList();
   }
@@ -99,7 +95,7 @@ class SupabaseRouteRepository implements RouteRepository {
     final List<Map<String, dynamic>> rows = await _client
         .from('duty_days')
         .select(_dayColumns)
-        .eq('day', _date(day));
+        .eq('day', isoDate(day));
     return rows.map(DutyDay.fromJson).toList();
   }
 
