@@ -54,8 +54,10 @@ jobs:
           version: 3.2.0 # pinned like the actions (L101)
 
       # Deploys every function; settings (verify_jwt) come from config.toml.
+      # CLI v3 asks before changing a hosted project and fails in CI unless
+      # --yes is given; --remote replaces the deprecated --project-ref.
       - name: Deploy
-        run: supabase functions deploy --project-ref "$PROJECT_REF"
+        run: supabase functions deploy --yes --remote="$PROJECT_REF"
 
       - name: Deployed
-        run: supabase functions list --project-ref "$PROJECT_REF"
+        run: supabase functions list --remote="$PROJECT_REF"
