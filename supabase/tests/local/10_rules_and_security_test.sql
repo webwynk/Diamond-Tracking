@@ -497,7 +497,11 @@ begin
                         now() - interval '70 minutes', false, 35);
   perform t.eq(v.lat_e6, 22500000, 'camera photo keeps GPS');
   perform t.eq(v.accuracy_m, 35, 'camera photo keeps its accuracy (L59)');
-  perform t.eq(v.captured_at >= now() - interval '1 hour', true, 'time not before duty on');
+  -- Never before the duty on of the day it was saved under. (Just after
+  -- midnight a time 70 minutes back is yesterday's duty, so the check is
+  -- against the visit's own day, not today's.)
+  perform t.eq(v.captured_at >= (select duty_on_at from public.duty_days where id = v.duty_day_id),
+               true, 'time not before duty on');
   perform t.expect_error($q$insert into public.visits (id, user_id, duty_day_id, from_gallery, captured_at)
     values (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', 1, true, now())$q$, 'permission denied');
   perform t.act_as_owner();
