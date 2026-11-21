@@ -665,8 +665,17 @@ begin
   perform set_config('role', 'service_role', false);
   perform public.svc_revoke_sessions(e3);
   perform t.act_as_owner();
-  perform t.eq((select count(*) from private.upload_passes where user_id = e3), 0::bigint, 'reset removes passes');
+  -- A reset keeps the pass (L13): refused while no phone is signed in, and
+  -- working again once the same phone signs in.
+  perform t.eq((select count(*) from private.upload_passes where user_id = e3), 1::bigint, 'reset keeps the pass');
+  perform t.act_as(null);
+  perform t.expect_error(format($q$select public.upload_points_with_pass(%s, %L, '[]')$q$, v_day.id, v_pass),
+                         'invalid_upload_pass');
+  perform t.act_as_owner();
   update public.profiles set active_device_id = 'dev-e3-0001' where id = e3;
+  perform t.act_as(null);
+  perform public.upload_points_with_pass(v_day.id, v_pass, '[]');
+  perform t.act_as_owner();
 end;
 $$;
 

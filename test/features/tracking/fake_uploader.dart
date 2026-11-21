@@ -8,6 +8,12 @@ import 'package:diamond_tracking/features/tracking/domain/track_break.dart';
 class FakeUploader implements TrackUploader {
   bool offline = false;
   bool reject = false;
+
+  /// Refuses only this pass (as invalid).
+  String? rejectPass;
+
+  /// Refuses everything for good with this reason.
+  String? rejectReason;
   final List<List<Map<String, Object?>>> pointCalls =
       <List<Map<String, Object?>>>[];
   final List<TrackBreak> breaks = <TrackBreak>[];
@@ -19,9 +25,14 @@ class FakeUploader implements TrackUploader {
     (int sum, List<Map<String, Object?>> c) => sum + c.length,
   );
 
-  void _check() {
+  void _check([String? pass]) {
     if (offline) throw const SocketException('offline');
     if (reject) throw const UploadRejected('invalid_upload_pass');
+    final String? reason = rejectReason;
+    if (reason != null) throw UploadRejected(reason);
+    if (pass != null && pass == rejectPass) {
+      throw const UploadRejected('invalid_upload_pass');
+    }
   }
 
   @override
@@ -30,7 +41,7 @@ class FakeUploader implements TrackUploader {
     String pass,
     List<Map<String, Object?>> points,
   ) async {
-    _check();
+    _check(pass);
     passes.add(pass);
     pointCalls.add(points);
     return points.length;

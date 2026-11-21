@@ -67,9 +67,56 @@ void main() {
     expect(up.passes, <String>['pass1', 'pass2']);
   });
 
-  test('a refused batch is dropped, not retried forever', () async {
+  test(
+    'a batch refused for its pass waits 2 days, then is dropped (L13)',
+    () async {
+      queue.addPoint(1, 'old', point(0));
+      up.reject = true;
+      DrainResult r = await queue.drain(up);
+      expect(r.waiting, 1);
+      expect(r.dropped, 0);
+      // Held, not counted as waiting work (the tracker can stop, and logging
+      // out is not blocked).
+      expect(queue.pendingCount, 0);
+      expect(queue.heldCount, 1);
+
+      // Two days later it is no longer worth keeping.
+      r = await queue.drain(
+        up,
+        now: () => DateTime.now().add(const Duration(days: 2, minutes: 1)),
+      );
+      expect(r.dropped, 1);
+      expect(queue.heldCount, 0);
+    },
+  );
+
+  test('a waiting batch goes up once the pass works again (L13)', () async {
     queue.addPoint(1, 'old', point(0));
     up.reject = true;
+    await queue.drain(up);
+    // Signed in again on the same phone: the same pass is accepted.
+    up.reject = false;
+    final DrainResult r = await queue.drain(up);
+    expect(r.sent, 1);
+    expect(up.passes, <String>['old']);
+    expect(queue.isEmpty, isTrue);
+    expect(queue.heldCount, 0);
+  });
+
+  test('a waiting batch does not hold up the others (L13)', () async {
+    queue.addPoint(1, 'old', point(0));
+    queue.addPoint(2, 'good', point(1));
+    up.rejectPass = 'old';
+    final DrainResult r = await queue.drain(up);
+    expect(r.waiting, 1);
+    expect(r.sent, 1);
+    expect(up.passes, <String>['good']);
+    expect(queue.heldCount, 1);
+  });
+
+  test('a batch refused for another reason is dropped at once', () async {
+    queue.addPoint(1, 'p', point(0));
+    up.rejectReason = 'duty_not_found';
     final DrainResult r = await queue.drain(up);
     expect(r.dropped, 1);
     expect(queue.isEmpty, isTrue);
@@ -107,18 +154,21 @@ void main() {
     expect(queue.isEmpty, isTrue);
   });
 
-  test('a refused batch of another day is still dropped', () async {
-    queue.addPoint(1, 'old', point(0));
-    up.reject = true;
-    final DrainResult r = await queue.drain(
-      up,
-      passFor: (int day) => day == 2 ? 'x' : null,
-      keepOnRefusedPass: true,
-    );
-    expect(r.dropped, 1);
-    expect(r.passRefused, isFalse);
-    expect(queue.isEmpty, isTrue);
-  });
+  test(
+    'a refused batch of another day waits without stopping the drain',
+    () async {
+      queue.addPoint(1, 'old', point(0));
+      up.reject = true;
+      final DrainResult r = await queue.drain(
+        up,
+        passFor: (int day) => day == 2 ? 'x' : null,
+        keepOnRefusedPass: true,
+      );
+      expect(r.waiting, 1);
+      expect(r.dropped, 0);
+      expect(r.passRefused, isFalse);
+    },
+  );
 
   test('big backlogs go in chunks the server accepts', () async {
     for (int i = 0; i < 950; i++) {

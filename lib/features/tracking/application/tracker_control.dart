@@ -181,7 +181,11 @@ class ForegroundTrackerControl implements TrackerControl {
       FlutterForegroundTask.sendDataToTask(TrackerMessages.refresh);
       return;
     }
-    if (await hasUnsentWork()) await _startService();
+    if (await hasUnsentWork() || (await _getFiles()).queue.heldCount > 0) {
+      // Held points (refused after a password reset) get another try now
+      // that the app is open and signed in again.
+      await _startService();
+    }
   }
 
   @override
