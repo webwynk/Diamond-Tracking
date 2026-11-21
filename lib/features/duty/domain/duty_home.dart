@@ -67,7 +67,7 @@ class DutyHome {
     }
     if (day == null) {
       if (DutyRules.canDutyOn(now)) return DutyPhase.canDutyOn;
-      if (dutyOnAllowed && Ist.minuteOfDay(now) < DutyRules.autoDutyOffMinute) {
+      if (dutyOnAllowed && DutyRules.canUsePermitAt(now)) {
         return DutyPhase.allowedByAdmin;
       }
       return Ist.minuteOfDay(now) < DutyRules.dutyOnStartMinute

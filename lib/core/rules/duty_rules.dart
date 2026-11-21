@@ -17,6 +17,12 @@ abstract final class DutyRules {
   /// Open duties are closed automatically at 23:00 IST.
   static const int autoDutyOffMinute = 23 * 60;
 
+  /// The admin's "Allow duty on today" can be given and used until 21:00
+  /// IST. Later, a duty would last under two hours before the 23:00 auto
+  /// duty off: always short, and only a request for the admin (review L28).
+  /// The database checks the same time (private.permit_cutoff_at).
+  static const int dutyPermitEndMinute = 21 * 60;
+
   /// A day shorter than this needs an admin decision.
   static const Duration minimumDuty = Duration(hours: 10);
 
@@ -31,6 +37,10 @@ abstract final class DutyRules {
     final int minute = Ist.minuteOfDay(now);
     return minute >= dutyOnStartMinute && minute <= dutyOnEndMinute;
   }
+
+  /// Whether an admin's permission for today can still start a duty at [now].
+  static bool canUsePermitAt(DateTime now) =>
+      Ist.minuteOfDay(now) < dutyPermitEndMinute;
 
   /// The automatic duty-off instant for a duty that started at [dutyOn].
   static DateTime autoDutyOffFor(DateTime dutyOn) {

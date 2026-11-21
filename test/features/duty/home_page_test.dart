@@ -195,7 +195,7 @@ void main() {
     },
   );
 
-  test('permission ends at 11:00 PM', () {
+  test('permission ends at 9:00 PM (L28)', () {
     final DutyHome home = DutyHome(
       today: null,
       session: null,
@@ -206,12 +206,18 @@ void main() {
       home.phaseAt(DateTime.utc(2026, 11, 20, 12)),
       DutyPhase.allowedByAdmin,
     );
+    // 8:59 PM IST: still usable.
     expect(
-      home.phaseAt(DateTime.utc(2026, 11, 20, 17, 29)),
+      home.phaseAt(DateTime.utc(2026, 11, 20, 15, 29)),
       DutyPhase.allowedByAdmin,
     );
+    // 9:00 PM and 10:50 PM IST: too late, a duty would end at 11:00 PM.
     expect(
-      home.phaseAt(DateTime.utc(2026, 11, 20, 17, 31)),
+      home.phaseAt(DateTime.utc(2026, 11, 20, 15, 30)),
+      DutyPhase.windowClosed,
+    );
+    expect(
+      home.phaseAt(DateTime.utc(2026, 11, 20, 17, 20)),
       DutyPhase.windowClosed,
     );
     // 3:30 AM IST, before the window.

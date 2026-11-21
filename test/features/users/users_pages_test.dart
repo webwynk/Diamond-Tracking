@@ -237,7 +237,10 @@ void main() {
         await tester.tap(find.widgetWithText(TextButton, 'Allow'));
         await tester.pumpAndSettle();
         expect(users.calls, contains('allowDutyOn:u1:Late start'));
-        expect(find.text('Allowed for today. Not used yet.'), findsOneWidget);
+        expect(
+          find.text('Allowed for today, until 9:00 PM. Not used yet.'),
+          findsOneWidget,
+        );
 
         await tester.tap(find.text('Take back permission'));
         await tester.pumpAndSettle();

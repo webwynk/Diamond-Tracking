@@ -125,12 +125,22 @@ begin
   if v_time >= time '05:00' and v_time < time '08:31' then
     perform t.eq(length(public.duty_on('dev-e3-0001')->>'upload_pass'), 64, 'duty on gives an upload pass');
     perform t.expect_error($q$select public.duty_on('dev-e3-0001')$q$, 'already_on_duty_today');
+    -- Leave no duty behind: later checks set up their own (L94).
+    perform t.act_as_owner();
+    delete from public.duty_days where user_id = '00000000-0000-0000-0000-000000000003';
   else
     perform t.expect_error($q$select public.duty_on('dev-e3-0001')$q$, 'duty_on_closed');
   end if;
 end;
 $$;
 select t.act_as_owner();
+
+\echo '--- permissions end at 9:00 PM India time (L28)'
+select t.act_as_owner();
+select t.eq(private.permit_cutoff_at(date '2026-11-21'), timestamptz '2026-11-21 21:00:00+05:30',
+            'permission cut-off is 9:00 PM IST');
+select t.eq(private.permit_cutoff_at(date '2026-11-21') < private.auto_off_at(date '2026-11-21'), true,
+            'cut-off is before the 11 PM auto duty off');
 
 \echo '--- the admin can allow duty on outside the window, for today, once'
 select t.act_as_owner();
@@ -142,7 +152,7 @@ do $$
 declare
   v_time time := (now() at time zone 'Asia/Kolkata')::time;
   v_closed boolean := v_time < time '05:00' or v_time >= time '08:31';
-  v_late boolean := v_time >= time '23:00';
+  v_late boolean := v_time >= time '21:00';  -- permission cut-off (L28)
   e4 constant uuid := '00000000-0000-0000-0000-000000000004';
 begin
   -- Only an admin can allow, and only for an active employee.
@@ -156,7 +166,15 @@ begin
   perform t.expect_error(format('select public.allow_duty_on(%L)', '00000000-0000-0000-0000-00000000000a'), 'user_not_found');
 
   if v_late then
+    -- After 9:00 PM no permission can be given (L28) ...
     perform t.expect_error(format('select public.allow_duty_on(%L)', e4), 'too_late');
+    -- ... and one given earlier can no longer start a duty.
+    perform t.act_as_owner();
+    insert into public.duty_permits (user_id, day) values (e4, private.ist_today());
+    perform t.act_as(e4);
+    perform t.expect_error($q$select public.duty_on('dev-e4-0001')$q$, 'duty_on_closed');
+    perform t.act_as_owner();
+    delete from public.duty_permits;
     return;
   end if;
 
@@ -197,9 +215,9 @@ begin
   -- A second press says "already on", not "closed" (L6).
   perform t.expect_error($q$select public.duty_on('dev-e4-0001')$q$, 'already_on_duty_today');
   perform t.act_as_owner();
-  if v_closed then
-    perform t.eq((select used_at is not null from public.duty_permits where user_id = e4), true, 'permission used');
-  end if;
+  -- Used up whether duty on was inside the 5:00-8:30 window or not, so it
+  -- never shows as "not used yet" after the duty started (L27).
+  perform t.eq((select used_at is not null from public.duty_permits where user_id = e4), true, 'permission used');
   perform t.act_as('00000000-0000-0000-0000-00000000000a');
   perform t.expect_error(format('select public.allow_duty_on(%L)', e4), 'day_already_recorded');
 
@@ -1355,8 +1373,8 @@ declare
   v_closed boolean := v_time < time '05:00' or v_time >= time '08:31';
   e9 constant uuid := '00000000-0000-0000-0000-000000000009';
 begin
-  if v_time >= time '23:00' then
-    return;  -- no permission can be given this late
+  if v_time >= time '21:00' then
+    return;  -- no permission can be given this late (L28)
   end if;
 
   -- The other press inserts the duty just before ours.
