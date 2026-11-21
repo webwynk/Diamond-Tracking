@@ -639,6 +639,7 @@ class FakeVisitsRepository implements VisitsRepository {
   Exception? uploadError;
   Exception? addError;
   GeoPoint? lastLocation;
+  bool? lastMocked;
 
   @override
   Future<List<Visit>> forDay(int dayId) async =>
@@ -659,12 +660,14 @@ class FakeVisitsRepository implements VisitsRepository {
     required String? note,
     required GeoPoint? location,
     required DateTime capturedAt,
+    bool mocked = false,
   }) async {
     final Exception? e = addError;
     if (e != null) throw e;
     final String id = visitIdOf(photoId);
     added.add(photoId);
     lastLocation = location;
+    lastMocked = mocked;
     final List<Visit> list = byDay.putIfAbsent(day, () => <Visit>[]);
     if (list.any((Visit v) => v.id == id)) return;
     list.add(
@@ -675,6 +678,7 @@ class FakeVisitsRepository implements VisitsRepository {
         fromGallery: location == null,
         location: location,
         capturedAt: capturedAt,
+        mocked: mocked,
       ),
     );
   }
@@ -693,11 +697,14 @@ class FakeLocation implements CurrentLocation {
   final List<GeoPoint?> results;
   int calls = 0;
 
+  /// Answer as a fake-location app would.
+  bool mocked = false;
+
   @override
-  Future<GeoPoint?> find() async {
+  Future<LocationFix?> find() async {
     final GeoPoint? r = results[calls.clamp(0, results.length - 1)];
     calls++;
-    return r;
+    return r == null ? null : LocationFix(r, mocked: mocked);
   }
 }
 

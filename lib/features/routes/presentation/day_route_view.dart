@@ -119,6 +119,8 @@ class _Body extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.x4),
             children: <Widget>[
               _Summary(day: day, route: route),
+              if (route != null && route.mockedPoints > 0)
+                FakeGpsWarning(points: route.mockedPoints),
               if (route == null || route.isEmpty)
                 const Padding(
                   padding: EdgeInsets.only(top: AppSpacing.x4),
@@ -216,6 +218,38 @@ class _Figure extends StatelessWidget {
           style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
         ),
         Text(value, style: AppTypography.title),
+      ],
+    ),
+  );
+}
+
+/// Shown when some of the day's points came from a fake-location app.
+class FakeGpsWarning extends StatelessWidget {
+  const FakeGpsWarning({required this.points, super.key});
+
+  final int points;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(top: AppSpacing.x4),
+    padding: const EdgeInsets.all(AppSpacing.x3),
+    decoration: BoxDecoration(
+      color: AppColors.errorBg,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const Icon(Icons.gpp_bad_rounded, color: AppColors.error),
+        const SizedBox(width: AppSpacing.x3),
+        Expanded(
+          child: Text(
+            'Fake GPS: $points ${points == 1 ? 'point' : 'points'} came from '
+            'a fake-location app. They are not counted in the route or the '
+            'distance.',
+            style: AppTypography.body.copyWith(color: AppColors.errorText),
+          ),
+        ),
       ],
     ),
   );

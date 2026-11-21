@@ -13,6 +13,7 @@ import '../../requests/data/photo_picker.dart';
 import '../../requests/presentation/photo_field.dart';
 import '../../routes/domain/geo_point.dart';
 import '../application/visits_providers.dart';
+import '../data/current_location.dart';
 import '../data/visits_repository.dart';
 import '../domain/visit.dart';
 import '../domain/visit_failure.dart';
@@ -38,6 +39,7 @@ class _AddVisitPageState extends ConsumerState<AddVisitPage> {
   PhotoFrom? _from;
   DateTime? _takenAt;
   GeoPoint? _location;
+  bool _mocked = false;
   _Gps _gps = _Gps.none;
   int _gpsTry = 0;
 
@@ -70,6 +72,7 @@ class _AddVisitPageState extends ConsumerState<AddVisitPage> {
     _from = from;
     _takenAt = ref.read(serverClockProvider).now();
     _location = null;
+    _mocked = false;
     if (from == PhotoFrom.camera) {
       _findLocation();
     } else {
@@ -80,11 +83,12 @@ class _AddVisitPageState extends ConsumerState<AddVisitPage> {
   Future<void> _findLocation() async {
     final int attempt = ++_gpsTry;
     setState(() => _gps = _Gps.finding);
-    final GeoPoint? p = await ref.read(currentLocationProvider).find();
+    final LocationFix? fix = await ref.read(currentLocationProvider).find();
     if (!mounted || attempt != _gpsTry || _from != PhotoFrom.camera) return;
     setState(() {
-      _location = p;
-      _gps = p == null ? _Gps.failed : _Gps.found;
+      _location = fix?.point;
+      _mocked = fix?.mocked ?? false;
+      _gps = fix == null ? _Gps.failed : _Gps.found;
     });
   }
 
@@ -120,6 +124,7 @@ class _AddVisitPageState extends ConsumerState<AddVisitPage> {
         storeName: _store.text.trim(),
         note: _note.text.trim().isEmpty ? null : _note.text.trim(),
         location: _from == PhotoFrom.camera ? _location : null,
+        mocked: _from == PhotoFrom.camera && _mocked,
         capturedAt: _takenAt ?? ref.read(serverClockProvider).now(),
       );
       if (!mounted) return;

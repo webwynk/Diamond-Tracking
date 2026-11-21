@@ -168,8 +168,10 @@ class _LiveBody extends StatelessWidget {
                     point: p.point,
                     kind: r.stale ? PinKind.personStale : PinKind.person,
                     title: r.name,
-                    snippet:
-                        'At ${IstFormat.time(p.recordedAt)}. Tap for route.',
+                    snippet: p.mocked
+                        ? 'FAKE GPS at ${IstFormat.time(p.recordedAt)}. '
+                              'Tap for route.'
+                        : 'At ${IstFormat.time(p.recordedAt)}. Tap for route.',
                     onTap: () => open(r),
                   ),
             ],
@@ -196,6 +198,8 @@ class _LiveBody extends StatelessWidget {
                   size: 14,
                   color: !r.onDuty
                       ? AppColors.statusOff
+                      : p?.mocked ?? false
+                      ? AppColors.statusSuspect
                       : r.stale
                       ? AppColors.statusStale
                       : AppColors.statusActive,
@@ -204,6 +208,7 @@ class _LiveBody extends StatelessWidget {
                 subtitle: Text(
                   <String>[
                     state,
+                    if (r.onDuty && (p?.mocked ?? false)) 'Fake GPS',
                     if (p?.battery case final int b when r.onDuty)
                       'Battery $b%',
                   ].join(' · '),

@@ -152,6 +152,28 @@ void main() {
     expect(engine.pendingCount, 0);
   });
 
+  test('a fix from a fake-location app is sent with the fake mark', () async {
+    await engine.start();
+    engine.onFix(fixAt(now, 0));
+    now = now.add(const Duration(minutes: 1));
+    engine.onFix(
+      TrackFix(
+        time: now,
+        latitude: 22.5 + 500 / 111195,
+        longitude: 88.3,
+        accuracyM: 8,
+        mocked: true,
+      ),
+    );
+    await engine.tick();
+    final List<Map<String, Object?>> sent = <Map<String, Object?>>[
+      for (final List<Map<String, Object?>> c in up.pointCalls) ...c,
+    ];
+    expect(sent, hasLength(2));
+    expect(sent[0].containsKey('m'), isFalse);
+    expect(sent[1]['m'], isTrue);
+  });
+
   test('after a phone restart the off time is recorded', () async {
     files.writeState(
       TrackerState(

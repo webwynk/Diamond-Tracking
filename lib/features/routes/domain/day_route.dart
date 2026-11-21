@@ -66,6 +66,7 @@ class DayRoute {
     required this.notes,
     required this.distanceM,
     required this.pointCount,
+    this.mockedPoints = 0,
   });
 
   /// Builds the route from a day_routes row and the day's reported breaks.
@@ -95,6 +96,7 @@ class DayRoute {
       notes: explainGaps(gaps, breaks),
       distanceM: (row['distance_m'] as num?)?.toInt() ?? 0,
       pointCount: (row['point_count'] as num?)?.toInt() ?? 0,
+      mockedPoints: (row['mocked_points'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -106,6 +108,10 @@ class DayRoute {
   final List<RouteNote> notes;
   final int distanceM;
   final int pointCount;
+
+  /// Points that came from a fake-location app. They are not in the route,
+  /// the distance or the stops.
+  final int mockedPoints;
 
   bool get isEmpty => segments.every((List<GeoPoint> s) => s.isEmpty);
 

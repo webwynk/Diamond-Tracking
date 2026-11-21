@@ -1019,4 +1019,113 @@ begin
 end;
 $$;
 
+\echo '--- fake GPS is flagged and not counted; indoor fixes keep the phone alive; a bad first fix adds no km'
+select t.act_as_owner();
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000009', 'e9@test');
+insert into public.profiles (id, user_code, full_name, role, created_at, active_device_id)
+values ('00000000-0000-0000-0000-000000000009', 'DA-009', 'Employee Nine', 'employee',
+        now() - interval '30 days', 'dev-e9-0001');
+do $$
+declare
+  e9 uuid := '00000000-0000-0000-0000-000000000009';
+  v_day public.duty_days;
+  v_drive public.duty_days;
+  v_today public.duty_days;
+  v_t timestamptz;
+  v_pts jsonb := '[]';
+  v_pass text;
+  v public.visits;
+  i integer;
+begin
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values (e9, private.ist_today() - 20, 'on_duty', private.ist_at(private.ist_today() - 20, time '07:00'))
+  returning * into v_day;
+  v_t := v_day.duty_on_at;
+  -- The first fix is 2 km off; the phone then settles at the godown.
+  v_pts := v_pts || jsonb_build_object('t', v_t, 'la', 22518000, 'lo', 88300000, 'a', 10);
+  for i in 1..10 loop
+    v_pts := v_pts || jsonb_build_object('t', v_t + make_interval(mins => i),
+      'la', 22500000 + (i % 2) * 20, 'lo', 88300000, 'a', 8);
+  end loop;
+  -- 30 minutes inside a dealer: only weak fixes (100 m).
+  for i in 0..10 loop
+    v_pts := v_pts || jsonb_build_object('t', v_t + make_interval(mins => 11 + i * 3),
+      'la', 22500000, 'lo', 88300000, 'a', 100);
+  end loop;
+  -- 10 minutes driving east, 100 m a minute (1 km).
+  for i in 0..10 loop
+    v_pts := v_pts || jsonb_build_object('t', v_t + make_interval(mins => 44 + i),
+      'la', 22500000, 'lo', 88300000 + i * 973, 'a', 8);
+  end loop;
+  -- A fake-location app "drives" on at a believable speed (another 500 m).
+  for i in 1..5 loop
+    v_pts := v_pts || jsonb_build_object('t', v_t + make_interval(mins => 54 + i),
+      'la', 22500000, 'lo', 88300000 + (10 + i) * 973, 'a', 5, 'm', true);
+  end loop;
+  v_pass := private.new_upload_pass(v_day, 'dev-e9-0001');
+  update private.upload_passes set expires_at = now() + interval '1 day' where duty_day_id = v_day.id;
+  perform t.act_as(null);
+  perform t.eq(public.upload_points_with_pass(v_day.id, v_pass, v_pts), 38, 'all points stored');
+  perform t.act_as_owner();
+  perform private.build_route(v_day.id);
+
+  perform t.eq((select count(*) from public.track_points where duty_day_id = v_day.id and mocked),
+               5::bigint, 'fake points are marked');
+  perform t.eq((select mocked_points from public.day_routes where duty_day_id = v_day.id), 5,
+               'the route counts the fake points');
+  perform t.eq((select mocked from public.live_positions where user_id = e9), true,
+               'the live position says fake');
+  perform t.eq((select jsonb_array_length(gaps) from public.day_routes where duty_day_id = v_day.id), 0,
+               'weak indoor fixes leave no gap');
+  if (select distance_m from public.day_routes where duty_day_id = v_day.id) not between 900 and 1100 then
+    raise exception 'distance should be about 1 km (no bad first fix, no fake km), got %',
+      (select distance_m from public.day_routes where duty_day_id = v_day.id);
+  end if;
+
+  -- Real driving from the first point is counted in full.
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values (e9, private.ist_today() - 21, 'on_duty', private.ist_at(private.ist_today() - 21, time '07:00'))
+  returning * into v_drive;
+  v_pts := '[]';
+  for i in 0..10 loop
+    v_pts := v_pts || jsonb_build_object('t', v_drive.duty_on_at + make_interval(secs => i * 30),
+      'la', 22500000, 'lo', 88300000 + i * 4865, 'a', 8);
+  end loop;
+  v_pass := private.new_upload_pass(v_drive, 'dev-e9-0001');
+  update private.upload_passes set expires_at = now() + interval '1 day' where duty_day_id = v_drive.id;
+  perform t.act_as(null);
+  perform public.upload_points_with_pass(v_drive.id, v_pass, v_pts);
+  perform t.act_as_owner();
+  perform private.build_route(v_drive.id);
+  if (select distance_m from public.day_routes where duty_day_id = v_drive.id) not between 4900 and 5100 then
+    raise exception 'driving from the start should count about 5 km, got %',
+      (select distance_m from public.day_routes where duty_day_id = v_drive.id);
+  end if;
+  perform t.eq((select mocked_points from public.day_routes where duty_day_id = v_drive.id), 0,
+               'no fake points, no warning');
+
+  -- Visits carry the mark of a camera location; a gallery photo has none.
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values (e9, private.ist_today(), 'on_duty', now() - interval '1 hour')
+  returning * into v_today;
+  perform t.act_as(e9);
+  v := public.add_visit('bbbbbbbb-0000-0000-0000-000000000001', 'Agro Store', null, false,
+                        22500000, 88300000, 'visit-bbbbbbbb-0000-0000-0000-000000000001', now(), true);
+  perform t.eq(v.mocked, true, 'a fake camera location is marked');
+  v := public.add_visit('bbbbbbbb-0000-0000-0000-000000000002', 'Agro Store', null, true,
+                        null, null, 'visit-bbbbbbbb-0000-0000-0000-000000000002', now(), true);
+  perform t.eq(v.mocked, false, 'a gallery photo has no location to fake');
+  -- The current app sends no mark.
+  v := public.add_visit('bbbbbbbb-0000-0000-0000-000000000003', 'Agro Store', null, false,
+                        22500000, 88300000, 'visit-bbbbbbbb-0000-0000-0000-000000000003', now());
+  perform t.eq(v.mocked, false, 'no mark means not fake');
+  perform t.act_as_owner();
+
+  delete from public.duty_days where user_id = e9;
+  delete from public.live_positions where user_id = e9;
+end;
+$$;
+delete from public.profiles where id = '00000000-0000-0000-0000-000000000009';
+delete from auth.users where id = '00000000-0000-0000-0000-000000000009';
+
 \echo 'ALL TESTS PASSED'

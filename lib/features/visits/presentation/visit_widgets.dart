@@ -10,7 +10,9 @@ import '../application/visits_providers.dart';
 import '../domain/visit.dart';
 
 /// "Camera photo at 22.57261, 88.36389" or "Gallery photo, no location".
+/// A location from a fake-location app says so first.
 String visitPlace(Visit v) => switch (v.location) {
+  final p? when v.mocked => 'Fake GPS: camera photo at ${formatPoint(p)}',
   final p? => 'Camera photo at ${formatPoint(p)}',
   null => 'Gallery photo, no location',
 };

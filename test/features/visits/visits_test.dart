@@ -14,6 +14,7 @@ import 'package:diamond_tracking/features/visits/application/visits_providers.da
 import 'package:diamond_tracking/features/visits/domain/visit.dart';
 import 'package:diamond_tracking/features/visits/domain/visit_failure.dart';
 import 'package:diamond_tracking/features/visits/presentation/add_visit_page.dart';
+import 'package:diamond_tracking/features/visits/presentation/visit_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -92,6 +93,33 @@ void main() {
     expect(saved.storeName, 'Krishi Kendra');
     expect(saved.note, 'Order taken');
     expect(find.text('below'), findsOneWidget); // closed
+  });
+
+  testWidgets('a fake camera location is saved as fake', (
+    WidgetTester tester,
+  ) async {
+    location.mocked = true;
+    await openAddVisit(tester);
+    await tester.enterText(find.byType(TextField).first, 'Krishi Kendra');
+    await tester.tap(find.text('Camera'));
+    await tester.pumpAndSettle();
+    await save(tester);
+    expect(visits.lastMocked, isTrue);
+    expect(
+      visitPlace(visits.byDay[5]!.single),
+      'Fake GPS: camera photo at 22.50000, 88.30000',
+    );
+  });
+
+  testWidgets('a real camera location is not marked', (
+    WidgetTester tester,
+  ) async {
+    await openAddVisit(tester);
+    await tester.enterText(find.byType(TextField).first, 'Krishi Kendra');
+    await tester.tap(find.text('Camera'));
+    await tester.pumpAndSettle();
+    await save(tester);
+    expect(visits.lastMocked, isFalse);
   });
 
   testWidgets('a gallery photo saves no place', (WidgetTester tester) async {

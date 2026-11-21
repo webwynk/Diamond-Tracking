@@ -188,6 +188,7 @@ class TrackerTaskHandler extends TaskHandler {
           latitude: p.latitude,
           longitude: p.longitude,
           accuracyM: p.accuracy,
+          mocked: p.isMocked,
         ),
       );
     } on FileSystemException catch (e) {

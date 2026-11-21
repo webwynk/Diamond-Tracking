@@ -58,27 +58,31 @@ void main() {
     distanceM: distance,
   );
 
-  DayRoute route(int id, {List<String?> addresses = const <String?>[null]}) =>
-      DayRoute(
-        dayId: id,
-        segments: const <List<GeoPoint>>[
-          <GeoPoint>[GeoPoint(22.5, 88.3), GeoPoint(22.6, 88.4)],
-        ],
-        stops: <RouteStop>[
-          for (int i = 0; i < addresses.length; i++)
-            RouteStop(
-              point: const GeoPoint(22.55, 88.35),
-              start: at(60 + i * 120),
-              end: at(100 + i * 120),
-              address: addresses[i],
-            ),
-        ],
-        notes: <RouteNote>[
-          RouteNote(from: at(200), to: at(230), kind: NoteKind.phoneOff),
-        ],
-        distanceM: 12400,
-        pointCount: 80,
-      );
+  DayRoute route(
+    int id, {
+    List<String?> addresses = const <String?>[null],
+    int mocked = 0,
+  }) => DayRoute(
+    dayId: id,
+    segments: const <List<GeoPoint>>[
+      <GeoPoint>[GeoPoint(22.5, 88.3), GeoPoint(22.6, 88.4)],
+    ],
+    stops: <RouteStop>[
+      for (int i = 0; i < addresses.length; i++)
+        RouteStop(
+          point: const GeoPoint(22.55, 88.35),
+          start: at(60 + i * 120),
+          end: at(100 + i * 120),
+          address: addresses[i],
+        ),
+    ],
+    notes: <RouteNote>[
+      RouteNote(from: at(200), to: at(230), kind: NoteKind.phoneOff),
+    ],
+    distanceM: 12400,
+    pointCount: 80,
+    mockedPoints: mocked,
+  );
 
   testWidgets('a day\'s route lists stops and notes, then fills addresses', (
     WidgetTester tester,
@@ -181,6 +185,54 @@ void main() {
     await tester.tap(find.textContaining('5.0 km'));
     await tester.pumpAndSettle();
     expect(find.text('route /history/day/1'), findsOneWidget);
+  });
+
+  testWidgets('a route with fake GPS points warns', (
+    WidgetTester tester,
+  ) async {
+    routes.days[8] = day(8, on: at(0));
+    routes.routes[8] = route(8, addresses: const <String?>['Shop'], mocked: 12);
+    await pumpPage(
+      tester,
+      const DayRoutePage(dayId: 8, personName: 'Asha Roy'),
+      overrides: overrides(),
+    );
+    expect(find.textContaining('Fake GPS: 12 points'), findsOneWidget);
+  });
+
+  testWidgets('a route without fake GPS shows no warning', (
+    WidgetTester tester,
+  ) async {
+    routes.days[8] = day(8, on: at(0));
+    routes.routes[8] = route(8, addresses: const <String?>['Shop']);
+    await pumpPage(
+      tester,
+      const DayRoutePage(dayId: 8, personName: 'Asha Roy'),
+      overrides: overrides(),
+    );
+    expect(find.textContaining('Fake GPS'), findsNothing);
+  });
+
+  testWidgets('the live map marks a fake position', (
+    WidgetTester tester,
+  ) async {
+    routes.days[20] = day(20, user: 'u', on: at(0), status: DayStatus.onDuty);
+    routes.initialLive = <LivePosition>[
+      LivePosition(
+        userId: 'u',
+        dutyDayId: 20,
+        point: const GeoPoint(22.5, 88.3),
+        recordedAt: now.subtract(const Duration(minutes: 1)),
+        mocked: true,
+      ),
+    ];
+    await pumpPage(
+      tester,
+      const LiveMapPage(),
+      users: FakeUsersRepository(<Profile>[profile('u', name: 'Asha Roy')]),
+      overrides: overrides(),
+    );
+    expect(find.textContaining('Fake GPS'), findsOneWidget);
   });
 
   testWidgets('the live map lists people and opens a route', (

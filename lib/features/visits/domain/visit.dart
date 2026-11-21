@@ -12,6 +12,7 @@ class Visit {
     this.location,
     this.hasPhoto = true,
     this.photoRemoved = false,
+    this.mocked = false,
   });
 
   factory Visit.fromRow(Map<String, dynamic> row) {
@@ -28,6 +29,7 @@ class Visit {
       hasPhoto: row['photo_id'] != null,
       photoRemoved: row['photo_removed_at'] != null,
       capturedAt: DateTime.parse(row['captured_at'] as String).toUtc(),
+      mocked: row['mocked'] as bool? ?? false,
     );
   }
 
@@ -41,6 +43,9 @@ class Visit {
   /// Photos are deleted after 90 days; the visit stays.
   final bool photoRemoved;
   final DateTime capturedAt;
+
+  /// The camera location came from a fake-location app.
+  final bool mocked;
 
   bool get showsPhoto => hasPhoto && !photoRemoved;
 }
