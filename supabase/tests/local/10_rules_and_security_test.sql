@@ -219,13 +219,17 @@ do $$
 declare
   v_day date := private.ist_today() - 1;
   v_id bigint;
+  v_row public.duty_days;
+  v_pass text;
   v_points jsonb := '[]';
   v_t timestamptz := private.ist_at(v_day, time '07:00');
   i integer;
 begin
   insert into public.duty_days (user_id, day, status, duty_on_at)
   values ('00000000-0000-0000-0000-000000000001', v_day, 'on_duty', v_t)
-  returning id into v_id;
+  returning * into v_row;
+  v_id := v_row.id;
+  v_pass := private.new_upload_pass(v_row, 'dev-e1-0001');
   -- 30 minutes driving north, 100 m a minute (3 km).
   for i in 0..30 loop
     v_points := v_points || jsonb_build_object('t', v_t + make_interval(mins => i),
@@ -250,14 +254,17 @@ begin
   v_points := v_points || jsonb_build_object('t', v_t - interval '2 hours',
     'la', 22500000, 'lo', 88300000, 'a', 8, 'b', 90);
 
-  perform t.act_as('00000000-0000-0000-0000-000000000001');
-  perform t.eq(public.upload_points(v_id, v_points, 'dev-e1-0001'), 52, 'points stored');
-  perform t.eq(public.upload_points(v_id, v_points, 'dev-e1-0001'), 0, 'a retried upload adds nothing');
-  perform t.expect_error(format($q$select public.upload_points(%s, '[]', 'other-phone-1')$q$, v_id), 'signed_in_elsewhere');
+  -- The tracker has no session, only the day's pass.
+  perform t.act_as(null);
+  perform t.eq(public.upload_points_with_pass(v_id, v_pass, v_points), 52, 'points stored');
+  perform t.eq(public.upload_points_with_pass(v_id, v_pass, v_points), 0, 'a retried upload adds nothing');
+  perform t.expect_error(format($q$select public.upload_points_with_pass(%s, 'not-the-pass', '[]')$q$, v_id),
+                         'invalid_upload_pass');
 
   -- Another employee cannot touch this duty.
   perform t.act_as('00000000-0000-0000-0000-000000000002');
-  perform t.expect_error(format($q$select public.upload_points(%s, %L, 'dev-e2-0001')$q$, v_id, v_points), 'duty_not_found');
+  perform t.expect_error(format($q$select public.upload_points_with_pass(%s, 'not-the-pass', %L)$q$, v_id, v_points),
+                         'invalid_upload_pass');
   perform t.expect_error(format('select public.duty_off(%s)', v_id), 'duty_not_found');
   perform t.eq((select count(*) from public.track_points), 0::bigint, 'others cannot read points');
 
@@ -666,6 +673,7 @@ declare
   v_day public.duty_days;
   v_t timestamptz;
   v_pts jsonb := '[]';
+  v_pass text;
   r record;
   n integer := 0;
   i integer;
@@ -680,8 +688,11 @@ begin
     v_pts := v_pts || jsonb_build_object('t', v_t + make_interval(mins => i),
       'la', 22700000 + (i % 2) * 30, 'lo', 88400000, 'a', 8, 'b', 70);
   end loop;
-  perform t.act_as(e2);
-  perform public.upload_points(v_day.id, v_pts, 'dev-e2-0001');
+  v_pass := private.new_upload_pass(v_day, 'dev-e2-0001');
+  -- (An old day's pass has expired; this one stands in for a duty still running.)
+  update private.upload_passes set expires_at = now() + interval '1 day' where duty_day_id = v_day.id;
+  perform t.act_as(null);
+  perform public.upload_points_with_pass(v_day.id, v_pass, v_pts);
   perform t.act_as_owner();
   perform t.eq((select jsonb_array_length(stops) from public.day_routes where duty_day_id = v_day.id),
                1, 'route built while on duty');
@@ -937,6 +948,74 @@ begin
   delete from public.duty_permits where user_id = u and day in (today - 31, today - 29);
   delete from private.password_reset_codes where user_id in (u, u2);
   delete from public.duty_days where id in (d_old, d_new);
+end;
+$$;
+
+\echo '--- leftovers are gone: public.places and the signed-in upload_points'
+do $$
+begin
+  perform t.eq(to_regclass('public.places') is null, true, 'public.places is gone');
+  perform t.eq(to_regprocedure('public.upload_points(bigint,jsonb,text)') is null, true,
+               'signed-in upload_points is gone');
+  perform t.eq(to_regclass('private.place_names') is not null, true, 'the real address cache stays');
+  perform t.eq(to_regprocedure('public.upload_points_with_pass(bigint,text,jsonb)') is not null, true,
+               'the tracker upload stays');
+end;
+$$;
+
+\echo '--- an admin day decision settles the short-duty review (no overwrite later)'
+do $$
+declare
+  e1 uuid := '00000000-0000-0000-0000-000000000001';
+  adm uuid := '00000000-0000-0000-0000-00000000000a';
+  d1 date := private.ist_today() - 20;
+  d2 date := private.ist_today() - 21;
+  v_id1 bigint; v_id2 bigint; v_req1 bigint; v_req2 bigint;
+  v_off1 timestamptz := private.ist_at(d1, time '12:00');
+  v_off2 timestamptz := private.ist_at(d2, time '12:00');
+begin
+  perform t.act_as_owner();
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values (e1, d1, 'on_duty', private.ist_at(d1, time '07:00')) returning id into v_id1;
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values (e1, d2, 'on_duty', private.ist_at(d2, time '07:00')) returning id into v_id2;
+  perform t.act_as(e1);
+  perform public.duty_off(v_id1, v_off1);
+  perform public.duty_off(v_id2, v_off2);
+  select id into v_req1 from public.requests where kind = 'short_duty' and day = d1 and user_id = e1;
+  select id into v_req2 from public.requests where kind = 'short_duty' and day = d2 and user_id = e1;
+  perform t.eq(v_req1 is not null and v_req2 is not null, true, 'both short days wait for the admin');
+
+  -- The admin sets the first day to absent from the day screen.
+  perform t.act_as(adm);
+  perform public.set_day_status(e1, d1, 'absent', null, 'Not in the field');
+  perform t.expect_error(format($q$select public.decide_request(%s, 'present')$q$, v_req1), 'request_already_decided');
+  perform t.act_as_owner();
+  perform t.eq((select status from public.requests where id = v_req1), 'rejected'::public.request_status, 'absent closes it as rejected');
+  perform t.eq((select decision from public.requests where id = v_req1), 'absent'::public.day_status, 'decision kept');
+  perform t.eq((select decided_by from public.requests where id = v_req1), adm, 'who decided is kept');
+  perform t.eq((select status from public.duty_days where id = v_id1), 'absent'::public.day_status, 'the admin choice stands');
+  perform t.eq((select (details->>'closed_request')::bigint from public.admin_log
+                where action = 'set_day_status' and (details->>'day')::date = d1), v_req1, 'log names the closed request');
+
+  -- Present closes the second one as approved.
+  perform t.act_as(adm);
+  perform public.set_day_status(e1, d2, 'present');
+  perform t.act_as_owner();
+  perform t.eq((select status from public.requests where id = v_req2), 'approved'::public.request_status, 'present closes it as approved');
+  perform t.eq((select status from public.duty_days where id = v_id2), 'present'::public.day_status, 'present stands');
+
+  -- A day with no open review still works, and nothing else is closed.
+  perform t.act_as(adm);
+  perform public.set_day_status(e1, d2, 'half_day');
+  perform t.act_as_owner();
+  perform t.eq((select status from public.duty_days where id = v_id2), 'half_day'::public.day_status, 'a later change still works');
+  perform t.eq((select details->>'closed_request' from public.admin_log
+                where action = 'set_day_status' and (details->>'day')::date = d2 order by id desc limit 1), null,
+               'nothing to close the second time');
+
+  delete from public.requests where id in (v_req1, v_req2);
+  delete from public.duty_days where id in (v_id1, v_id2);
 end;
 $$;
 
