@@ -109,3 +109,26 @@ Deno.test('google geocoder sends the key and reads the reply', async () => {
   assertEquals(await googleGeocoder('k1', fake)(22.7, 88.4), 'Barasat');
   assertEquals(asked.includes('latlng=22.7%2C88.4') && asked.includes('key=k1'), true);
 });
+
+Deno.test('3 lookups at a time, answers kept in order up to an error (L66)', async () => {
+  const b = setup();
+  b.missing = Array.from({ length: 10 }, (_, i) => ({
+    cell_lat: i,
+    cell_lng: i,
+    lat: i,
+    lng: i,
+  }));
+  let inFlight = 0;
+  let most = 0;
+  const res = await handler(post({ day_id: 7 }, 'emp'), b, async (lat) => {
+    inFlight++;
+    most = Math.max(most, inFlight);
+    await new Promise((r) => setTimeout(r, 5));
+    inFlight--;
+    if (lat === 4) throw new Error('OVER_QUERY_LIMIT');
+    return `Place ${lat}`;
+  });
+  assertEquals(most, 3);
+  assertEquals(await res.json(), { looked_up: 4, remaining: 6 });
+  assertEquals(b.saved.map((s) => s.address), ['Place 0', 'Place 1', 'Place 2', 'Place 3']);
+});

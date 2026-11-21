@@ -160,3 +160,23 @@ Deno.test('destroy is signed over invalidate, public_id, timestamp and type', as
   );
   assertEquals(f.api_key, 'key1');
 });
+
+Deno.test('Cloudinary shrinks big photos on arrival, inside the signature (L62)', async () => {
+  const { b, deps } = setup();
+  const body = await (await handler(post({ action: 'sign' }, 'emp'), b, deps)).json();
+  assertEquals(body.fields.transformation, 'c_limit,h_1280,w_1280');
+  const { api_key: _key, signature, ...signed } = body.fields;
+  assertEquals(signature, await signParams(signed, cfg.apiSecret));
+});
+
+Deno.test('at most 60 photos a day per person (L62)', async () => {
+  const { b, deps } = setup();
+  for (let i = 0; i < 60; i++) {
+    assertEquals((await handler(post({ action: 'sign' }, 'emp'), b, deps)).status, 200);
+  }
+  const res = await handler(post({ action: 'sign', kind: 'visit' }, 'emp'), b, deps);
+  assertEquals(res.status, 429);
+  assertEquals((await res.json()).error, 'photo_limit');
+  // Someone else can still upload.
+  assertEquals((await handler(post({ action: 'sign' }, 'other'), b, deps)).status, 200);
+});

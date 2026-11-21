@@ -105,3 +105,18 @@ Deno.test('signs a JWT, caches the access token, reports gone tokens', async () 
   assertEquals(calls.filter((c) => c.includes('oauth2')).length, 1);
   assertEquals(calls[1], 'https://fcm.googleapis.com/v1/projects/proj/messages:send');
 });
+
+Deno.test('one phone failing does not lose the push for the others (L64, L67)', async () => {
+  const b = new FakeBackend();
+  b.pushJobs.set(3, job(['t1', 'broken', 'old']));
+  const s = new FakeSender();
+  s.gone.add('old');
+  const flaky: Sender = {
+    send: (token, m) =>
+      token === 'broken' ? Promise.reject(new Error('network down')) : s.send(token, m),
+  };
+  const res = await handler(post({ id: 3 }), b, flaky);
+  assertEquals(await res.json(), { sent: 1, dropped: 1 });
+  assertEquals(s.sent.map((x) => x.token), ['t1']);
+  assertEquals(b.droppedTokens, ['old']);
+});

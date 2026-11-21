@@ -16,6 +16,7 @@ enum VisitFailure {
   ),
   noteTooLong('The note is too long.'),
   photosNotReady('Photo upload is not set up yet. Tell the admin.'),
+  photoLimit('Photo limit for today reached (60 photos). Try again tomorrow.'),
   photoUploadFailed(
     'The photo did not upload. Check the internet and try again.',
   ),
@@ -65,6 +66,7 @@ VisitFailure mapVisitError(Object error) {
     'location_required': VisitFailure.noLocation,
     'note_too_long': VisitFailure.noteTooLong,
     'photos_not_configured': VisitFailure.photosNotReady,
+    'photo_limit': VisitFailure.photoLimit,
     'signed_in_elsewhere': VisitFailure.signedInElsewhere,
   };
   for (final MapEntry<String, VisitFailure> e in codes.entries) {

@@ -92,3 +92,49 @@ Deno.test('a wrong code changes nothing', async () => {
 Deno.test('codes are 6 digits', () => {
   for (let i = 0; i < 50; i++) assertEquals(/^[0-9]{6}$/.test(randomCode()), true);
 });
+
+Deno.test('a wrong code gets the same answer for real and unknown IDs (L60)', async () => {
+  const { b, mail } = setup();
+  await handler(post({ action: 'request', user_code: 'DA-001' }), b, mail, () => '654321');
+  const answers = [];
+  for (const user_code of ['DA-001', 'DA-002', 'DA-999']) {
+    const res = await handler(
+      post({ action: 'confirm', user_code, code: '000000', new_password: 'weak' }),
+      b,
+      mail,
+    );
+    answers.push([res.status, (await res.json()).error]);
+  }
+  assertEquals(answers, [
+    [400, 'invalid_code'],
+    [400, 'invalid_code'],
+    [400, 'invalid_code'],
+  ]);
+});
+
+Deno.test('the right code with a weak password names the password rule (L60)', async () => {
+  const { b, id, mail } = setup();
+  await handler(post({ action: 'request', user_code: 'DA-001' }), b, mail, () => '654321');
+  const res = await handler(
+    post({ action: 'confirm', user_code: 'DA-001', code: '654321', new_password: 'weak' }),
+    b,
+    mail,
+  );
+  assertEquals(res.status, 400);
+  assertEquals((await res.json()).error, 'validation_failed');
+  assertEquals(b.passwords.has(id), false);
+});
+
+Deno.test('a turned-off user cannot use a code (L67)', async () => {
+  const { b, id, mail } = setup();
+  await handler(post({ action: 'request', user_code: 'DA-001' }), b, mail, () => '654321');
+  b.profiles.set(id, { ...b.profiles.get(id)!, is_active: false });
+  const res = await handler(
+    post({ action: 'confirm', user_code: 'DA-001', code: '654321', new_password: 'newpass2026' }),
+    b,
+    mail,
+  );
+  assertEquals(res.status, 400);
+  assertEquals((await res.json()).error, 'invalid_code');
+  assertEquals(b.passwords.has(id), false);
+});

@@ -246,6 +246,27 @@ void main() {
     },
   );
 
+  test('over the daily photo limit a visit waits for tomorrow (L62)', () async {
+    await outbox.add(
+      PendingVisit(
+        id: VisitOutbox.newId(),
+        userId: 'u',
+        storeName: 'Shop',
+        capturedAt: DateTime.utc(2026, 11, 20, 5),
+      ),
+      Uint8List.fromList(<int>[1]),
+    );
+    visits.uploadError = const FunctionException(
+      status: 429,
+      details: <String, String>{'error': 'photo_limit'},
+    );
+    expect(await sender().sendAll('u'), 0);
+    expect(await outbox.pending(), hasLength(1));
+    visits.uploadError = null;
+    expect(await sender().sendAll('u'), 1);
+    expect(await outbox.pending(), isEmpty);
+  });
+
   test('only the signed-in person\'s waiting visits are sent', () async {
     await outbox.add(
       PendingVisit(
@@ -273,6 +294,15 @@ void main() {
     expect(
       mapVisitError(const PostgrestException(message: 'signed_in_elsewhere')),
       VisitFailure.signedInElsewhere,
+    );
+    expect(
+      mapVisitError(
+        const FunctionException(
+          status: 429,
+          details: <String, String>{'error': 'photo_limit'},
+        ),
+      ),
+      VisitFailure.photoLimit,
     );
     expect(mapVisitError(Exception('x')), VisitFailure.unknown);
   });

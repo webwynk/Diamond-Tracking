@@ -136,6 +136,15 @@ export class FakeBackend implements Backend {
     this.codes.set(id, code);
     return Promise.resolve(true);
   }
+  /** Photo uploads counted per user; more than photoLimit are refused. */
+  photoUploads = new Map<string, number>();
+  photoLimit = 60;
+  countPhotoUpload(userId: string) {
+    const n = this.photoUploads.get(userId) ?? 0;
+    if (n >= this.photoLimit) return Promise.resolve(false);
+    this.photoUploads.set(userId, n + 1);
+    return Promise.resolve(true);
+  }
   useResetCode(id: string, code: string) {
     const ok = this.codes.get(id) === code;
     if (ok) this.codes.delete(id);

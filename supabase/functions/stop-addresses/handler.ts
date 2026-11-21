@@ -14,6 +14,8 @@ import { readBody, reply } from '../_shared/http.ts';
 import type { Geocoder } from './geocode.ts';
 
 export const MAX_LOOKUPS = 10;
+/** Lookups sent to Google at the same time. */
+export const PARALLEL = 3;
 
 export async function handler(
   req: Request,
@@ -35,15 +37,21 @@ export async function handler(
     return reply(200, { looked_up: 0, remaining: missing.length });
   }
 
+  // PARALLEL lookups at a time (L66). On a quota or network error, keep the
+  // answers before it (in order) and try the rest next time.
   const done: { cell_lat: number; cell_lng: number; address: string }[] = [];
-  for (const m of missing.slice(0, MAX_LOOKUPS)) {
-    try {
-      const address = await geocode(m.lat, m.lng);
-      done.push({ cell_lat: m.cell_lat, cell_lng: m.cell_lng, address: address ?? '' });
-    } catch (e) {
-      // Quota or network trouble: keep what we have, try again next time.
-      console.error('geocode failed:', e instanceof Error ? e.message : 'unknown');
-      break;
+  const todo = missing.slice(0, MAX_LOOKUPS);
+  lookups: for (let i = 0; i < todo.length; i += PARALLEL) {
+    const batch = todo.slice(i, i + PARALLEL);
+    const results = await Promise.allSettled(batch.map((m) => geocode(m.lat, m.lng)));
+    for (const [j, r] of results.entries()) {
+      if (r.status === 'rejected') {
+        const e = r.reason;
+        console.error('geocode failed:', e instanceof Error ? e.message : 'unknown');
+        break lookups;
+      }
+      const m = batch[j];
+      done.push({ cell_lat: m.cell_lat, cell_lng: m.cell_lng, address: r.value ?? '' });
     }
   }
   if (done.length > 0) await b.savePlaces(dayId, done);

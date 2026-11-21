@@ -1756,4 +1756,35 @@ select t.act_as_owner();
 delete from public.profiles where id = '00000000-0000-0000-0000-000000000013';
 delete from auth.users where id = '00000000-0000-0000-0000-000000000013';
 
+
+\echo '--- photo uploads: at most 60 a day per person (L62)'
+do $$
+declare
+  u uuid := '00000000-0000-0000-0000-000000000003';
+  v_today date;
+  i integer;
+begin
+  perform t.act_as(u);
+  perform t.expect_error($q$select public.svc_count_photo_upload('00000000-0000-0000-0000-000000000003')$q$, 'permission denied');
+  perform t.expect_error($q$select count(*) from private.photo_upload_counts$q$, 'permission denied');
+  perform t.act_as_owner();
+  v_today := private.ist_today();
+  insert into private.photo_upload_counts (day, user_id, signed) values (v_today - 3, u, 9);
+  perform set_config('role', 'service_role', false);
+  for i in 1..60 loop
+    perform t.eq(public.svc_count_photo_upload(u), true, 'photo ' || i || ' allowed');
+  end loop;
+  perform t.eq(public.svc_count_photo_upload(u), false, 'photo 61 refused');
+  perform t.eq(public.svc_count_photo_upload(u), false, 'photo 62 refused');
+  perform t.eq(public.svc_count_photo_upload('00000000-0000-0000-0000-000000000001'), true,
+               'another person is not affected');
+  perform t.act_as_owner();
+  perform t.eq((select signed from private.photo_upload_counts where day = v_today and user_id = u),
+               60::smallint, 'refused ones are not counted');
+  perform t.eq((select count(*) from private.photo_upload_counts where day < v_today - 1), 0::bigint,
+               'old days cleaned up');
+  delete from private.photo_upload_counts;
+end;
+$$;
+
 \echo 'ALL TESTS PASSED'

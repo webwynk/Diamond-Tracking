@@ -29,7 +29,16 @@ export async function handler(req: Request, b: Backend, sender: Sender | null): 
       Object.entries({ ...job.data, kind: job.kind }).map(([k, v]) => [k, String(v)]),
     ),
   };
-  const results = await Promise.all(job.tokens.map((t) => sender.send(t, message)));
+  // Each phone on its own: a network error for one phone must not lose the
+  // push for the others, nor skip dropping dead tokens (L64).
+  const results = await Promise.all(job.tokens.map(async (t) => {
+    try {
+      return await sender.send(t, message);
+    } catch (e) {
+      console.error('push to one phone failed:', e instanceof Error ? e.message : 'unknown');
+      return 'failed' as const;
+    }
+  }));
   const gone = job.tokens.filter((_, i) => results[i] === 'gone');
   if (gone.length > 0) await b.dropPushTokens(gone);
   return reply(200, { sent: results.filter((r) => r === 'sent').length, dropped: gone.length });
