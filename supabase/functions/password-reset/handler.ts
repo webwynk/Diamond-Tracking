@@ -76,12 +76,17 @@ async function confirm(body: Json, b: Backend) {
   const password = typeof body.new_password === 'string' ? body.new_password : '';
   if (code === '' || !/^[0-9]{6}$/.test(value)) return reply(400, { error: 'invalid_code' });
 
+  // The code is checked before the password, so an unknown, turned-off or
+  // real user ID all get the same "invalid_code" until the right code is
+  // given (L60). Only someone holding the emailed code learns about the
+  // password rules. The app checks the same rules before sending, so a real
+  // user never spends a code on a weak password.
   const profile = await b.profileByCode(code);
   if (!profile || !profile.is_active) return reply(400, { error: 'invalid_code' });
+  if (!(await b.useResetCode(profile.id, value))) return reply(400, { error: 'invalid_code' });
+
   const problem = passwordProblem(password, profile.user_code);
   if (problem) return reply(400, { error: 'validation_failed', fields: { new_password: problem } });
-
-  if (!(await b.useResetCode(profile.id, value))) return reply(400, { error: 'invalid_code' });
 
   await b.setPassword(profile.id, password, { must_change_password: false });
   await b.revokeSessions(profile.id);

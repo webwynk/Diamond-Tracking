@@ -22,6 +22,7 @@ enum RequestFailure {
   ),
   noteTooLong('Note too long (300 characters max).'),
   photosNotReady('Photo upload is not set up yet. Tell the admin.'),
+  photoLimit('Photo limit for today reached (60 photos). Try again tomorrow.'),
   photoUploadFailed(
     'The photo did not upload. Check the internet and try again.',
   ),
@@ -78,6 +79,7 @@ RequestFailure mapRequestError(Object error) {
     'day_has_duty': RequestFailure.dayHasDuty,
     'note_too_long': RequestFailure.noteTooLong,
     'photos_not_configured': RequestFailure.photosNotReady,
+    'photo_limit': RequestFailure.photoLimit,
     'signed_in_elsewhere': RequestFailure.signedInElsewhere,
   };
   for (final MapEntry<String, RequestFailure> e in codes.entries) {

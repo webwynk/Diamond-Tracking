@@ -12,6 +12,13 @@ export interface CloudinaryConfig {
 
 export const ALLOWED_FORMATS = 'jpg,jpeg,png,webp';
 
+/**
+ * Applied by Cloudinary when a photo arrives, before it is stored: anything
+ * larger is shrunk to fit 1280 x 1280 (L62). It is part of the signature, so a
+ * changed app cannot skip it. The app already sends photos this size.
+ */
+export const INCOMING_TRANSFORMATION = 'c_limit,h_1280,w_1280';
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export function isUuid(value: unknown): value is string {
@@ -68,6 +75,7 @@ export async function uploadFields(
     allowed_formats: ALLOWED_FORMATS,
     public_id: publicId,
     timestamp: String(timestamp),
+    transformation: INCOMING_TRANSFORMATION,
     type: 'authenticated',
   };
   return { ...params, api_key: cfg.apiKey, signature: await signParams(params, cfg.apiSecret) };

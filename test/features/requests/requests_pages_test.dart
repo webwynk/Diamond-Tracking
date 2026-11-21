@@ -335,6 +335,15 @@ void main() {
       mapRequestError(const PostgrestException(message: 'signed_in_elsewhere')),
       RequestFailure.signedInElsewhere,
     );
+    expect(
+      mapRequestError(
+        const FunctionException(
+          status: 429,
+          details: <String, String>{'error': 'photo_limit'},
+        ),
+      ),
+      RequestFailure.photoLimit,
+    );
     expect(mapRequestError(Exception('?')), RequestFailure.unknown);
   });
 }

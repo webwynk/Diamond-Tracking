@@ -5,7 +5,8 @@
 //        200 { upload_url, public_id, fields }   the phone posts the file
 //        with these fields straight to Cloudinary, then sends public_id with
 //        its request. A visit photo id is "visit-<uuid>"; that uuid is the
-//        visit's id.
+//        visit's id. Cloudinary shrinks anything over 1280 px on arrival.
+//        429 photo_limit after 60 photos today for this person (L62).
 //   GET  ?request_id=N | ?visit_id=<uuid>    the owner or an admin
 //        200 the image bytes
 //   POST { action: "purge" }                 no sign-in (the nightly job)
@@ -60,6 +61,9 @@ export async function handler(req: Request, b: Backend, deps: PhotoDeps): Promis
   }
   const cfg = deps.cloudinary;
   if (!cfg) return reply(503, { error: 'photos_not_configured' });
+  if (!(await b.countPhotoUpload(caller.profile.id))) {
+    return reply(429, { error: 'photo_limit' });
+  }
 
   const publicId = `${body.kind === 'visit' ? 'visit' : 'req'}-${deps.newId()}`;
   return reply(200, {

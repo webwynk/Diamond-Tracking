@@ -81,5 +81,36 @@ D. FIRST SIGN-IN
    choose their own password.
    (Old PINs were stored in the code history, so do not rely on them.)
 
+E. SERVER SETTINGS CHECKLIST (names only; never write the values here)
+-----------------------------------------------------------------------
+
+Use this to check a live project or set up a new one.
+
+Edge Functions > Secrets:
+  CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+                        photos (request and visit photos); without them
+                        photo upload says "not set up yet".
+  FCM_SERVICE_ACCOUNT   push (the Firebase service account JSON); without it
+                        notifications only show inside the app.
+  GOOGLE_GEOCODING_KEY  stop-addresses (addresses on the route); without it
+                        stops show no address.
+  RESEND_API_KEY, RESET_EMAIL_FROM
+                        password-reset (step 7); without them users ask the
+                        admin to reset.
+  SUPABASE_URL and the secret key are set by Supabase itself.
+
+Database > Extensions: pg_cron and pg_net (step 2).
+
+Table private.app_settings (SQL editor), one row each:
+  push_url    the push function's address  (phone push)
+  photos_url  the photos function's address (deleting photos after 90 days)
+
+Scheduled jobs (made by the migrations; check in Integrations > Cron):
+  auto-duty-off, mark-absent, nightly-cleanup, purge-photos
+
+Server functions (all with "Verify JWT" off, as in supabase/config.toml):
+  admin-users, account, password-reset, photos, push, stop-addresses
+
+
 reset_backup.profiles stays as a copy of the old user list; drop it once
 everything works:  drop schema reset_backup cascade;
