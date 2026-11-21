@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/routes.dart';
@@ -45,13 +46,20 @@ final Provider<int> unreadCountProvider = Provider.autoDispose<int>(
 );
 
 /// Where a notification about [requestId] opens, for [role].
-String notificationTarget(AppRole role, int? requestId) => role == AppRole.admin
+String notificationTarget(AppRole role, int? requestId, {String? kind}) =>
+    role == AppRole.admin
     ? (requestId == null
           ? Routes.adminNotifications
           : Routes.adminRequest(requestId))
+    : kind == dutyOnAllowedKind
+    ? Routes.userHome
     : (requestId == null
           ? Routes.userNotifications
           : Routes.userRequest(requestId));
+
+/// The notification an employee gets when the admin allows duty on today
+/// (L81): it opens Home, which reloads by itself.
+const String dutyOnAllowedKind = 'duty_on_allowed';
 
 /// Registers this phone for push after sign-in and opens tapped
 /// notifications. Lives as long as the app.
@@ -75,8 +83,8 @@ class PushRegistrar {
   final Ref _ref;
   String? _token;
   StreamSubscription<String>? _refresh;
-  StreamSubscription<int?>? _opened;
-  int? _pendingOpen;
+  StreamSubscription<PushOpen>? _opened;
+  PushOpen? _pendingOpen;
   bool _hasPending = false;
 
   PushService get _push => _ref.read(pushServiceProvider);
@@ -93,7 +101,7 @@ class PushRegistrar {
     }
     if (_hasPending) {
       _hasPending = false;
-      _open(_pendingOpen);
+      _open(_pendingOpen!);
     }
     try {
       final String? token = await _push.token();
@@ -114,19 +122,26 @@ class PushRegistrar {
     }
   }
 
-  void _open(int? requestId) {
+  void _open(PushOpen open) {
     final AuthStatus status = _ref.read(authStatusProvider);
     if (status is! SignedIn || status.mustChangePassword) {
       // Opened from a cold start before sign-in finished: open it after.
-      _pendingOpen = requestId;
+      _pendingOpen = open;
       _hasPending = true;
       return;
     }
-    unawaited(
-      _ref
-          .read(routerProvider)
-          .push(notificationTarget(status.role, requestId)),
+    final String target = notificationTarget(
+      status.role,
+      open.requestId,
+      kind: open.kind,
     );
+    final GoRouter router = _ref.read(routerProvider);
+    if (target == Routes.userHome) {
+      // Home is the bottom of the stack: go back to it (L81).
+      router.go(target);
+    } else {
+      unawaited(router.push(target));
+    }
   }
 
   /// Call on logout, before signing out, so this phone stops getting the

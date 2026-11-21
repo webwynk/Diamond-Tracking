@@ -29,6 +29,10 @@ class _LeaveRequestPageState extends ConsumerState<LeaveRequestPage> {
   LeaveType _type = LeaveType.casual;
   final Set<DateTime> _dates = <DateTime>{};
   Uint8List? _proof;
+
+  /// Set once the proof is uploaded, so a retry does not upload it again
+  /// (L68). Cleared when the photo changes.
+  String? _proofId;
   bool _busy = false;
   String? _error;
 
@@ -92,7 +96,7 @@ class _LeaveRequestPageState extends ConsumerState<LeaveRequestPage> {
       final RequestsRepository repo = ref.read(requestsRepositoryProvider);
       final String? proofId = _proof == null
           ? null
-          : await repo.uploadPhoto(_proof!);
+          : _proofId ??= await repo.uploadPhoto(_proof!);
       await repo.requestLeave(
         type: _type,
         dates: _sorted,
@@ -179,7 +183,10 @@ class _LeaveRequestPageState extends ConsumerState<LeaveRequestPage> {
               label: 'Proof (optional), for example a doctor\'s note',
               photo: _proof,
               enabled: !_busy,
-              onChanged: (Uint8List? p) => setState(() => _proof = p),
+              onChanged: (Uint8List? p) => setState(() {
+                _proof = p;
+                _proofId = null;
+              }),
             ),
             if (_error case final String e) ...<Widget>[
               const SizedBox(height: AppSpacing.x4),

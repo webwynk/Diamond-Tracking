@@ -36,8 +36,9 @@ enum AppRole {
   ///
   /// `app_metadata` can only be written with the service key (by the admin's
   /// Edge Function), never by the user, so a user cannot make themselves an
-  /// admin. The database checks the same claim in its security rules. Anything
-  /// unknown is treated as the least-privileged role.
+  /// admin. This claim only decides which screens the app shows: the
+  /// database's security rules check the role in the profiles table instead
+  /// (L73). Anything unknown is treated as the least-privileged role.
   static AppRole fromClaim(Object? value) =>
       value == 'admin' ? AppRole.admin : AppRole.employee;
 }

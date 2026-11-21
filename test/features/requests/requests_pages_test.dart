@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:diamond_tracking/core/time/clock_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
 import 'package:diamond_tracking/features/requests/application/requests_providers.dart';
+import 'package:diamond_tracking/features/requests/data/requests_repository.dart';
 import 'package:diamond_tracking/features/requests/domain/app_request.dart';
 import 'package:diamond_tracking/features/requests/domain/request_failure.dart';
 import 'package:diamond_tracking/features/requests/presentation/admin_requests_page.dart';
@@ -289,6 +292,107 @@ void main() {
     await tester.tap(find.text('Approved'));
     await tester.pumpAndSettle();
     expect(find.text('route /admin/requests/8'), findsOneWidget);
+  });
+
+  testWidgets('a retry sends the photo already uploaded (L68)', (
+    WidgetTester tester,
+  ) async {
+    tall(tester);
+    repo.sendError = const SocketException('offline');
+    await pumpPushed(
+      tester,
+      const AttendanceRequestPage(),
+      status: employee,
+      overrides: overrides(),
+    );
+    await pickTime(tester, 'Duty on');
+    await pickTime(tester, 'Duty off');
+    await tester.enterText(find.byType(TextField), 'x');
+    await tester.tap(find.text('Gallery'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Send request'));
+    await tester.tap(find.text('Send request'));
+    await tester.pumpAndSettle();
+    expect(repo.uploads, 1);
+    expect(repo.calls, isEmpty);
+
+    repo.sendError = null;
+    await tester.tap(find.text('Send request'));
+    await tester.pumpAndSettle();
+    expect(repo.uploads, 1, reason: 'not uploaded again');
+    expect(
+      repo.calls.single,
+      contains('req-00000000-0000-0000-0000-000000000500'),
+    );
+  });
+
+  testWidgets('a photo removed after 90 days says so (L69)', (
+    WidgetTester tester,
+  ) async {
+    repo.requests.add(
+      AppRequest.fromRow(<String, dynamic>{
+        'id': 5,
+        'user_id': 'u',
+        'kind': 'attendance',
+        'status': 'approved',
+        'day': '2026-08-01',
+        'message': 'm',
+        'photo_id': 'req-x',
+        'photo_removed_at': '2026-11-01T00:00:00Z',
+        'created_at': '2026-08-01T05:00:00Z',
+      }),
+    );
+    await pumpPage(
+      tester,
+      const RequestDetailPage(requestId: 5, admin: false),
+      status: employee,
+      overrides: overrides(),
+    );
+    expect(find.text('Photo removed after 90 days.'), findsOneWidget);
+    expect(find.text('The photo could not be loaded.'), findsNothing);
+  });
+
+  testWidgets('long lists show more on request (L70)', (
+    WidgetTester tester,
+  ) async {
+    tall(tester);
+    for (int i = 0; i < requestPageSize + 5; i++) {
+      repo.requests.add(attendance(id: 1000 + i));
+    }
+    await pumpPage(
+      tester,
+      const MyRequestsPage(),
+      status: employee,
+      overrides: overrides(),
+    );
+    final Finder more = find.text('Show more');
+    await tester.scrollUntilVisible(more, 500);
+    expect(find.text('Attendance · 19 Nov 2026'), findsWidgets);
+    await tester.tap(more);
+    await tester.pumpAndSettle();
+    expect(find.text('Show more'), findsNothing);
+  });
+
+  testWidgets('when names cannot load, the admin list says so (L71)', (
+    WidgetTester tester,
+  ) async {
+    repo.requests.add(attendance());
+    final FakeUsersRepository users = FakeUsersRepository(<Profile>[
+      profile('u', name: 'Asha Roy'),
+    ])..listError = const SocketException('offline');
+    await pumpPage(
+      tester,
+      const AdminRequestsPage(),
+      users: users,
+      overrides: overrides(),
+    );
+    expect(find.text('Names could not load'), findsOneWidget);
+    expect(find.text('Unknown'), findsNothing);
+    users.listError = null;
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(find.text('Names could not load'), findsNothing);
+    expect(find.text('Asha Roy'), findsOneWidget);
   });
 
   test('request rows and error mapping', () {

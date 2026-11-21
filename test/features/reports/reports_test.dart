@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:diamond_tracking/core/time/clock_providers.dart';
@@ -142,6 +143,43 @@ void main() {
       expect(latin1.decode(bytes.sublist(0, 5)), '%PDF-');
     });
 
+    test('names with accents print in DM Sans; others as "?" (L82)', () async {
+      final ReportFonts fonts = ReportFonts(
+        regular: ByteData.sublistView(
+          File('assets/fonts/DMSans-Regular.ttf').readAsBytesSync(),
+        ),
+        bold: ByteData.sublistView(
+          File('assets/fonts/DMSans-Bold.ttf').readAsBytesSync(),
+        ),
+      );
+      final Set<int> dm = supportedRunes(fonts.regular);
+      expect(fitText('José Núñez', dm), 'José Núñez');
+      expect(fitText('রাহুল Das', dm), '????? Das');
+      expect(fitText('José', supportedRunes(null)), 'Jos?');
+
+      final List<PersonReport> people = buildReports(
+        people: const <({String id, String code, String name})>[
+          (id: 'a', code: 'DA-001', name: 'José Núñez'),
+          (id: 'b', code: 'DA-002', name: 'রাহুল দাস'),
+        ],
+        days: <ReportDay>[
+          day(1, 'a', 1, DayStatus.present, minutes: 610),
+          day(2, 'b', 1, DayStatus.absent),
+        ],
+      );
+      for (final ReportFonts? f in <ReportFonts?>[fonts, null]) {
+        final Uint8List bytes = await buildReportPdf(
+          range: ReportRange.month(d(20)),
+          people: people,
+          filter: StatusFilter.all,
+          detail: true,
+          madeAt: DateTime.utc(2026, 11, 20, 13),
+          fonts: f,
+        );
+        expect(latin1.decode(bytes.sublist(0, 5)), '%PDF-');
+      }
+    });
+
     test('file name has the dates', () {
       expect(
         reportFileName(ReportRange.month(d(20))),
@@ -228,6 +266,25 @@ void main() {
         'attendance-2026-11-01-to-2026-11-30.pdf',
       );
       expect(sharer.shared.single.$1, greaterThan(1000));
+      // Written into the admin log (L84).
+      expect(repo.exports.single, (ReportRange.month(d(20)), true, 2));
+    });
+
+    testWidgets('a failed log entry does not stop the PDF (L84)', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      repo.failLog = true;
+      await pumpPage(tester, const ReportsPage(), overrides: overrides());
+      await tester.tap(find.byTooltip('Download PDF'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Summary'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(seconds: 2)),
+      );
+      await tester.pumpAndSettle();
+      expect(sharer.shared, hasLength(1));
+      expect(find.textContaining('could not'), findsNothing);
     });
 
     testWidgets('no records says so', (WidgetTester tester) async {

@@ -1,9 +1,9 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/logging/app_log.dart';
-import '../../../core/time/ist.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_failure.dart';
+import '../../duty/data/duty_permit_lookup.dart';
 import '../domain/profile.dart';
 
 /// Field errors from the server, keyed by field name.
@@ -142,16 +142,8 @@ class SupabaseUsersRepository implements UsersRepository {
   }
 
   @override
-  Future<bool> dutyOnAllowed(String userId, DateTime day) async {
-    final Map<String, dynamic>? row = await _client
-        .from('duty_permits')
-        .select('user_id')
-        .eq('user_id', userId)
-        .eq('day', isoDate(day))
-        .isFilter('used_at', null)
-        .maybeSingle();
-    return row != null;
-  }
+  Future<bool> dutyOnAllowed(String userId, DateTime day) =>
+      hasUnusedDutyPermit(_client, userId, day);
 
   @override
   Future<void> allowDutyOn(String userId, {String? note}) =>

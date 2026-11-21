@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/routes.dart';
 import '../../../core/logging/app_log.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
@@ -81,7 +82,10 @@ class NotificationsPage extends ConsumerWidget {
                     isThreeLine: n.body != null,
                     onTap: () {
                       if (n.unread) _markRead(ref, <int>[n.id]);
-                      if (n.requestId case final int id) {
+                      if (role == AppRole.employee &&
+                          n.kind == dutyOnAllowedKind) {
+                        context.go(Routes.userHome);
+                      } else if (n.requestId case final int id) {
                         context.push(notificationTarget(role, id));
                       }
                     },

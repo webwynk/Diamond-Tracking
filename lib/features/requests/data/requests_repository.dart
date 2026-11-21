@@ -12,11 +12,16 @@ export 'photo_upload.dart' show PhotoSource;
 
 abstract interface class RequestsRepository {
   /// The user's own requests, newest first.
-  Future<List<AppRequest>> mine(String userId);
+  /// The newest [limit] requests of [userId].
+  Future<List<AppRequest>> mine(String userId, {int limit = requestPageSize});
 
   /// Everyone's requests for the admin: waiting ones oldest first, or the
   /// latest 100 of any status.
-  Future<List<AppRequest>> forAdmin({required bool pendingOnly});
+  /// Waiting requests (oldest first), or the newest of all; at most [limit].
+  Future<List<AppRequest>> forAdmin({
+    required bool pendingOnly,
+    int limit = requestPageSize,
+  });
 
   Future<AppRequest?> byId(int id);
 
@@ -45,6 +50,9 @@ abstract interface class RequestsRepository {
   PhotoSource photo(int requestId);
 }
 
+/// Requests loaded per page; "Show more" adds this many (L70).
+const int requestPageSize = 100;
+
 String _hhmm(int minute) =>
     '${(minute ~/ 60).toString().padLeft(2, '0')}:'
     '${(minute % 60).toString().padLeft(2, '0')}';
@@ -58,23 +66,31 @@ class SupabaseRequestsRepository implements RequestsRepository {
 
   static const String _columns =
       'id, user_id, kind, status, day, duty_on_at, duty_off_at, leave_type, '
-      'dates, message, photo_id, decision, decision_note, decided_at, created_at';
+      'dates, message, photo_id, photo_removed_at, decision, decision_note, '
+      'decided_at, created_at';
 
   List<AppRequest> _rows(List<Map<String, dynamic>> rows) =>
       rows.map(AppRequest.fromRow).toList();
 
   @override
-  Future<List<AppRequest>> mine(String userId) async => _rows(
+  Future<List<AppRequest>> mine(
+    String userId, {
+    int limit = requestPageSize,
+  }) async => _rows(
     await _client
         .from('requests')
         .select(_columns)
         .eq('user_id', userId)
         .order('created_at', ascending: false)
-        .limit(100),
+        .order('id', ascending: false)
+        .limit(limit),
   );
 
   @override
-  Future<List<AppRequest>> forAdmin({required bool pendingOnly}) async {
+  Future<List<AppRequest>> forAdmin({
+    required bool pendingOnly,
+    int limit = requestPageSize,
+  }) async {
     if (pendingOnly) {
       return _rows(
         await _client
@@ -82,7 +98,8 @@ class SupabaseRequestsRepository implements RequestsRepository {
             .select(_columns)
             .eq('status', 'pending')
             .order('created_at')
-            .limit(200),
+            .order('id')
+            .limit(limit),
       );
     }
     return _rows(
@@ -90,7 +107,8 @@ class SupabaseRequestsRepository implements RequestsRepository {
           .from('requests')
           .select(_columns)
           .order('created_at', ascending: false)
-          .limit(100),
+          .order('id', ascending: false)
+          .limit(limit),
     );
   }
 
