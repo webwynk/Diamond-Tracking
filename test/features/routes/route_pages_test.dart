@@ -12,6 +12,7 @@ import 'package:diamond_tracking/features/routes/presentation/live_map_page.dart
 import 'package:diamond_tracking/features/routes/presentation/my_map_page.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/visits/domain/visit.dart';
+import 'package:diamond_tracking/shared/ds/ds_chips.dart';
 import 'package:flutter/material.dart' show Size;
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -292,12 +293,13 @@ void main() {
       status: employee,
       overrides: overrides(),
     );
-    expect(find.textContaining('Absent'), findsOneWidget);
+    final Finder absentCard = find.widgetWithText(DsStatusPill, 'Absent');
+    expect(absentCard, findsOneWidget);
     expect(find.textContaining('5.0 km'), findsOneWidget);
     expect(find.byType(HistoryPage), findsOneWidget);
 
     // The absent day has no route to open.
-    await tester.tap(find.textContaining('Absent'));
+    await tester.tap(absentCard);
     await tester.pumpAndSettle();
     expect(find.byType(HistoryPage), findsOneWidget);
 
