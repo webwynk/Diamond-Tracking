@@ -1316,4 +1316,107 @@ drop function t.other_press_permit();
 delete from public.profiles where id = '00000000-0000-0000-0000-000000000009';
 delete from auth.users where id = '00000000-0000-0000-0000-000000000009';
 
+\echo '--- one signed-in phone: every action checks it; the admin can release a lost phone (M5, M6)'
+select t.act_as_owner();
+-- Signed in as p_uid with sign-in (session) p_session, as a real token carries it.
+create function t.act_as_session(p_uid uuid, p_session uuid) returns void language plpgsql as $$
+begin
+  perform t.act_as(p_uid);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', p_uid, 'session_id', p_session)::text, false);
+end;
+$$;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000010', 'e10@test');
+insert into public.profiles (id, user_code, full_name, role, created_at)
+values ('00000000-0000-0000-0000-000000000010', 'DA-010', 'Employee Ten', 'employee',
+        now() - interval '30 days');
+do $$
+declare
+  e10 constant uuid := '00000000-0000-0000-0000-000000000010';
+  sa constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';  -- phone A's sign-in
+  sb constant uuid := 'bbbbbbbb-0000-0000-0000-000000000002';  -- phone B's sign-in
+  sc constant uuid := 'cccccccc-0000-0000-0000-000000000003';  -- phone C's sign-in
+  v_leave text := $q$select public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + %s], 'trip')$q$;
+begin
+  -- Phone A signs in and holds the account.
+  perform t.act_as_session(e10, sa);
+  perform public.claim_device('phone-a-0001');
+  perform public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + 1], 'trip');
+
+  -- Phone B is refused at sign-in, and for every action (before: only duty
+  -- on and route uploads checked the phone).
+  perform t.act_as_session(e10, sb);
+  perform t.expect_error($q$select public.claim_device('phone-b-0001')$q$, 'signed_in_elsewhere');
+  perform t.expect_error(format(v_leave, 2), 'signed_in_elsewhere');
+  perform t.expect_error($q$select public.request_attendance((now() at time zone 'Asia/Kolkata')::date - 1, '09:00', '18:00', 'forgot', null)$q$,
+                         'signed_in_elsewhere');
+  perform t.expect_error($q$select public.duty_off(1, now())$q$, 'signed_in_elsewhere');
+  perform t.expect_error(
+    $q$select public.add_visit(gen_random_uuid(), 'Shop', null, true, null, null, 'x', now())$q$,
+    'signed_in_elsewhere');
+  perform t.expect_error(format('select public.cancel_request(%s)',
+    (select id from public.requests where user_id = e10 limit 1)), 'signed_in_elsewhere');
+
+  -- A logs out: A's sign-in stops working, and B can sign in and do the work.
+  perform t.act_as_session(e10, sa);
+  perform public.release_device('phone-a-0001');
+  perform t.expect_error(format(v_leave, 3), 'signed_in_elsewhere');
+  perform t.act_as_session(e10, sb);
+  perform public.claim_device('phone-b-0001');
+  perform public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + 4], 'trip');
+  perform t.act_as_session(e10, sa);
+  perform t.expect_error(format(v_leave, 5), 'signed_in_elsewhere');
+  perform t.expect_error($q$select public.claim_device('phone-a-0001')$q$, 'signed_in_elsewhere');
+
+  -- Phone B is lost. Only an admin can release it.
+  perform t.act_as_owner();
+  insert into auth.sessions (user_id) values (e10);
+  insert into private.push_tokens (token, user_id, device_id)
+  values (repeat('t', 30), e10, 'phone-b-0001');
+  perform t.act_as_session(e10, sb);
+  perform t.expect_error(format('select public.release_phone(%L)', e10), 'not_admin');
+  perform t.act_as(null);
+  perform t.expect_error(format('select public.release_phone(%L)', e10), 'permission denied');
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.expect_error(format('select public.release_phone(%L)', gen_random_uuid()), 'user_not_found');
+  perform t.expect_error(format('select public.release_phone(%L)', '00000000-0000-0000-0000-00000000000a'),
+                         'user_not_found');
+  perform t.eq(public.release_phone(e10), true, 'phone released');
+  perform t.eq(public.release_phone(e10), false, 'nothing left to release');
+  perform t.act_as_owner();
+  perform t.eq((select active_device_id from public.profiles where id = e10), null::text, 'account free');
+  perform t.eq((select active_session_id from public.profiles where id = e10), null::uuid, 'sign-in forgotten');
+  perform t.eq((select count(*) from auth.sessions where user_id = e10), 0::bigint, 'lost phone signed out');
+  perform t.eq((select count(*) from private.push_tokens where user_id = e10), 0::bigint, 'no pushes to the lost phone');
+  perform t.eq((select count(*) from public.admin_log where action = 'release_phone' and target_user = e10),
+               2::bigint, 'release is logged');
+  perform t.act_as_session(e10, sb);
+  perform t.expect_error(format(v_leave, 6), 'signed_in_elsewhere');
+  perform t.act_as_session(e10, sc);
+  perform public.claim_device('phone-c-0001');
+  perform public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + 7], 'trip');
+
+  -- A phone signed in before this change (no sign-in remembered) keeps
+  -- working, and is remembered at its next duty on or resume.
+  perform t.act_as_owner();
+  update public.profiles set active_session_id = null where id = e10;
+  perform t.act_as_session(e10, sb);
+  perform public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + 8], 'trip');
+  perform t.act_as_owner();
+  perform t.act_as_session(e10, sc);
+  perform t.expect_error($q$select public.duty_resume('phone-c-0001')$q$, 'not_on_duty');
+  perform t.act_as_owner();
+  perform set_config('request.jwt.claims', json_build_object('session_id', sc)::text, false);
+  perform private.require_device(e10, 'phone-c-0001');
+  perform set_config('request.jwt.claims', '', false);
+  perform t.eq((select active_session_id from public.profiles where id = e10), sc, 'remembered');
+  perform t.act_as_session(e10, sb);
+  perform t.expect_error(format(v_leave, 9), 'signed_in_elsewhere');
+end;
+$$;
+select t.act_as_owner();
+select set_config('request.jwt.claims', '', false);
+delete from public.profiles where id = '00000000-0000-0000-0000-000000000010';
+delete from auth.users where id = '00000000-0000-0000-0000-000000000010';
+
 \echo 'ALL TESTS PASSED'

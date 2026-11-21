@@ -153,6 +153,41 @@ void main() {
       expect(find.text('Password reset'), findsOneWidget);
     });
 
+    testWidgets('release phone frees a lost phone (M6)', (
+      WidgetTester tester,
+    ) async {
+      final FakeUsersRepository users = FakeUsersRepository(<Profile>[
+        profile('u1', code: 'emp1', name: 'Asha Roy', phone: true),
+      ]);
+      await pumpPushed(tester, const UserFormPage(userId: 'u1'), users: users);
+      final Finder release = find.widgetWithText(
+        OutlinedButton,
+        'Release phone',
+      );
+      await tester.ensureVisible(release);
+      await tester.tap(release);
+      await tester.pumpAndSettle();
+      expect(find.text("Release Asha Roy's phone?"), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Release'));
+      await tester.pumpAndSettle();
+      expect(users.calls, <String>['releasePhone:u1']);
+      expect(
+        find.text('Phone released. Asha Roy can log in on another phone.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('release phone is only shown while a phone is logged in', (
+      WidgetTester tester,
+    ) async {
+      final FakeUsersRepository users = FakeUsersRepository(<Profile>[
+        profile('u1', code: 'emp1', name: 'Asha Roy'),
+      ]);
+      await pumpPushed(tester, const UserFormPage(userId: 'u1'), users: users);
+      expect(find.text('Release phone'), findsNothing);
+      expect(find.text('Reset password'), findsOneWidget);
+    });
+
     group('allow duty on', () {
       Future<FakeUsersRepository> open(
         WidgetTester tester, {

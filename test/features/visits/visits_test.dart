@@ -180,6 +180,10 @@ void main() {
       mapVisitError(const PostgrestException(message: 'location_required')),
       VisitFailure.noLocation,
     );
+    expect(
+      mapVisitError(const PostgrestException(message: 'signed_in_elsewhere')),
+      VisitFailure.signedInElsewhere,
+    );
     expect(mapVisitError(Exception('x')), VisitFailure.unknown);
   });
 

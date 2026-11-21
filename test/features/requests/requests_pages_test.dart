@@ -331,6 +331,10 @@ void main() {
       mapRequestError(const PostgrestException(message: 'note_too_long')),
       RequestFailure.noteTooLong,
     );
+    expect(
+      mapRequestError(const PostgrestException(message: 'signed_in_elsewhere')),
+      RequestFailure.signedInElsewhere,
+    );
     expect(mapRequestError(Exception('?')), RequestFailure.unknown);
   });
 }

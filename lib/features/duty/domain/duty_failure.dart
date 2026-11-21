@@ -9,8 +9,8 @@ enum DutyFailure {
   onLeave('You are on leave today, so duty on is not allowed.'),
   alreadyOnDuty('You have already done duty on today.'),
   signedInElsewhere(
-    'Your account is in use on another phone. Ask the admin to reset your '
-    'password.',
+    'Your account is logged in on another phone. Log out there first, or '
+    'ask your admin to release the phone.',
   ),
   notOnDuty('Your duty is not on.'),
   alreadyEnded('This duty has already ended.'),

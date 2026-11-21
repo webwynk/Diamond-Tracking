@@ -168,6 +168,14 @@ class FakeUsersRepository implements UsersRepository {
     if (f != null) throw f;
   }
 
+  @override
+  Future<bool> releasePhone(String id) async {
+    calls.add('releasePhone:$id');
+    final Exception? f = failWith;
+    if (f != null) throw f;
+    return true;
+  }
+
   /// Users the admin allowed to do duty on today.
   final Set<String> allowed = <String>{};
 

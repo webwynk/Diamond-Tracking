@@ -25,6 +25,10 @@ enum RequestFailure {
   photoUploadFailed(
     'The photo did not upload. Check the internet and try again.',
   ),
+  signedInElsewhere(
+    'Your account is logged in on another phone. Log out there first, or '
+    'ask your admin to release the phone.',
+  ),
   noInternet('No internet. Try again.'),
   unknown('Something went wrong. Try again.');
 
@@ -74,6 +78,7 @@ RequestFailure mapRequestError(Object error) {
     'day_has_duty': RequestFailure.dayHasDuty,
     'note_too_long': RequestFailure.noteTooLong,
     'photos_not_configured': RequestFailure.photosNotReady,
+    'signed_in_elsewhere': RequestFailure.signedInElsewhere,
   };
   for (final MapEntry<String, RequestFailure> e in codes.entries) {
     if (text.contains(e.key)) return e.value;
