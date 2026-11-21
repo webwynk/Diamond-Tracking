@@ -71,4 +71,50 @@ void main() {
     expect(clock.now(), server.add(const Duration(minutes: 10)));
     expect(failures, <String>['ServerClock.sync']);
   });
+
+  test('the timer keeps counting through phone sleep', () {
+    Duration up = const Duration(hours: 3);
+    final AwakeElapsedTimer awake = AwakeElapsedTimer(uptime: () => up);
+    // The stopwatch barely moves while the phone sleeps; uptime does not.
+    up += const Duration(hours: 8);
+    expect(awake.elapsed, greaterThanOrEqualTo(const Duration(hours: 8)));
+  });
+
+  test('without readable uptime the timer falls back to the stopwatch', () {
+    final AwakeElapsedTimer awake = AwakeElapsedTimer(uptime: () => null);
+    expect(awake.elapsed, lessThan(const Duration(seconds: 5)));
+  });
+
+  test('a clock synced before sleep is right after it', () async {
+    Duration up = const Duration(hours: 3);
+    final ServerClock clock = ServerClock(
+      source: () async => server,
+      timer: AwakeElapsedTimer(uptime: () => up),
+    );
+    await clock.sync();
+    up += const Duration(hours: 10);
+    expect(
+      clock.now().difference(server),
+      greaterThan(const Duration(hours: 9, minutes: 59)),
+    );
+  });
+
+  test('syncIfStale only asks the server when the sync is old', () async {
+    int calls = 0;
+    final ServerClock clock = ServerClock(
+      source: () async {
+        calls++;
+        return server;
+      },
+      timer: timer,
+    );
+    await clock.syncIfStale(const Duration(minutes: 10));
+    expect(calls, 1);
+    timer.value = const Duration(minutes: 5);
+    await clock.syncIfStale(const Duration(minutes: 10));
+    expect(calls, 1);
+    timer.value = const Duration(minutes: 11);
+    await clock.syncIfStale(const Duration(minutes: 10));
+    expect(calls, 2);
+  });
 }
