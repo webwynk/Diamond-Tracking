@@ -4,18 +4,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/routes.dart';
-import '../../../core/theme/app_dimens.dart';
-import '../../../shared/widgets/app_button.dart';
-import '../../../shared/widgets/form_message.dart';
-import '../../../shared/widgets/password_field.dart';
+import '../../../core/design/ds_colors.dart';
+import '../../../core/design/ds_icons.dart';
+import '../../../shared/ds/ds_auth_frame.dart';
+import '../../../shared/ds/ds_button.dart';
+import '../../../shared/ds/ds_feedback.dart';
+import '../../../shared/ds/ds_field.dart';
 import '../application/auth_providers.dart';
 import '../domain/auth_failure.dart';
 import '../domain/credentials.dart';
-import 'widgets/auth_scaffold.dart';
 
-/// Sign in with user ID and password. The first admin, whose account was made
-/// in Supabase, types their email instead. Admins added in the app use their
-/// user ID; their contact email is not a sign-in name.
+/// Sign in with user ID and password (design v2, Sign in). The first admin,
+/// whose account was made in Supabase, types their email instead. Admins
+/// added in the app use their user ID; their contact email is not a sign-in
+/// name.
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -24,10 +26,11 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
-  final GlobalKey<FormState> _form = GlobalKey<FormState>();
   final TextEditingController _loginId = TextEditingController();
   final TextEditingController _password = TextEditingController();
   bool _busy = false;
+  String? _idError;
+  String? _passwordError;
   AuthFailure? _failure;
 
   @override
@@ -38,11 +41,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _submit() async {
-    if (_busy || !(_form.currentState?.validate() ?? false)) return;
+    if (_busy) return;
+    final String? idError = loginIdProblem(_loginId.text);
+    final String? passwordError = _password.text.isEmpty
+        ? 'Enter your password or PIN'
+        : null;
     setState(() {
-      _busy = true;
+      _idError = idError;
+      _passwordError = passwordError;
       _failure = null;
     });
+    if (idError != null || passwordError != null) return;
+    setState(() => _busy = true);
     try {
       await ref
           .read(authStatusProvider.notifier)
@@ -61,59 +71,88 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AuthScaffold(
-      title: 'Sign in',
-      subtitle: 'Use the user ID your admin gave you.',
-      child: AutofillGroup(
-        child: Form(
-          key: _form,
+    return DsAuthFrame(
+      title: 'Good to see you.',
+      accent: "Let's start the day.",
+      subtitle: 'Sign in with the user ID from your admin.',
+      footer: const _OnePhone(),
+      children: <Widget>[
+        AutofillGroup(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              TextFormField(
+              DsTextField(
+                label: 'User ID',
                 controller: _loginId,
-                decoration: const InputDecoration(labelText: 'User ID'),
+                hint: 'EMP007',
+                icon: DsIcons.profile,
+                error: _idError,
                 autofillHints: const <String>[AutofillHints.username],
-                autocorrect: false,
-                enableSuggestions: false,
                 textInputAction: TextInputAction.next,
-                validator: (String? v) => loginIdProblem(v ?? ''),
+                onChanged: (_) {
+                  if (_idError != null) setState(() => _idError = null);
+                },
               ),
-              const SizedBox(height: AppSpacing.x4),
-              PasswordField(
+              const SizedBox(height: 14),
+              DsTextField(
+                label: 'Password or PIN',
                 controller: _password,
-                label: 'Password',
-                helperText: 'First time? Use the temporary PIN.',
+                hint: 'First time? Your temporary PIN',
+                icon: DsIcons.lock,
+                password: true,
+                error: _passwordError,
+                autofillHints: const <String>[AutofillHints.password],
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _submit(),
-                validator: (String? v) =>
-                    (v ?? '').isEmpty ? 'Enter your password' : null,
-              ),
-              const SizedBox(height: AppSpacing.x4),
-              if (_failure != null) ...<Widget>[
-                FormMessage.error(_failure!.message),
-                const SizedBox(height: AppSpacing.x4),
-              ],
-              AppButton(
-                label: 'Sign in',
-                loadingLabel: 'Signing in',
-                isLoading: _busy,
-                isFullWidth: true,
-                onPressed: _submit,
-              ),
-              const SizedBox(height: AppSpacing.x2),
-              AppButton(
-                label: 'Forgot password?',
-                variant: AppButtonVariant.tertiary,
-                isFullWidth: true,
-                onPressed: _busy
-                    ? null
-                    : () => context.push(Routes.forgotPassword),
+                onChanged: (_) {
+                  if (_passwordError != null) {
+                    setState(() => _passwordError = null);
+                  }
+                },
               ),
             ],
           ),
         ),
-      ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: DsTextLink(
+            label: 'Forgot password?',
+            onPressed: _busy ? null : () => context.push(Routes.forgotPassword),
+          ),
+        ),
+        if (_failure != null)
+          DsBanner(kind: DsBannerKind.danger, title: _failure!.message),
+        DsButton(
+          label: 'Sign in',
+          busyLabel: 'Signing in',
+          busy: _busy,
+          arrow: true,
+          onPressed: _submit,
+        ),
+      ],
+    );
+  }
+}
+
+class _OnePhone extends StatelessWidget {
+  const _OnePhone();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Container(
+          width: 6,
+          height: 6,
+          decoration: const BoxDecoration(
+            color: DsColors.primary,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        const Text('One phone per account'),
+      ],
     );
   }
 }

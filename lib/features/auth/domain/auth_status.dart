@@ -9,7 +9,19 @@ final class AuthLoading extends AuthStatus {
 }
 
 final class SignedOut extends AuthStatus {
-  const SignedOut();
+  const SignedOut({this.unexpected = false});
+
+  /// Signed out without the user asking: the admin reset the account or
+  /// released the phone, or it was used on another phone. The app then
+  /// says so ("You were signed out") before the sign-in screen.
+  final bool unexpected;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SignedOut && other.unexpected == unexpected;
+
+  @override
+  int get hashCode => unexpected.hashCode;
 }
 
 /// Signed in. [role] decides which side of the app opens.

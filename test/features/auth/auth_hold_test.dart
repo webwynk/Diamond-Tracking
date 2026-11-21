@@ -58,4 +58,30 @@ void main() {
     });
     expect(status(), employee);
   });
+
+  test('a sign-out the user did not ask for is marked, then cleared', () async {
+    auth.add(employee);
+    await pumpEventQueue();
+    auth.add(const SignedOut()); // the admin reset the account
+    await pumpEventQueue();
+    expect(status(), const SignedOut(unexpected: true));
+
+    container.read(authStatusProvider.notifier).acknowledgeSignOut();
+    expect(status(), const SignedOut());
+  });
+
+  test('logging out yourself goes straight to sign-in', () async {
+    auth.add(employee);
+    await pumpEventQueue();
+    await container
+        .read(authStatusProvider.notifier)
+        .signOutWith(() async => auth.add(const SignedOut()));
+    expect(status(), const SignedOut());
+  });
+
+  test('a signed-out start is never marked', () async {
+    auth.add(const SignedOut());
+    await pumpEventQueue();
+    expect(status(), const SignedOut());
+  });
 }
