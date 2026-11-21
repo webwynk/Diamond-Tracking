@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/misc.dart' show FutureProviderFamily;
 import 'package:go_router/go_router.dart';
 
 import '../../../app/routes.dart';
@@ -12,7 +11,6 @@ import '../../../core/time/ist_format.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_error_view.dart';
 import '../../../shared/widgets/form_message.dart';
-import '../../duty/application/duty_providers.dart';
 import '../../duty/domain/duty_day.dart';
 import '../../users/application/users_providers.dart';
 import '../../users/domain/profile.dart';
@@ -20,14 +18,6 @@ import '../application/requests_providers.dart';
 import '../domain/app_request.dart';
 import '../domain/request_failure.dart';
 import 'request_widgets.dart';
-
-/// A user's record for a day (the short duty under review).
-final FutureProviderFamily<DutyDay?, (String, DateTime)> requestDayProvider =
-    FutureProvider.autoDispose.family<DutyDay?, (String, DateTime)>(
-      (Ref ref, (String, DateTime) key) =>
-          ref.watch(dutyRepositoryProvider).forDay(key.$1, key.$2),
-      retry: (int count, Object error) => null,
-    );
 
 /// One request. The admin decides it here; the employee can cancel it while
 /// it waits.

@@ -509,12 +509,14 @@ class FakeRequestsRepository implements RequestsRepository {
   @override
   Future<List<AppRequest>> mine(
     String userId, {
-    int limit = requestPageSize,
+    required DateTime since,
   }) async {
     _maybeFail();
     return requests
-        .where((AppRequest r) => r.userId == userId)
-        .take(limit)
+        .where(
+          (AppRequest r) => r.userId == userId && !r.createdAt.isBefore(since),
+        )
+        .take(myRequestsCap)
         .toList();
   }
 

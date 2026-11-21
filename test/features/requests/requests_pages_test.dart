@@ -5,7 +5,6 @@ import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
 import 'package:diamond_tracking/features/requests/application/requests_providers.dart';
-import 'package:diamond_tracking/features/requests/data/requests_repository.dart';
 import 'package:diamond_tracking/features/requests/domain/app_request.dart';
 import 'package:diamond_tracking/features/requests/domain/request_failure.dart';
 import 'package:diamond_tracking/features/requests/presentation/admin_requests_page.dart';
@@ -14,6 +13,7 @@ import 'package:diamond_tracking/features/requests/presentation/leave_request_pa
 import 'package:diamond_tracking/features/requests/presentation/my_requests_page.dart';
 import 'package:diamond_tracking/features/requests/presentation/request_detail_page.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
+import 'package:diamond_tracking/shared/ds/ds_chips.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -48,12 +48,13 @@ void main() {
   AppRequest attendance({
     int id = 5,
     RequestStatus status = RequestStatus.pending,
+    DateTime? createdAt,
   }) => AppRequest(
     id: id,
     userId: 'u',
     kind: RequestKind.attendance,
     status: status,
-    createdAt: DateTime.utc(2026, 11, 20, 5),
+    createdAt: createdAt ?? DateTime.utc(2026, 11, 20, 5),
     day: DateTime.utc(2026, 11, 19),
     dutyOnAt: DateTime.utc(2026, 11, 19, 3, 30),
     dutyOffAt: DateTime.utc(2026, 11, 19, 13, 30),
@@ -163,32 +164,135 @@ void main() {
     expect(repo.calls, isEmpty);
   });
 
-  testWidgets('my requests list opens a request', (WidgetTester tester) async {
-    repo.requests.add(attendance());
-    repo.requests.add(
-      AppRequest(
-        id: 6,
-        userId: 'u',
-        kind: RequestKind.shortDuty,
-        status: RequestStatus.pending,
-        createdAt: DateTime.utc(2026, 11, 20, 5),
-        day: DateTime.utc(2026, 11, 18),
+  testWidgets('my requests: short duty with hours, filters with counts', (
+    WidgetTester tester,
+  ) async {
+    tall(tester);
+    repo.requests
+      ..add(attendance())
+      ..add(
+        AppRequest(
+          id: 6,
+          userId: 'u',
+          kind: RequestKind.shortDuty,
+          status: RequestStatus.pending,
+          createdAt: DateTime.utc(2026, 11, 20, 13),
+          day: DateTime.utc(2026, 11, 20),
+        ),
+      )
+      ..add(
+        AppRequest(
+          id: 7,
+          userId: 'u',
+          kind: RequestKind.leave,
+          status: RequestStatus.approved,
+          createdAt: DateTime.utc(2026, 11, 12, 5),
+          leaveType: LeaveType.casual,
+          dates: <DateTime>[
+            DateTime.utc(2026, 11, 24),
+            DateTime.utc(2026, 11, 26),
+          ],
+          decision: DayStatus.leave,
+        ),
+      )
+      ..add(
+        AppRequest(
+          id: 8,
+          userId: 'u',
+          kind: RequestKind.attendance,
+          status: RequestStatus.rejected,
+          createdAt: DateTime.utc(2026, 10, 28, 5),
+          day: DateTime.utc(2026, 10, 28),
+          decisionNote: 'No photo of work.',
+        ),
+      )
+      // Older than 90 days: not listed.
+      ..add(attendance(id: 9, createdAt: DateTime.utc(2026, 8, 1)));
+    final FakeDutyRepository duty = FakeDutyRepository(
+      today: DutyDay(
+        id: 40,
+        day: DateTime.utc(2026, 11, 20),
+        status: DayStatus.pending,
+        dutyOnAt: DateTime.utc(2026, 11, 20, 3, 30),
+        dutyOffAt: DateTime.utc(2026, 11, 20, 11, 10),
+        workedMinutes: 460,
       ),
     );
     await pumpPage(
       tester,
       const MyRequestsPage(),
       status: employee,
+      overrides: overrides(duty: duty),
+    );
+    expect(find.text('Short duty · Fri, 20 Nov'), findsOneWidget);
+    expect(find.text('7h 40m worked · sent by the app'), findsOneWidget);
+    expect(find.text('Attendance · 19 Nov'), findsOneWidget);
+    expect(find.text('Casual leave · 24 – 26 Nov'), findsOneWidget);
+    expect(find.text('2 days · sent 12 Nov'), findsOneWidget);
+    expect(find.text('Attendance · 28 Oct'), findsOneWidget);
+    expect(find.textContaining('No photo of work.'), findsOneWidget);
+    expect(find.text('Admin reviewing'), findsNWidgets(2));
+    expect(find.byType(MyRequestCard), findsNWidgets(4));
+
+    await tester.tap(find.widgetWithText(DsFilterChip, 'Waiting'));
+    await tester.pumpAndSettle();
+    expect(find.byType(MyRequestCard), findsNWidgets(2));
+    // Test text is wider than real text, so the chips scroll.
+    await tester.ensureVisible(find.widgetWithText(DsFilterChip, 'Rejected'));
+    await tester.tap(find.widgetWithText(DsFilterChip, 'Rejected'));
+    await tester.pumpAndSettle();
+    expect(find.byType(MyRequestCard), findsOneWidget);
+
+    await tester.tap(find.text('Attendance · 28 Oct'));
+    await tester.pumpAndSettle();
+    expect(find.text('route /home/requests/8'), findsOneWidget);
+  });
+
+  testWidgets('my requests tiles open the two forms', (
+    WidgetTester tester,
+  ) async {
+    await pumpPage(
+      tester,
+      const MyRequestsPage(),
+      status: employee,
       overrides: overrides(),
     );
-    expect(find.text('Attendance · 19 Nov 2026'), findsOneWidget);
-    expect(find.text('Waiting'), findsOneWidget);
-    // Short-duty reviews are the admin's, not the employee's requests.
-    expect(find.textContaining('Short duty'), findsNothing);
-    await tester.tap(find.text('Attendance · 19 Nov 2026'));
+    expect(find.text('No requests yet'), findsOneWidget);
+    await tester.tap(find.text('Leave'));
     await tester.pumpAndSettle();
-    expect(find.text('route /home/requests/5'), findsOneWidget);
+    expect(find.text('route /home/requests/leave'), findsOneWidget);
   });
+
+  for (final double width in <double>[360, 390, 430]) {
+    testWidgets('my requests fits a $width wide phone', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = Size(width * 3, 2400);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      repo.requests
+        ..add(attendance())
+        ..add(
+          AppRequest(
+            id: 8,
+            userId: 'u',
+            kind: RequestKind.attendance,
+            status: RequestStatus.approved,
+            createdAt: DateTime.utc(2026, 11, 6, 5),
+            day: DateTime.utc(2026, 11, 6),
+            decision: DayStatus.halfDay,
+            decisionNote: 'Approved as half day because the photo was late.',
+          ),
+        );
+      await pumpPage(
+        tester,
+        const MyRequestsPage(),
+        status: employee,
+        overrides: overrides(),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('the employee cancels a waiting request', (
     WidgetTester tester,
@@ -350,27 +454,6 @@ void main() {
     );
     expect(find.text('Photo removed after 90 days.'), findsOneWidget);
     expect(find.text('The photo could not be loaded.'), findsNothing);
-  });
-
-  testWidgets('long lists show more on request (L70)', (
-    WidgetTester tester,
-  ) async {
-    tall(tester);
-    for (int i = 0; i < requestPageSize + 5; i++) {
-      repo.requests.add(attendance(id: 1000 + i));
-    }
-    await pumpPage(
-      tester,
-      const MyRequestsPage(),
-      status: employee,
-      overrides: overrides(),
-    );
-    final Finder more = find.text('Show more');
-    await tester.scrollUntilVisible(more, 500);
-    expect(find.text('Attendance · 19 Nov 2026'), findsWidgets);
-    await tester.tap(more);
-    await tester.pumpAndSettle();
-    expect(find.text('Show more'), findsNothing);
   });
 
   testWidgets('when names cannot load, the admin list says so (L71)', (

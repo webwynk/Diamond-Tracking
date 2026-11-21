@@ -11,9 +11,9 @@ import 'photo_upload.dart';
 export 'photo_upload.dart' show PhotoSource;
 
 abstract interface class RequestsRepository {
-  /// The user's own requests, newest first.
-  /// The newest [limit] requests of [userId].
-  Future<List<AppRequest>> mine(String userId, {int limit = requestPageSize});
+  /// The requests [userId] sent since [since], newest first (at most
+  /// [myRequestsCap]).
+  Future<List<AppRequest>> mine(String userId, {required DateTime since});
 
   /// Everyone's requests for the admin: waiting ones oldest first, or the
   /// latest 100 of any status.
@@ -53,6 +53,12 @@ abstract interface class RequestsRepository {
 /// Requests loaded per page; "Show more" adds this many (L70).
 const int requestPageSize = 100;
 
+/// "My requests" lists the last 90 days at once, so its counts are right.
+const Duration myRequestsWindow = Duration(days: 90);
+
+/// A safety cap on that list; nobody sends this many in 90 days.
+const int myRequestsCap = 500;
+
 String _hhmm(int minute) =>
     '${(minute ~/ 60).toString().padLeft(2, '0')}:'
     '${(minute % 60).toString().padLeft(2, '0')}';
@@ -75,15 +81,16 @@ class SupabaseRequestsRepository implements RequestsRepository {
   @override
   Future<List<AppRequest>> mine(
     String userId, {
-    int limit = requestPageSize,
+    required DateTime since,
   }) async => _rows(
     await _client
         .from('requests')
         .select(_columns)
         .eq('user_id', userId)
+        .gte('created_at', since.toUtc().toIso8601String())
         .order('created_at', ascending: false)
         .order('id', ascending: false)
-        .limit(limit),
+        .limit(myRequestsCap),
   );
 
   @override
