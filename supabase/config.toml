@@ -3,20 +3,27 @@ project_id = "diamond-tracking"
 
 # These functions check the caller themselves (user token or none), because
 # the new publishable/secret API keys are not JWTs the gateway can verify.
+# All six share functions/deno.json for the @supabase/supabase-js import.
 [functions.admin-users]
 verify_jwt = false
+import_map = "./functions/deno.json"
 
 [functions.account]
 verify_jwt = false
+import_map = "./functions/deno.json"
 
 [functions.password-reset]
 verify_jwt = false
+import_map = "./functions/deno.json"
 
 [functions.stop-addresses]
 verify_jwt = false
+import_map = "./functions/deno.json"
 
 [functions.photos]
 verify_jwt = false
+import_map = "./functions/deno.json"
 
 [functions.push]
 verify_jwt = false
+import_map = "./functions/deno.json"

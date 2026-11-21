@@ -53,9 +53,11 @@ jobs:
         with:
           version: 3.2.0 # pinned like the actions (L101)
 
-      # Deploys every function; settings (verify_jwt) come from config.toml.
+      # Deploys every function; settings (verify_jwt, import map) come from
+      # config.toml. --yes: CI has no terminal to answer the CLI's
+      # "Deploy 6 Functions?" question, so without it nothing is deployed.
       - name: Deploy
-        run: supabase functions deploy --project-ref "$PROJECT_REF"
+        run: supabase functions deploy --project-ref "$PROJECT_REF" --yes
 
       - name: Deployed
         run: supabase functions list --project-ref "$PROJECT_REF"
