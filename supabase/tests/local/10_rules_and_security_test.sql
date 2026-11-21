@@ -734,6 +734,24 @@ begin
   perform t.eq((select stops->0->>'address' from public.day_routes where duty_day_id = v_day.id),
                'Krishi Kendra Rd, Barasat', 'address kept after rebuild');
 
+  -- A build saves the route once, addresses included (L14).
+  create table t.route_writes (n integer);
+  create function t.count_route_write() returns trigger language plpgsql as $f$
+  begin
+    insert into t.route_writes values (1);
+    return null;
+  end;
+  $f$;
+  create trigger count_route_write after insert or update on public.day_routes
+    for each row execute function t.count_route_write();
+  perform private.build_route(v_day.id);
+  perform t.eq((select count(*)::integer from t.route_writes), 1, 'one write per route build');
+  perform t.eq((select stops->0->>'address' from public.day_routes where duty_day_id = v_day.id),
+               'Krishi Kendra Rd, Barasat', 'address saved with the route');
+  drop trigger count_route_write on public.day_routes;
+  drop function t.count_route_write();
+  drop table t.route_writes;
+
   perform t.act_as(e2);
   perform t.expect_error($q$select public.svc_save_places(1, '[]')$q$, 'permission denied');
   perform t.expect_error($q$select count(*) from private.place_names$q$, 'permission denied');
