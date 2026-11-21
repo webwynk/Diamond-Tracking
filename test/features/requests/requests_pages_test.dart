@@ -323,6 +323,14 @@ void main() {
       ),
       RequestFailure.photosNotReady,
     );
+    expect(
+      mapRequestError(const PostgrestException(message: 'day_has_duty')),
+      RequestFailure.dayHasDuty,
+    );
+    expect(
+      mapRequestError(const PostgrestException(message: 'note_too_long')),
+      RequestFailure.noteTooLong,
+    );
     expect(mapRequestError(Exception('?')), RequestFailure.unknown);
   });
 }
