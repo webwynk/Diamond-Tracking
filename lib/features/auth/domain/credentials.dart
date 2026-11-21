@@ -42,6 +42,14 @@ String? loginIdProblem(String value) {
   return userCodeProblem(v);
 }
 
+/// The first word of a full name ("Rahul" from "Rahul Sharma"), or null.
+String? firstNameOf(Object? fullName) {
+  if (fullName is! String) return null;
+  final String name = fullName.trim();
+  if (name.isEmpty) return null;
+  return name.split(RegExp(r'\s+')).first;
+}
+
 /// A person's full name: 1 to 80 characters.
 String? nameProblem(String name) {
   final int n = name.trim().length;

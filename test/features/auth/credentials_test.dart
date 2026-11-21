@@ -16,6 +16,14 @@ void main() {
     expect(userCodeFromLoginEmail(null), isNull);
   });
 
+  test('first name for "Welcome, Rahul."', () {
+    expect(firstNameOf('  Rahul  Sharma '), 'Rahul');
+    expect(firstNameOf('Asha'), 'Asha');
+    expect(firstNameOf(''), isNull);
+    expect(firstNameOf(null), isNull);
+    expect(firstNameOf(42), isNull);
+  });
+
   test('user ID rules', () {
     expect(userCodeProblem('EMP-01'), isNull);
     expect(userCodeProblem('a'), isNotNull);

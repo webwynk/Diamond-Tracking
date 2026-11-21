@@ -1,7 +1,6 @@
 /// Why an account action failed, in words the user can act on.
 enum AuthFailure implements Exception {
   invalidCredentials('Wrong user ID or password.'),
-  wrongCurrentPassword('Your current password is not right.'),
   signedInElsewhere(
     'Already logged in on another phone. Log out there first, or ask your '
     'admin to release the phone.',

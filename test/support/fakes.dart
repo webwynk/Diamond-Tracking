@@ -33,9 +33,10 @@ import 'package:diamond_tracking/features/visits/domain/visit.dart';
 
 /// Records calls; throws [failWith] when set.
 class FakeAuthRepository implements AuthRepository {
-  FakeAuthRepository({this.userCode = 'emp1'});
+  FakeAuthRepository({this.userCode = 'emp1', this.firstName});
 
   final String userCode;
+  final String? firstName;
   final List<String> calls = <String>[];
   AuthFailure? failWith;
 
@@ -49,6 +50,9 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   String? get currentUserCode => userCode;
+
+  @override
+  String? get currentFirstName => firstName;
 
   @override
   Future<void> signIn({
