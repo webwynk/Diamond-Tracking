@@ -62,7 +62,9 @@ export interface Backend {
   deleteAuthUser(id: string): Promise<void>;
   insertProfile(p: NewProfile): Promise<'ok' | 'code_taken'>;
   updateProfile(id: string, changes: ProfileChanges): Promise<Profile>;
-  setPassword(id: string, password: string): Promise<void>;
+  /** Sets the password and, in the same save, merges [appMetadata] into the
+   * account's app_metadata, so the two never end up half done. */
+  setPassword(id: string, password: string, appMetadata?: Record<string, unknown>): Promise<void>;
   /** Merges keys into the account's app_metadata (server-only claims). */
   mergeAppMetadata(id: string, values: Record<string, unknown>): Promise<void>;
   revokeSessions(id: string): Promise<void>;
@@ -179,8 +181,17 @@ export function supabaseBackend(): Backend {
       if (!row) throw new Error('Profile not found after update');
       return row as Profile;
     },
-    async setPassword(id, password) {
-      const { error } = await db.auth.admin.updateUserById(id, { password });
+    async setPassword(id, password, appMetadata) {
+      let app_metadata: Record<string, unknown> | undefined;
+      if (appMetadata) {
+        const { data, error } = await db.auth.admin.getUserById(id);
+        if (error) throw new Error(error.message);
+        app_metadata = { ...(data.user.app_metadata ?? {}), ...appMetadata };
+      }
+      const { error } = await db.auth.admin.updateUserById(
+        id,
+        app_metadata ? { password, app_metadata } : { password },
+      );
       if (error) throw new Error(error.message);
     },
     async mergeAppMetadata(id, values) {

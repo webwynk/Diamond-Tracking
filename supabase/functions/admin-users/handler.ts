@@ -7,7 +7,13 @@
 //   POST { action: "reset_pin", id, temp_pin }                    -> 200 { ok }
 //
 // Authorization: an active admin's access token. Every action is logged with
-// the admin's id. Never logged: PINs and passwords.
+// the admin's id; an update logs each changed field as { from, to }. Never
+// logged: PINs and passwords.
+//
+// Accounts made here sign in with their user ID (as
+// <user id>@staff.diamondagritech.internal). The contact email is only for
+// reset codes, never a sign-in name. Only an account made directly in
+// Supabase with a real email (the first admin) signs in with an email.
 import type { Backend, Profile, ProfileChanges, Role } from '../_shared/backend.ts';
 import { callerProfile } from '../_shared/caller.ts';
 import { type Json, readBody, reply, str } from '../_shared/http.ts';
@@ -137,6 +143,13 @@ async function update(body: Json, admin: Profile, b: Backend): Promise<Response>
     else changes.is_active = body.is_active;
   }
   if (Object.keys(fields).length > 0) return reply(400, { error: 'validation_failed', fields });
+
+  // Only what really changes is saved and logged (the app sends every field).
+  const diff: Record<string, { from: unknown; to: unknown }> = {};
+  for (const [k, v] of Object.entries(changes) as [keyof ProfileChanges, unknown][]) {
+    if (target[k] === v) delete changes[k];
+    else diff[k] = { from: target[k], to: v };
+  }
   if (Object.keys(changes).length === 0) return reply(200, { profile: target });
 
   // An admin cannot lock themselves out.
@@ -144,15 +157,27 @@ async function update(body: Json, admin: Profile, b: Backend): Promise<Response>
     return reply(409, { error: 'cannot_change_own_access' });
   }
 
-  const updated = await b.updateProfile(id, changes);
-  if (changes.role && changes.role !== target.role) {
+  // A new role goes on the sign-in account first, then on the profile. If the
+  // profile save fails, the account is put back, so the app never shows the
+  // admin side to someone the database treats as an employee (or the other
+  // way round).
+  let updated: Profile;
+  if (changes.role) {
     await b.mergeAppMetadata(id, { role: changes.role });
+    try {
+      updated = await b.updateProfile(id, changes);
+    } catch (e) {
+      await b.mergeAppMetadata(id, { role: target.role });
+      throw e;
+    }
+    await b.revokeSessions(id);
+  } else {
+    updated = await b.updateProfile(id, changes);
+  }
+  if (changes.is_active === false && !changes.role) {
     await b.revokeSessions(id);
   }
-  if (changes.is_active === false) {
-    await b.revokeSessions(id);
-  }
-  await b.logAdmin(admin.id, 'update_user', id, { changed: Object.keys(changes) });
+  await b.logAdmin(admin.id, 'update_user', id, { changes: diff });
   return reply(200, { profile: updated });
 }
 
@@ -165,11 +190,17 @@ async function resetPin(body: Json, admin: Profile, b: Backend): Promise<Respons
   const target = await b.profile(id);
   if (!target) return reply(404, { error: 'user_not_found' });
 
-  await b.setPassword(id, pin);
-  await b.mergeAppMetadata(id, { must_change_password: true });
-  // Signs the user out everywhere and frees the phone lock (a lost or
-  // replaced phone is handled this way).
-  await b.revokeSessions(id);
+  // The PIN and "must change password" are saved together.
+  await b.setPassword(id, pin, { must_change_password: true });
   await b.logAdmin(admin.id, 'reset_pin', id, {});
+  // Signs the user out everywhere and frees the phone lock (a lost or
+  // replaced phone is handled this way). If only this fails, the new PIN
+  // already works; pressing Reset again finishes it.
+  try {
+    await b.revokeSessions(id);
+  } catch (e) {
+    console.error('admin-users reset_pin: sign-out failed', e instanceof Error ? e.message : e);
+    return reply(500, { error: 'reset_incomplete' });
+  }
   return reply(200, { ok: true });
 }

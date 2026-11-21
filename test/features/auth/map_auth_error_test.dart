@@ -64,6 +64,10 @@ void main() {
       mapAuthError(fx(409, 'cannot_change_own_access')),
       AuthFailure.cannotChangeOwnAccess,
     );
+    expect(
+      mapAuthError(fx(500, 'reset_incomplete')),
+      AuthFailure.resetIncomplete,
+    );
     expect(mapAuthError(fx(429, 'whatever')), AuthFailure.tooManyAttempts);
     expect(mapAuthError(fx(500, 'boom')), AuthFailure.unknown);
   });

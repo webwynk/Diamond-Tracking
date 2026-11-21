@@ -7,8 +7,10 @@ library;
 /// real contact emails are kept separately on the profile.
 const String loginEmailDomain = 'staff.diamondagritech.internal';
 
-/// The sign-in email for what the user typed: an email as is (admins can
-/// sign in with their email), otherwise the user ID's sign-in email.
+/// The sign-in email for what the user typed: an email as is (only for the
+/// first admin, whose account was made in Supabase with a real email),
+/// otherwise the user ID's sign-in email. Accounts added in the app always
+/// sign in with their user ID.
 String loginEmailFor(String loginId) {
   final String id = loginId.trim();
   return id.contains('@')

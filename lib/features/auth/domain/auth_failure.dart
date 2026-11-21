@@ -26,6 +26,10 @@ enum AuthFailure implements Exception {
     'You cannot turn off your own account or remove your own admin access.',
   ),
   userNotFound('This user no longer exists.'),
+  resetIncomplete(
+    'The reset did not finish: their old phone is still signed in. Press '
+    'Reset again to finish.',
+  ),
   notAllowed('You are not allowed to do this.'),
   unknown('Something went wrong. Please try again.');
 

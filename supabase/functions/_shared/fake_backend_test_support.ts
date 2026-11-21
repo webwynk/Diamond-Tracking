@@ -17,6 +17,13 @@ export class FakeBackend implements Backend {
   emails = new Map<string, string>(); // auth email -> id
   revoked: string[] = [];
   log: { admin: string; action: string; target: string }[] = [];
+  /** The details saved with each admin log entry, in the same order. */
+  logDetails: Record<string, unknown>[] = [];
+  /** Makes the next call of that name fail, like a dropped connection. */
+  failNext = new Set<'updateProfile' | 'mergeAppMetadata' | 'setPassword' | 'revokeSessions'>();
+  private fails(name: 'updateProfile' | 'mergeAppMetadata' | 'setPassword' | 'revokeSessions') {
+    return this.failNext.delete(name);
+  }
   codes = new Map<string, string>();
   failInsert = false;
   /** day id -> owner id, and the stops still needing an address. */
@@ -88,19 +95,24 @@ export class FakeBackend implements Backend {
     return Promise.resolve('ok' as const);
   }
   updateProfile(id: string, changes: ProfileChanges) {
+    if (this.fails('updateProfile')) return Promise.reject(new Error('db down'));
     const p = { ...this.profiles.get(id)!, ...changes };
     this.profiles.set(id, p);
     return Promise.resolve(p);
   }
-  setPassword(id: string, password: string) {
+  setPassword(id: string, password: string, appMetadata?: Record<string, unknown>) {
+    if (this.fails('setPassword')) return Promise.reject(new Error('auth down'));
     this.passwords.set(id, password);
+    if (appMetadata) this.meta.set(id, { ...(this.meta.get(id) ?? {}), ...appMetadata });
     return Promise.resolve();
   }
   mergeAppMetadata(id: string, values: Record<string, unknown>) {
+    if (this.fails('mergeAppMetadata')) return Promise.reject(new Error('auth down'));
     this.meta.set(id, { ...(this.meta.get(id) ?? {}), ...values });
     return Promise.resolve();
   }
   revokeSessions(id: string) {
+    if (this.fails('revokeSessions')) return Promise.reject(new Error('db down'));
     this.revoked.push(id);
     return Promise.resolve();
   }
@@ -166,8 +178,9 @@ export class FakeBackend implements Backend {
     this.droppedTokens.push(...tokens);
     return Promise.resolve();
   }
-  logAdmin(admin: string, action: string, target: string) {
+  logAdmin(admin: string, action: string, target: string, details: Record<string, unknown>) {
     this.log.push({ admin, action, target });
+    this.logDetails.push(details);
     return Promise.resolve();
   }
 }

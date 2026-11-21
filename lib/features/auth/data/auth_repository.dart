@@ -10,7 +10,8 @@ import '../domain/credentials.dart';
 /// Every account action the app performs. Screens depend on this interface,
 /// so tests use a fake.
 abstract interface class AuthRepository {
-  /// The signed-in user's ID, or null for an admin who signs in by email.
+  /// The signed-in user's ID, or null for the first admin, whose account was
+  /// made in Supabase with a real email.
   String? get currentUserCode;
 
   /// Signs in and claims this phone. Throws [AuthFailure].
@@ -218,6 +219,8 @@ AuthFailure mapAuthError(Object e) {
         return AuthFailure.cannotChangeOwnAccess;
       case 'user_not_found':
         return AuthFailure.userNotFound;
+      case 'reset_incomplete':
+        return AuthFailure.resetIncomplete;
       case 'not_admin':
       case 'not_required':
         return AuthFailure.notAllowed;

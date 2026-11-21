@@ -32,7 +32,6 @@ export async function handler(req: Request, b: Backend): Promise<Response> {
     });
   }
 
-  await b.setPassword(caller.profile.id, password);
-  await b.mergeAppMetadata(caller.profile.id, { must_change_password: false });
+  await b.setPassword(caller.profile.id, password, { must_change_password: false });
   return reply(200, { ok: true });
 }
