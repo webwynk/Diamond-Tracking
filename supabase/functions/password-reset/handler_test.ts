@@ -35,6 +35,24 @@ Deno.test('the same answer for unknown users and users without email', async () 
   assertEquals(mail.sent.length, 0);
 });
 
+Deno.test('over 5 codes today: no email, and the same answer (M7)', async () => {
+  const { b, mail } = setup();
+  b.resetCodeLimit = 'user';
+  const res = await handler(post({ action: 'request', user_code: 'DA-001' }), b, mail);
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), { ok: true });
+  assertEquals(mail.sent.length, 0);
+});
+
+Deno.test("today's reset emails used up: says so (M7)", async () => {
+  const { b, mail } = setup();
+  b.resetCodeLimit = 'daily';
+  const res = await handler(post({ action: 'request', user_code: 'DA-001' }), b, mail);
+  assertEquals(res.status, 429);
+  assertEquals(await res.json(), { error: 'daily_email_limit' });
+  assertEquals(mail.sent.length, 0);
+});
+
 Deno.test('says so when no email service is set up', async () => {
   const { b } = setup();
   const res = await handler(

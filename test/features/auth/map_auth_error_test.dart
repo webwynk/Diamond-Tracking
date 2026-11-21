@@ -55,6 +55,10 @@ void main() {
       mapAuthError(fx(503, 'email_not_configured')),
       AuthFailure.emailNotConfigured,
     );
+    expect(
+      mapAuthError(fx(429, 'daily_email_limit')),
+      AuthFailure.dailyEmailLimit,
+    );
     expect(mapAuthError(fx(409, 'user_code_taken')), AuthFailure.userCodeTaken);
     expect(
       mapAuthError(fx(409, 'cannot_change_own_access')),
