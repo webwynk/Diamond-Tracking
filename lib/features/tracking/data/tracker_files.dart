@@ -84,6 +84,7 @@ class TrackerState {
     this.batteryDayId,
     this.batteryWarned = const <int>{},
     this.dutyOffSentFor,
+    this.refusedPass,
   });
 
   factory TrackerState.fromJson(Map<String, Object?> json) {
@@ -96,6 +97,7 @@ class TrackerState {
           ? <int>{...warned.whereType<int>()}
           : const <int>{},
       dutyOffSentFor: json['duty_off_sent_for'] as int?,
+      refusedPass: json['refused_pass'] as String?,
     );
   }
 
@@ -110,6 +112,10 @@ class TrackerState {
   /// The duty day whose offline duty off the tracker has sent.
   final int? dutyOffSentFor;
 
+  /// The upload pass the server refused (a password reset replaced it). The
+  /// app reads this to ask for a new one; the tracker stops sending with it.
+  final String? refusedPass;
+
   Set<int> warnedFor(int dayId) =>
       batteryDayId == dayId ? batteryWarned : const <int>{};
 
@@ -118,17 +124,24 @@ class TrackerState {
     int? batteryDayId,
     Set<int>? batteryWarned,
     int? dutyOffSentFor,
+    Object? refusedPass = _keep,
   }) => TrackerState(
     heartbeat: heartbeat ?? this.heartbeat,
     batteryDayId: batteryDayId ?? this.batteryDayId,
     batteryWarned: batteryWarned ?? this.batteryWarned,
     dutyOffSentFor: dutyOffSentFor ?? this.dutyOffSentFor,
+    refusedPass: identical(refusedPass, _keep)
+        ? this.refusedPass
+        : refusedPass as String?,
   );
+
+  static const Object _keep = Object();
 
   Map<String, Object?> toJson() => <String, Object?>{
     'heartbeat': heartbeat?.toJson(),
     'battery_day_id': batteryDayId,
     'battery_warned': batteryWarned.toList()..sort(),
     'duty_off_sent_for': dutyOffSentFor,
+    'refused_pass': refusedPass,
   };
 }

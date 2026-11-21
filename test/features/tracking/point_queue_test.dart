@@ -75,6 +75,51 @@ void main() {
     expect(queue.isEmpty, isTrue);
   });
 
+  test('points of the running duty wait when the pass is refused', () async {
+    queue.addPoint(1, 'old', point(0));
+    up.reject = true;
+    final DrainResult r = await queue.drain(
+      up,
+      passFor: (int day) => day == 1 ? 'old' : null,
+      keepOnRefusedPass: true,
+    );
+    expect(r.passRefused, isTrue);
+    expect(r.dropped, 0);
+    expect(queue.pendingCount, 1);
+  });
+
+  test('kept points go up with the new pass', () async {
+    queue.addPoint(1, 'old', point(0));
+    up.reject = true;
+    await queue.drain(
+      up,
+      passFor: (int day) => day == 1 ? 'old' : null,
+      keepOnRefusedPass: true,
+    );
+    up.reject = false;
+    final DrainResult r = await queue.drain(
+      up,
+      passFor: (int day) => day == 1 ? 'new' : null,
+      keepOnRefusedPass: true,
+    );
+    expect(r.sent, 1);
+    expect(up.passes, <String>['new']);
+    expect(queue.isEmpty, isTrue);
+  });
+
+  test('a refused batch of another day is still dropped', () async {
+    queue.addPoint(1, 'old', point(0));
+    up.reject = true;
+    final DrainResult r = await queue.drain(
+      up,
+      passFor: (int day) => day == 2 ? 'x' : null,
+      keepOnRefusedPass: true,
+    );
+    expect(r.dropped, 1);
+    expect(r.passRefused, isFalse);
+    expect(queue.isEmpty, isTrue);
+  });
+
   test('big backlogs go in chunks the server accepts', () async {
     for (int i = 0; i < 950; i++) {
       queue.addPoint(1, 'p', point(i % 600));

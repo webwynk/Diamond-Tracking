@@ -273,6 +273,26 @@ void main() {
     expect(find.text('On duty'), findsOneWidget);
   });
 
+  testWidgets('a pass refused after a password reset is replaced', (
+    WidgetTester tester,
+  ) async {
+    repo.today = onDuty();
+    tracker.stored = sessionFor(repo.today!);
+    tracker.refused = true;
+    time.at = ist(12);
+    await pumpHome(tester);
+    expect(repo.calls, contains('resume'));
+    expect(tracker.stored?.pass, 'pass-resumed');
+  });
+
+  testWidgets('a working pass is left alone', (WidgetTester tester) async {
+    repo.today = onDuty();
+    tracker.stored = sessionFor(repo.today!);
+    time.at = ist(12);
+    await pumpHome(tester);
+    expect(repo.calls, isNot(contains('resume')));
+  });
+
   testWidgets('the tracker failing to start is shown', (
     WidgetTester tester,
   ) async {
