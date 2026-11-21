@@ -20,7 +20,9 @@ A. DATABASE (Supabase dashboard > SQL editor)
 
 1. Paste and run supabase/reset/01_backup_and_clear_old.sql
 
-2. Database > Extensions: turn on pg_cron (for the 11 PM auto duty off).
+2. Database > Extensions: turn on pg_cron (for the 11 PM auto duty off)
+   and pg_net (phone push: without it, notifications only show inside the
+   app, even when push_url is set).
    Then paste and run, in this order:
      supabase/migrations/20261120000000_rewrite_baseline.sql
      supabase/migrations/20261121000000_login_and_devices.sql

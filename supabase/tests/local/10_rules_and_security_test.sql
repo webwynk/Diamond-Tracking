@@ -360,6 +360,7 @@ do $$
 declare
   v_today date := private.ist_today();
   v_req bigint;
+  v_leave bigint;
 begin
   perform t.act_as('00000000-0000-0000-0000-000000000003');
   -- Day 1 back was marked absent above; the request can still fix it.
@@ -370,6 +371,12 @@ begin
   perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', null)$q$, v_today - 3), 'photo_required');
   perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', 'photo/abc')$q$, v_today - 3), 'photo_required');
   perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', '  ', 'req-11111111-2222-3333-4444-555555555555')$q$, v_today - 3), 'message_required');
+  -- Leave for a day with an attendance request waiting is refused (L18).
+  perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date, %L::date], 'x')$q$, v_today - 1, v_today), 'already_requested');
+  -- ... and attendance for a day with leave waiting (L18).
+  select id into v_leave from public.request_leave('casual', array[v_today - 4], 'Wedding');
+  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', 'req-11111111-2222-3333-4444-555555555555')$q$, v_today - 4), 'already_requested');
+  perform public.cancel_request(v_leave);
   perform t.act_as('00000000-0000-0000-0000-000000000001');
   perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '19:30', 'x', 'req-11111111-2222-3333-4444-555555555555')$q$, v_today - 1), 'already_has_duty');
 
@@ -398,6 +405,7 @@ begin
   perform t.expect_error(format('select public.cancel_request(%s)', v_req.id), 'request_not_cancellable');
   perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date], 'x', 'proof/1')$q$, v_today + 1), 'invalid_photo');
   perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date], 'x')$q$, v_today + 120), 'invalid_dates');
+  perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date, null], 'x')$q$, v_today + 1), 'invalid_dates');
   v_req := public.request_leave('sick', array[v_today - 1, v_today + 1], 'Fever', 'req-aaaaaaaa-2222-3333-4444-555555555555');
 
   perform t.expect_error(format($q$select public.request_leave('casual', array[%L::date], 'overlap')$q$, v_today + 1), 'already_requested');
