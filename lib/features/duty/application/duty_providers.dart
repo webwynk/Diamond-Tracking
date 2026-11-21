@@ -89,8 +89,12 @@ class DutyHomeController extends AsyncNotifier<DutyHome> {
     String? problem;
     if (day != null && day.status == DayStatus.onDuty) {
       if (now.isBefore(DutyRules.autoDutyOffFor(day.dutyOnAt!)) &&
-          (session == null || session.dayId != day.id)) {
-        // Duty is on but this phone lost its session (app data cleared).
+          (session == null ||
+              session.dayId != day.id ||
+              await _tracker.passRefused())) {
+        // Duty is on but this phone lost its session (app data cleared) or
+        // its upload pass (a password reset): get a new pass. Points waiting
+        // on the phone go up with it.
         try {
           session = await _startTracker(await _resume());
         } on DutyException catch (e) {

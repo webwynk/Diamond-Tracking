@@ -309,6 +309,7 @@ class FakeTrackerControl implements TrackerControl {
   TrackingSession? stored;
   bool running = false;
   bool unsent = false;
+  bool refused = false;
   bool failStart = false;
   final List<String> calls = <String>[];
   // Lives as long as the test; nothing to clean up.
@@ -332,6 +333,7 @@ class FakeTrackerControl implements TrackerControl {
   Future<void> start(TrackingSession session) async {
     calls.add('start:${session.dayId}');
     stored = session;
+    refused = false;
     if (failStart) throw const TrackerStartFailed('test');
     running = true;
   }
@@ -350,6 +352,9 @@ class FakeTrackerControl implements TrackerControl {
 
   @override
   Future<bool> hasUnsentWork() async => unsent;
+
+  @override
+  Future<bool> passRefused() async => refused;
 
   @override
   Stream<int> get batteryWarnings => battery.stream;

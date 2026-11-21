@@ -104,6 +104,54 @@ void main() {
     expect(engine.isOffline, isFalse);
   });
 
+  test(
+    'a password reset: points are kept, then sent with the new pass',
+    () async {
+      await engine.start();
+      up.reject = true;
+      engine.onFix(fixAt(now, 0));
+      await engine.tick();
+      expect(engine.pendingCount, 1);
+      expect(files.readState().refusedPass, 'pass7');
+
+      // Not asked again with the same pass.
+      final int calls = up.pointCalls.length;
+      now = now.add(const Duration(minutes: 1));
+      engine.onFix(fixAt(now, 50));
+      await engine.tick();
+      expect(engine.pendingCount, 2);
+      expect(up.pointCalls.length, calls);
+
+      // The app got a new pass.
+      up.reject = false;
+      files.writeSession(
+        TrackingSession(
+          dayId: 7,
+          pass: 'pass7b',
+          dutyOnAt: dutyOn,
+          autoOffAt: autoOff,
+        ),
+      );
+      now = now.add(const Duration(minutes: 1));
+      await engine.tick();
+      expect(up.pointCount, 2);
+      expect(up.passes.toSet(), <String>{'pass7b'});
+      expect(engine.pendingCount, 0);
+      expect(files.readState().refusedPass, isNull);
+    },
+  );
+
+  test('refused points are dropped once the duty is over', () async {
+    await engine.start();
+    up.reject = true;
+    engine.onFix(fixAt(now, 0));
+    await engine.tick();
+    expect(engine.pendingCount, 1);
+    now = autoOff.add(const Duration(minutes: 1));
+    expect(await engine.tick(), TrackerMode.stop);
+    expect(engine.pendingCount, 0);
+  });
+
   test('after a phone restart the off time is recorded', () async {
     files.writeState(
       TrackerState(

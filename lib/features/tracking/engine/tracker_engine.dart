@@ -201,9 +201,26 @@ class TrackerEngine {
     if (_uploading) return;
     _uploading = true;
     try {
-      final DrainResult result = await files.queue.drain(uploader);
+      final TrackingSession? session = _session;
+      final bool running = session != null && session.isActiveAt(now());
+      TrackerState state = files.readState();
+      // The server refused this pass (password reset). Wait for the app to
+      // bring a new one instead of asking the server again every minute.
+      if (running && state.refusedPass == session.pass) return;
+      final DrainResult result = await files.queue.drain(
+        uploader,
+        passFor: (int dayId) =>
+            session != null && session.dayId == dayId ? session.pass : null,
+        keepOnRefusedPass: running,
+      );
       _lastDrain = result;
       if (!result.failed) _lastUploadAt = now();
+      state = files.readState();
+      if (result.passRefused && running) {
+        files.writeState(state.copyWith(refusedPass: session.pass));
+      } else if (state.refusedPass != null) {
+        files.writeState(state.copyWith(refusedPass: null));
+      }
     } finally {
       _uploading = false;
     }

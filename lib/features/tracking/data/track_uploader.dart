@@ -23,6 +23,9 @@ abstract interface class TrackUploader {
 class UploadRejected implements Exception {
   const UploadRejected(this.reason);
 
+  /// The reason when the pass is wrong, expired or was replaced.
+  static const String badPass = 'invalid_upload_pass';
+
   final String reason;
 
   @override
@@ -39,7 +42,7 @@ class SupabaseTrackUploader implements TrackUploader {
   final SupabaseClient _client;
 
   static const Set<String> _permanent = <String>{
-    'invalid_upload_pass',
+    UploadRejected.badPass,
     'duty_not_found',
     'invalid_points',
   };

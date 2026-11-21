@@ -82,7 +82,18 @@ class PointQueue {
 
   /// Uploads everything, oldest first. Stops at the first network error and
   /// keeps the rest for the next try.
-  Future<DrainResult> drain(TrackUploader uploader) async {
+  ///
+  /// [passFor] gives the current upload pass of a duty day (null when the day
+  /// is not the running duty). A batch is sent with it instead of the pass it
+  /// was written with, so points queued before a password reset go up with
+  /// the new pass. With [keepOnRefusedPass] a batch of the running duty that
+  /// the server refuses because of its pass is kept, and the drain stops
+  /// ([DrainResult.passRefused]): the app can still get a new pass.
+  Future<DrainResult> drain(
+    TrackUploader uploader, {
+    String? Function(int dayId)? passFor,
+    bool keepOnRefusedPass = false,
+  }) async {
     if (!dir.existsSync()) return const DrainResult();
     seal();
     int sent = 0;
@@ -102,21 +113,27 @@ class PointQueue {
         for (final Map<String, Object?> r in records)
           if (r.containsKey('brk')) ?_breakFrom(r),
       ];
+      final String currentPass = passFor?.call(header.dayId) ?? header.pass;
       try {
         for (int i = 0; i < points.length; i += chunkSize) {
           final int end = (i + chunkSize).clamp(0, points.length);
           await uploader.uploadPoints(
             header.dayId,
-            header.pass,
+            currentPass,
             points.sublist(i, end),
           );
         }
         for (final TrackBreak b in breaks) {
-          await uploader.reportBreak(header.dayId, header.pass, b);
+          await uploader.reportBreak(header.dayId, currentPass, b);
         }
         sent += records.length;
       } on UploadRejected catch (e) {
         AppLog.failure('PointQueue.drain', e);
+        if (keepOnRefusedPass &&
+            e.reason == UploadRejected.badPass &&
+            passFor?.call(header.dayId) != null) {
+          return DrainResult(sent: sent, dropped: dropped, passRefused: true);
+        }
         dropped += records.length;
       } on Object catch (e, st) {
         AppLog.failure('PointQueue.drain', e, st);
@@ -196,7 +213,12 @@ class _Header {
 
 /// What a [PointQueue.drain] did.
 class DrainResult {
-  const DrainResult({this.sent = 0, this.dropped = 0, this.failed = false});
+  const DrainResult({
+    this.sent = 0,
+    this.dropped = 0,
+    this.failed = false,
+    this.passRefused = false,
+  });
 
   /// Records the server accepted.
   final int sent;
@@ -206,4 +228,8 @@ class DrainResult {
 
   /// A network error stopped the upload; the rest waits for the next try.
   final bool failed;
+
+  /// The server refused the running duty's pass (password reset). The points
+  /// were kept until the app gets a new pass.
+  final bool passRefused;
 }

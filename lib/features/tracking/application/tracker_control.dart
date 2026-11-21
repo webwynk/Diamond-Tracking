@@ -63,6 +63,10 @@ abstract interface class TrackerControl {
   /// or a duty off have not been sent yet. Logging out must wait.
   Future<bool> hasUnsentWork();
 
+  /// The server refused the saved session's upload pass (a password reset
+  /// replaced it): the app should ask for a new pass and [start] again.
+  Future<bool> passRefused();
+
   /// Battery warnings from the service while the app is open.
   Stream<int> get batteryWarnings;
 
@@ -190,6 +194,13 @@ class ForegroundTrackerControl implements TrackerControl {
     return session.isOff &&
         !session.offConfirmed &&
         files.readState().dutyOffSentFor != session.dayId;
+  }
+
+  @override
+  Future<bool> passRefused() async {
+    final TrackerFiles files = await _getFiles();
+    final String? pass = files.readSession()?.pass;
+    return pass != null && files.readState().refusedPass == pass;
   }
 
   @override
