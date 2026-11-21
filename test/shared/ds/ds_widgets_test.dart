@@ -239,7 +239,11 @@ void main() {
       Column(
         children: <Widget>[
           DsButton(label: 'Send', onPressed: () => taps++),
-          const DsButton(label: 'Off', onPressed: null, kind: DsButtonKind.danger),
+          const DsButton(
+            label: 'Off',
+            onPressed: null,
+            kind: DsButtonKind.danger,
+          ),
           DsButton(
             label: 'Save',
             busyLabel: 'Saving',
