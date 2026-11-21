@@ -9,17 +9,21 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/time/clock_providers.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/form_message.dart';
+import '../../auth/application/auth_providers.dart';
+import '../../auth/domain/auth_status.dart';
 import '../../requests/data/photo_picker.dart';
 import '../../requests/presentation/photo_field.dart';
 import '../../routes/domain/geo_point.dart';
+import '../application/visit_sender.dart';
 import '../application/visits_providers.dart';
 import '../data/current_location.dart';
-import '../data/visits_repository.dart';
+import '../data/visit_outbox.dart';
 import '../domain/visit.dart';
 import '../domain/visit_failure.dart';
 
 /// Add a dealer visit while on duty: store name, note and a photo. A camera
-/// photo saves where it was taken; a gallery photo saves no place.
+/// photo saves where it was taken; a gallery photo saves no place. With no
+/// internet the visit is kept on the phone and sent later.
 class AddVisitPage extends ConsumerStatefulWidget {
   const AddVisitPage({required this.dayId, super.key});
 
@@ -43,8 +47,8 @@ class _AddVisitPageState extends ConsumerState<AddVisitPage> {
   _Gps _gps = _Gps.none;
   int _gpsTry = 0;
 
-  /// Kept after a successful upload, so a retry does not upload again and
-  /// does not add a second visit.
+  /// Kept after a successful upload, so a retry here does not upload again
+  /// and does not add a second visit.
   String? _photoId;
   bool _busy = false;
   String? _error;
@@ -112,26 +116,57 @@ class _AddVisitPageState extends ConsumerState<AddVisitPage> {
       setState(() => _error = problem);
       return;
     }
+    final AuthStatus status = ref.read(authStatusProvider);
+    if (status is! SignedIn) return;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final VisitsRepository repo = ref.read(visitsRepositoryProvider);
-      final String photoId = _photoId ??= await repo.uploadPhoto(_photo!);
-      await repo.add(
-        photoId: photoId,
+      // Kept on the phone first, so a visit is never lost (M10): with no
+      // internet it stays there and is sent later.
+      final VisitOutbox outbox = ref.read(visitOutboxProvider);
+      final PendingVisit visit = PendingVisit(
+        id: VisitOutbox.newId(),
+        userId: status.userId,
         storeName: _store.text.trim(),
         note: _note.text.trim().isEmpty ? null : _note.text.trim(),
         location: _from == PhotoFrom.camera ? _location : null,
         mocked: _from == PhotoFrom.camera && _mocked,
         capturedAt: _takenAt ?? ref.read(serverClockProvider).now(),
+        photoId: _photoId,
       );
+      await outbox.add(visit, _photo!);
+      final VisitFailure? failure = await ref
+          .read(visitSenderProvider)
+          .send(visit);
       if (!mounted) return;
-      ref.invalidate(dayVisitsProvider(widget.dayId));
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Visit saved.')));
-      Navigator.of(context).pop();
+      if (failure == null || VisitSender.isOffline(failure)) {
+        ref
+          ..invalidate(dayVisitsProvider(widget.dayId))
+          ..invalidate(pendingVisitsProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              failure == null
+                  ? 'Visit saved.'
+                  : 'No internet. The visit is kept on the phone and will be '
+                        'sent when you are online.',
+            ),
+          ),
+        );
+        Navigator.of(context).pop();
+        return;
+      }
+      // Something to fix here (or a problem the person must see): show it
+      // and keep the page; the uploaded photo is reused on the next try.
+      final List<PendingVisit> left = await outbox.pending();
+      final PendingVisit? kept = left
+          .where((PendingVisit v) => v.id == visit.id)
+          .firstOrNull;
+      _photoId = kept?.photoId ?? _photoId;
+      if (kept != null) await outbox.remove(kept);
+      if (mounted) setState(() => _error = failure.message);
     } on Object catch (e) {
       if (mounted) setState(() => _error = mapVisitError(e).message);
     } finally {
@@ -179,7 +214,13 @@ class _AddVisitPageState extends ConsumerState<AddVisitPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    // Kept alive: the visit is saved under the signed-in person.
+    ref.watch(authStatusProvider);
+    return _page(context);
+  }
+
+  Widget _page(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Add visit')),
     body: SafeArea(
       child: ListView(
