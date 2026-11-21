@@ -83,7 +83,12 @@ export interface Backend {
     places: { cell_lat: number; cell_lng: number; address: string }[],
   ): Promise<void>;
   /** A request's photo id (null if none), or 'not_allowed' for this caller. */
-  requestPhoto(requestId: number, callerId: string): Promise<string | null | 'not_allowed'>;
+  /** Photo [index] of a request: 0 is the first, 1 and 2 the extra photos. */
+  requestPhoto(
+    requestId: number,
+    callerId: string,
+    index: number,
+  ): Promise<string | null | 'not_allowed'>;
   /** A visit's photo id (null if none or removed), or 'not_allowed' for this caller. */
   visitPhoto(visitId: string, callerId: string): Promise<string | null | 'not_allowed'>;
   /** Counts one photo upload for today; false when today's 60 are used up. */
@@ -228,10 +233,11 @@ export function supabaseBackend(): Backend {
     async savePlaces(dayId, places) {
       check(await db.rpc('svc_save_places', { p_day_id: dayId, p_places: places }));
     },
-    async requestPhoto(requestId, callerId) {
+    async requestPhoto(requestId, callerId, index) {
       const { data, error } = await db.rpc('svc_request_photo', {
         p_request_id: requestId,
         p_caller: callerId,
+        p_index: index,
       });
       if (error) {
         if (/not_allowed/.test(error.message)) return 'not_allowed';
