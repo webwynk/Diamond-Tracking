@@ -110,10 +110,17 @@ export class FakeBackend implements Backend {
     this.profiles.set(id, p);
     return Promise.resolve(p);
   }
-  setPassword(id: string, password: string, appMetadata?: Record<string, unknown>) {
+  /** Same order as the real backend: the flag goes on before the password,
+   * and off after it. */
+  setPassword(id: string, password: string, mustChange?: boolean) {
+    if (mustChange === true) {
+      this.meta.set(id, { ...(this.meta.get(id) ?? {}), must_change_password: true });
+    }
     if (this.fails('setPassword')) return Promise.reject(new Error('auth down'));
     this.passwords.set(id, password);
-    if (appMetadata) this.meta.set(id, { ...(this.meta.get(id) ?? {}), ...appMetadata });
+    if (mustChange === false) {
+      this.meta.set(id, { ...(this.meta.get(id) ?? {}), must_change_password: false });
+    }
     return Promise.resolve();
   }
   mergeAppMetadata(id: string, values: Record<string, unknown>) {

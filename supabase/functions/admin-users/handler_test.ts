@@ -20,6 +20,14 @@ const create = {
   temp_pin: '482915',
 };
 
+Deno.test('an admin still on a temporary PIN is refused (L39)', async () => {
+  const { b, adminId } = setup();
+  b.meta.set(adminId, { role: 'admin', must_change_password: true });
+  const res = await handler(post(create, 'admin-token'), b);
+  assertEquals(res.status, 403);
+  assertEquals((await res.json()).error, 'must_change_password');
+});
+
 Deno.test('only an active admin may use it', async () => {
   const { b } = setup();
   assertEquals((await handler(post(create), b)).status, 401);
@@ -224,7 +232,7 @@ Deno.test('a failed sign-in role save leaves the profile alone (L41)', async () 
   assertEquals(b.meta.get(empId)!.role, 'employee');
 });
 
-Deno.test('reset PIN saves the PIN and "must change" together (L42)', async () => {
+Deno.test('reset PIN: a PIN never works without "must change" (L42, L30)', async () => {
   const { b, empId } = setup();
   b.meta.set(empId, { role: 'employee', must_change_password: false });
   b.passwords.set(empId, 'old-password');
@@ -236,8 +244,10 @@ Deno.test('reset PIN saves the PIN and "must change" together (L42)', async () =
     threw = true;
   }
   assertEquals(threw, true);
+  // The password step failed: the old password still works, and the user
+  // is asked to choose a new one at the next sign-in. Never the PIN alone.
   assertEquals(b.passwords.get(empId), 'old-password');
-  assertEquals(b.meta.get(empId)!.must_change_password, false);
+  assertEquals(b.meta.get(empId)!.must_change_password, true);
 });
 
 Deno.test('reset PIN: a failed sign-out says the PIN is set (L42)', async () => {

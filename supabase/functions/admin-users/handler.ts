@@ -203,8 +203,8 @@ async function resetPin(body: Json, admin: Profile, b: Backend): Promise<Respons
   const target = await b.profile(id);
   if (!target) return reply(404, { error: 'user_not_found' });
 
-  // The PIN and "must change password" are saved together.
-  await b.setPassword(id, pin, { must_change_password: true });
+  // "Must change password" goes on first, so the PIN never works without it.
+  await b.setPassword(id, pin, true);
   await b.logAdmin(admin.id, 'reset_pin', id, {});
   // Signs the user out everywhere and frees the phone lock (a lost or
   // replaced phone is handled this way). If only this fails, the new PIN

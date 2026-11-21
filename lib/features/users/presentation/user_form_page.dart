@@ -275,22 +275,6 @@ class _UserFormState extends ConsumerState<_UserForm> {
       ..invalidate(userByIdProvider(user.id));
   }
 
-  String? _optionalPhone(String? v) {
-    final String s = (v ?? '').trim();
-    if (s.isEmpty) return null;
-    return RegExp(r'^\+?[0-9]{7,15}$').hasMatch(s)
-        ? null
-        : 'Use 7 to 15 digits, with + in front if needed';
-  }
-
-  String? _optionalEmail(String? v) {
-    final String s = (v ?? '').trim();
-    if (s.isEmpty) return null;
-    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(s) && s.length <= 120
-        ? null
-        : 'Enter a valid email';
-  }
-
   @override
   Widget build(BuildContext context) {
     final bool self = !_isNew && _isSelf;
@@ -336,10 +320,10 @@ class _UserFormState extends ConsumerState<_UserForm> {
                   controller: _name,
                   decoration: const InputDecoration(labelText: 'Full name'),
                   textCapitalization: TextCapitalization.words,
-                  validator: _check('full_name', (String? v) {
-                    final int n = (v ?? '').trim().length;
-                    return n < 1 || n > 80 ? 'Enter a name (up to 80)' : null;
-                  }),
+                  validator: _check(
+                    'full_name',
+                    (String? v) => nameProblem(v ?? ''),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.x4),
                 TextFormField(
@@ -348,7 +332,10 @@ class _UserFormState extends ConsumerState<_UserForm> {
                     labelText: 'Phone (optional)',
                   ),
                   keyboardType: TextInputType.phone,
-                  validator: _check('phone', _optionalPhone),
+                  validator: _check(
+                    'phone',
+                    (String? v) => phoneProblem(v ?? ''),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.x4),
                 TextFormField(
@@ -360,7 +347,10 @@ class _UserFormState extends ConsumerState<_UserForm> {
                   ),
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
-                  validator: _check('contact_email', _optionalEmail),
+                  validator: _check(
+                    'contact_email',
+                    (String? v) => emailProblem(v ?? ''),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.x5),
                 const Text('Role', style: AppTypography.label),
