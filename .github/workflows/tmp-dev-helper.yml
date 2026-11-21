@@ -1,0 +1,36 @@
+# TEMPORARY: removed before merge. Prints formatter, analyzer and test
+# results for the design-system branch, because the session writing it has
+# no Flutter SDK.
+name: tmp-dev-helper
+on:
+  push:
+    branches: [feature/design-system]
+jobs:
+  helper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.9"
+          channel: stable
+          cache: true
+      - name: Resolve packages
+        run: |
+          grep -q lucide_icons_flutter pubspec.yaml || flutter pub add lucide_icons_flutter
+          grep -q package_info_plus pubspec.yaml || flutter pub add package_info_plus
+          flutter pub get
+          grep -A3 -E "^  (lucide_icons_flutter|package_info_plus):" pubspec.lock || true
+          grep -E "lucide_icons_flutter|package_info_plus" pubspec.yaml || true
+      - name: Format diff
+        run: |
+          dart format lib test > /dev/null
+          git --no-pager diff -- lib test | head -800
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos || true
+      - name: Tests (design system)
+        run: |
+          if [ -d test/shared/ds ]; then flutter test test/shared/ds || true; fi
+      - name: Lock file
+        run: git --no-pager diff -- pubspec.lock | head -120
