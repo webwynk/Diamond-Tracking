@@ -12,7 +12,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Small, normal and large phones (logical pixels).
-const List<Size> phones = <Size>[Size(360, 780), Size(390, 844), Size(430, 932)];
+const List<Size> phones = <Size>[
+  Size(360, 780),
+  Size(390, 844),
+  Size(430, 932),
+];
 
 Future<void> pumpOn(WidgetTester tester, Size size, Widget body) async {
   tester.view.physicalSize = size;
@@ -73,8 +77,8 @@ Widget gallery() {
                 DsTextLink(label: 'Forgot password?', onPressed: () {}),
               ],
             ),
-            DsTextField(label: 'Store name', hint: 'Maa Tara Agro Store'),
-            DsTextField(
+            const DsTextField(label: 'Store name', hint: 'Maa Tara Agro Store'),
+            const DsTextField(
               label: 'New password',
               password: true,
               error: "That's not your current password.",
@@ -149,22 +153,36 @@ Widget gallery() {
               child: Row(
                 children: <Widget>[
                   Expanded(
-                    child: DsStatTile(value: '11h 45m', label: 'Worked', onDeep: true),
+                    child: DsStatTile(
+                      value: '11h 45m',
+                      label: 'Worked',
+                      onDeep: true,
+                    ),
                   ),
                   SizedBox(width: DsSpace.sm),
                   Expanded(
-                    child: DsStatTile(value: '52 km', label: 'Distance', onDeep: true),
+                    child: DsStatTile(
+                      value: '52 km',
+                      label: 'Distance',
+                      onDeep: true,
+                    ),
                   ),
                   SizedBox(width: DsSpace.sm),
                   Expanded(
-                    child: DsStatTile(value: '6', label: 'Visits', onDeep: true),
+                    child: DsStatTile(
+                      value: '6',
+                      label: 'Visits',
+                      onDeep: true,
+                    ),
                   ),
                 ],
               ),
             ),
             const Row(
               children: <Widget>[
-                Expanded(child: DsStatTile(value: '15', label: 'Present')),
+                Expanded(
+                  child: DsStatTile(value: '15', label: 'Present'),
+                ),
                 SizedBox(width: DsSpace.sm),
                 Expanded(
                   child: DsStatTile(
@@ -221,7 +239,7 @@ void main() {
       Column(
         children: <Widget>[
           DsButton(label: 'Send', onPressed: () => taps++),
-          DsButton(label: 'Off', onPressed: null, kind: DsButtonKind.danger),
+          const DsButton(label: 'Off', onPressed: null, kind: DsButtonKind.danger),
           DsButton(
             label: 'Save',
             busyLabel: 'Saving',
@@ -252,9 +270,18 @@ void main() {
         ],
       ),
     );
-    expect(tester.getSize(find.byType(DsSmallButton)).height, greaterThanOrEqualTo(48));
-    expect(tester.getSize(find.byType(DsTextLink)).height, greaterThanOrEqualTo(48));
-    expect(tester.getSize(find.byType(DsFilterChip)).height, greaterThanOrEqualTo(48));
+    expect(
+      tester.getSize(find.byType(DsSmallButton)).height,
+      greaterThanOrEqualTo(48),
+    );
+    expect(
+      tester.getSize(find.byType(DsTextLink)).height,
+      greaterThanOrEqualTo(48),
+    );
+    expect(
+      tester.getSize(find.byType(DsFilterChip)).height,
+      greaterThanOrEqualTo(48),
+    );
   });
 
   testWidgets('a password field hides the text until the eye is tapped', (
@@ -267,7 +294,8 @@ void main() {
       phones[1],
       DsTextField(label: 'Password', controller: c, password: true),
     );
-    bool obscured() => tester.widget<TextField>(find.byType(TextField)).obscureText;
+    bool obscured() =>
+        tester.widget<TextField>(find.byType(TextField)).obscureText;
     expect(obscured(), isTrue);
     await tester.tap(find.byTooltip('Show password'));
     await tester.pump();

@@ -90,9 +90,7 @@ Future<T?> showDsSheet<T>({
     barrierColor: DsColors.scrim,
     shape: const RoundedRectangleBorder(borderRadius: DsRadius.sheetTop),
     builder: (BuildContext context) => Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
@@ -110,7 +108,7 @@ Future<T?> showDsSheet<T>({
                 child: Container(
                   width: 40,
                   height: 4,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: DsColors.line,
                     borderRadius: DsRadius.pill,
                   ),

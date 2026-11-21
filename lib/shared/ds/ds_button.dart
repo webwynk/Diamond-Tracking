@@ -334,11 +334,7 @@ class DsIconButton extends StatelessWidget {
               ),
             ),
             if (badge > 0)
-              Positioned(
-                top: -2,
-                right: -2,
-                child: DsCountBadge(count: badge),
-              ),
+              Positioned(top: -2, right: -2, child: DsCountBadge(count: badge)),
           ],
         ),
       ),

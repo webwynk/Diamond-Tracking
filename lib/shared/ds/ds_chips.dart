@@ -104,14 +104,20 @@ class DsStatusPill extends StatelessWidget {
     return Container(
       height: 26,
       padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(color: status.tint, borderRadius: DsRadius.pill),
+      decoration: BoxDecoration(
+        color: status.tint,
+        borderRadius: DsRadius.pill,
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Container(
             width: 7,
             height: 7,
-            decoration: BoxDecoration(color: status.dot, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: status.dot,
+              shape: BoxShape.circle,
+            ),
           ),
           const SizedBox(width: 6),
           Text(
@@ -120,9 +126,7 @@ class DsStatusPill extends StatelessWidget {
             style: DsText.caption.copyWith(
               color: status.text,
               fontWeight: FontWeight.w700,
-              fontVariations: const <FontVariation>[
-                FontVariation('wght', 700),
-              ],
+              fontVariations: const <FontVariation>[FontVariation('wght', 700)],
             ),
           ),
         ],

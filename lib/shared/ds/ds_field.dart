@@ -182,7 +182,10 @@ class _DsTextFieldState extends State<DsTextField> {
                   : fill,
             ),
             hintText: widget.hint,
-            hintStyle: DsText.body.copyWith(fontSize: 16, color: DsColors.text3),
+            hintStyle: DsText.body.copyWith(
+              fontSize: 16,
+              color: DsColors.text3,
+            ),
             prefixText: widget.prefixText == null
                 ? null
                 : '${widget.prefixText}  ',

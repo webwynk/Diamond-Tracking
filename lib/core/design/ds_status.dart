@@ -11,9 +11,21 @@ enum DsStatus {
     text: DsColors.successText,
     dot: DsColors.successDot,
   ),
-  halfDay(tint: Color(0xFFE0F2FE), text: Color(0xFF075985), dot: Color(0xFF0EA5E9)),
-  leave(tint: Color(0xFFF1EDFE), text: Color(0xFF6D28D9), dot: Color(0xFF8B5CF6)),
-  sick(tint: Color(0xFFFFE4E6), text: Color(0xFFBE123C), dot: Color(0xFFE11D48)),
+  halfDay(
+    tint: Color(0xFFE0F2FE),
+    text: Color(0xFF075985),
+    dot: Color(0xFF0EA5E9),
+  ),
+  leave(
+    tint: Color(0xFFF1EDFE),
+    text: Color(0xFF6D28D9),
+    dot: Color(0xFF8B5CF6),
+  ),
+  sick(
+    tint: Color(0xFFFFE4E6),
+    text: Color(0xFFBE123C),
+    dot: Color(0xFFE11D48),
+  ),
   absent(
     tint: DsColors.dangerTint,
     text: DsColors.dangerText,

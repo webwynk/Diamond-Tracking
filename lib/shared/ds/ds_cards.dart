@@ -179,10 +179,7 @@ class DsStatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: DsSpace.md,
-        vertical: 10,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: DsSpace.md, vertical: 10),
       decoration: BoxDecoration(
         color: onDeep ? DsColors.deepRaised : status.tint,
         borderRadius: DsRadius.medium,
