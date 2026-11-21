@@ -40,15 +40,13 @@ void main() {
   late List<int> warnings;
   late TrackerEngine engine;
 
-  TrackerEngine newEngine({Duration phoneClockError = Duration.zero}) =>
-      TrackerEngine(
-        files: files,
-        uploader: up,
-        now: () => now,
-        phoneNow: () => now.add(phoneClockError),
-        system: system,
-        onBatteryWarning: warnings.add,
-      );
+  TrackerEngine newEngine() => TrackerEngine(
+    files: files,
+    uploader: up,
+    now: () => now,
+    system: system,
+    onBatteryWarning: warnings.add,
+  );
 
   setUp(() {
     dir = Directory.systemTemp.createTempSync('engine_test');
@@ -82,13 +80,24 @@ void main() {
   });
 
   test('a wrong phone clock does not move the points', () async {
-    engine = newEngine(phoneClockError: const Duration(hours: 2));
     await engine.start();
     // The phone stamps the fix with its own (wrong) clock.
     engine.onFix(fixAt(now.add(const Duration(hours: 2)), 0));
     await engine.tick();
     expect(up.pointCalls.single.single['t'], now.toIso8601String());
   });
+
+  test(
+    'a fix with the right satellite time is not moved twice (L43)',
+    () async {
+      await engine.start();
+      // The fix already carries the right time; whatever the phone's own clock
+      // says, the point keeps the trusted time.
+      engine.onFix(fixAt(now, 0));
+      await engine.tick();
+      expect(up.pointCalls.single.single['t'], now.toIso8601String());
+    },
+  );
 
   test('offline: points wait on the phone, then go up', () async {
     await engine.start();

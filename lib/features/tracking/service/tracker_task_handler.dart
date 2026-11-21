@@ -105,8 +105,10 @@ class TrackerTaskHandler extends TaskHandler {
     _ticking = true;
     try {
       _ticks++;
-      if (_ticks % TrackerServiceConfig.clockResyncTicks == 0) {
-        await _clock?.sync();
+      final ServerClock? clock = _clock;
+      if (clock != null &&
+          TrackerServiceConfig.clockSyncDue(_ticks, synced: clock.isSynced)) {
+        await clock.sync();
       }
       int? level;
       try {

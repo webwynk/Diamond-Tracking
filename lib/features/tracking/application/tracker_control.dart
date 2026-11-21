@@ -86,9 +86,14 @@ class TrackerStartFailed implements Exception {
 
 /// The real tracker: the flutter_foreground_task service.
 class ForegroundTrackerControl implements TrackerControl {
-  ForegroundTrackerControl() {
+  /// [now] is the trusted clock (server time carried forward), so a wrong
+  /// phone clock cannot make a running duty look finished (L47).
+  ForegroundTrackerControl({DateTime Function()? now})
+    : _now = now ?? (() => DateTime.now().toUtc()) {
     FlutterForegroundTask.addTaskDataCallback(_onData);
   }
+
+  final DateTime Function() _now;
 
   final StreamController<int> _battery = StreamController<int>.broadcast();
   TrackerFiles? _files;
@@ -189,16 +194,8 @@ class ForegroundTrackerControl implements TrackerControl {
   }
 
   @override
-  Future<bool> hasUnsentWork() async {
-    final TrackerFiles files = await _getFiles();
-    final TrackingSession? session = files.readSession();
-    if (files.queue.pendingCount > 0) return true;
-    if (session == null) return false;
-    if (session.isActiveAt(DateTime.now().toUtc())) return true;
-    return session.isOff &&
-        !session.offConfirmed &&
-        files.readState().dutyOffSentFor != session.dayId;
-  }
+  Future<bool> hasUnsentWork() async =>
+      unsentWorkIn(await _getFiles(), _now().toUtc());
 
   @override
   Future<bool> passRefused() async {
@@ -236,4 +233,16 @@ class ForegroundTrackerControl implements TrackerControl {
       throw TrackerStartFailed(result.error);
     }
   }
+}
+
+/// Whether the tracker still has work: points waiting, a running duty at
+/// [now] (the trusted clock), or a duty off not yet sent.
+bool unsentWorkIn(TrackerFiles files, DateTime now) {
+  final TrackingSession? session = files.readSession();
+  if (files.queue.pendingCount > 0) return true;
+  if (session == null) return false;
+  if (session.isActiveAt(now)) return true;
+  return session.isOff &&
+      !session.offConfirmed &&
+      files.readState().dutyOffSentFor != session.dayId;
 }

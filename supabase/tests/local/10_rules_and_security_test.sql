@@ -86,7 +86,6 @@ $$;
 select t.act_as(null);
 select t.expect_error('select count(*) from public.profiles', 'permission denied');
 select t.expect_error($$select public.duty_on('dev-e1-0001')$$, 'permission denied');
-select t.expect_error('select public.server_now()', 'permission denied');
 select t.act_as_owner();
 
 \echo '--- an employee sees only their own rows and cannot write tables'

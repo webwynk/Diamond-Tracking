@@ -44,10 +44,8 @@ class TrackerEngine {
     required this.now,
     required this.system,
     required this.onBatteryWarning,
-    DateTime Function()? phoneNow,
     PointFilter? filter,
-  }) : _phoneNow = phoneNow ?? DateTime.now,
-       _filter = filter ?? PointFilter();
+  }) : _filter = filter ?? PointFilter();
 
   final TrackerFiles files;
   final TrackUploader uploader;
@@ -60,7 +58,6 @@ class TrackerEngine {
   /// duty day.
   final void Function(int level) onBatteryWarning;
 
-  final DateTime Function() _phoneNow;
   final PointFilter _filter;
 
   TrackingSession? _session;
@@ -105,9 +102,11 @@ class TrackerEngine {
   void onFix(TrackFix fix) {
     final TrackingSession? session = _session;
     if (session == null) return;
-    // The phone's clock may be wrong; shift the fix onto the trusted clock.
-    final Duration offset = now().difference(_phoneNow().toUtc());
-    final DateTime at = fix.time.toUtc().add(offset);
+    // Fixes arrive live, so each one is stamped with the trusted clock when it
+    // arrives (L43). The fix's own time is not used: on some phones it is the
+    // satellites' (right) time, on others the phone's (maybe wrong) clock, so
+    // correcting it could move the point twice.
+    final DateTime at = now();
     final DateTime end = session.offAt ?? session.autoOffAt;
     if (at.isBefore(session.dutyOnAt) || !at.isBefore(end)) {
       return;
