@@ -6,29 +6,37 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/routes.dart';
 
+import '../../../core/design/ds_colors.dart';
+import '../../../core/design/ds_icons.dart';
+import '../../../core/design/ds_layout.dart';
+import '../../../core/design/ds_status.dart';
+import '../../../core/design/ds_text.dart';
 import '../../../core/rules/duty_rules.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/time/clock_providers.dart';
 import '../../../core/time/ist_format.dart';
-import '../../../shared/widgets/app_banner.dart';
+import '../../../shared/ds/ds_button.dart';
+import '../../../shared/ds/ds_chips.dart';
+import '../../../shared/ds/ds_feedback.dart';
 import '../../../shared/widgets/app_button.dart';
-import '../../../shared/widgets/app_error_view.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/auth_status.dart';
 import '../../notifications/application/notifications_providers.dart';
 import '../../notifications/domain/app_notification.dart';
-import '../../notifications/presentation/notification_bell.dart';
-import '../../requests/presentation/my_requests_page.dart';
+import '../../requests/application/requests_providers.dart';
+import '../../requests/domain/app_request.dart';
 import '../../tracking/application/tracker_control.dart';
 import '../../tracking/application/tracker_providers.dart';
+import '../../tracking/domain/tracker_status.dart';
 import '../../tracking/presentation/tracking_setup_sheet.dart';
 import '../../tracking/service/battery_alerts.dart';
+import '../../users/application/users_providers.dart';
 import '../../visits/application/visits_providers.dart';
 import '../../visits/data/visit_outbox.dart';
 import '../../visits/domain/visit.dart';
-import '../../visits/presentation/visit_widgets.dart';
+import '../../visits/presentation/visit_rows.dart';
 import '../application/duty_providers.dart';
 import '../domain/duty_day.dart';
 import '../domain/duty_failure.dart';
@@ -237,25 +245,26 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Future<void> _showBatteryWarning(int level) async {
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        icon: Icon(
-          Icons.battery_alert_rounded,
-          color: level <= 10 ? AppColors.error : AppColors.warning,
-        ),
-        title: Text('Battery $level%'),
-        content: Text(batteryMessage(level)),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+  /// A battery warning from the tracker, shown as a banner until closed.
+  int? _batteryLevel;
+
+  void _showBatteryWarning(int level) {
+    if (mounted) setState(() => _batteryLevel = level);
+  }
+
+  /// "Turn on location": opens the phone's setting for what stopped the
+  /// route, then checks again.
+  Future<void> _fixTracking(TrackerProblem problem) async {
+    final TrackerControl tracker = ref.read(trackerControlProvider);
+    switch (problem) {
+      case TrackerProblem.locationOff:
+        await tracker.request(TrackerRequirement.locationService);
+      case TrackerProblem.permissionOff:
+        await tracker.request(TrackerRequirement.locationPermission);
+      case TrackerProblem.gps:
+        break;
+    }
+    if (mounted) await _controller.refresh();
   }
 
   void _snack(String text) {
@@ -277,60 +286,376 @@ class _HomePageState extends ConsumerState<HomePage> {
         unawaited(_controller.refresh());
       }
     });
+    final DateTime now = ref.read(serverClockProvider).now();
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
-        actions: const <Widget>[NotificationBell()],
-      ),
-      body: home.when(
-        skipLoadingOnRefresh: true,
-        data: (DutyHome value) => RefreshIndicator(
-          onRefresh: _controller.refresh,
-          child: ListView(
-            padding: const EdgeInsets.all(AppSpacing.x4),
-            children: <Widget>[
-              if (!value.serverReachable) ...<Widget>[
-                AppBanner.offline(),
-                const SizedBox(height: AppSpacing.x3),
-              ],
-              if (value.trackingProblem case final String problem) ...<Widget>[
-                AppBanner(
-                  icon: Icons.location_disabled_rounded,
-                  backgroundColor: AppColors.errorBg,
-                  iconColor: AppColors.error,
-                  title: 'Route is not being recorded',
-                  subtitle: problem,
-                  actionLabel: 'Try again',
-                  onAction: _controller.refresh,
-                  isActionPill: true,
-                ),
-                const SizedBox(height: AppSpacing.x3),
-              ],
-              _DutyCard(
-                home: value,
-                now: ref.read(serverClockProvider).now(),
-                busy: _busy,
-                onDutyOn: _dutyOn,
-                onDutyOff: _dutyOff,
+      backgroundColor: DsColors.surface,
+      body: SafeArea(
+        bottom: false,
+        child: home.when(
+          skipLoadingOnRefresh: true,
+          data: (DutyHome value) => RefreshIndicator(
+            onRefresh: _controller.refresh,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                DsSpace.gutter,
+                DsSpace.lg,
+                DsSpace.gutter,
+                DsSpace.xl,
               ),
-              if (value.today case final DutyDay day
-                  when day.dutyOnAt != null) ...<Widget>[
-                const SizedBox(height: AppSpacing.x4),
-                _VisitsCard(day: day),
-              ],
-              const SizedBox(height: AppSpacing.x4),
-              const _RequestsCard(),
+              children: _sections(value, now),
+            ),
+          ),
+          error: (Object e, _) => Column(
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  DsSpace.gutter,
+                  DsSpace.lg,
+                  DsSpace.gutter,
+                  0,
+                ),
+                child: _HomeHeader(now: now),
+              ),
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(DsSpace.gutter),
+                    child: DsErrorState(
+                      title: 'Home could not be loaded',
+                      message: mapDutyError(e).message,
+                      onRetry: () => ref.invalidate(dutyHomeProvider),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
+          loading: () => const Center(child: CircularProgressIndicator()),
         ),
-        error: (Object e, _) => AppErrorView(
-          onRetry: () => ref.invalidate(dutyHomeProvider),
-          message: mapDutyError(e).message,
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
   }
+
+  /// Home, top to bottom (design v2): header, warnings, duty card, quick
+  /// actions, today's visits.
+  List<Widget> _sections(DutyHome value, DateTime now) {
+    final DutyPhase phase = value.phaseAt(now);
+    final bool tracking =
+        phase == DutyPhase.onDuty || phase == DutyPhase.offSaved;
+    final TrackerStatus? status = tracking
+        ? ref.watch(trackerStatusProvider).value
+        : null;
+    final DutyDay? day = value.today;
+    final bool onDuty = phase == DutyPhase.onDuty;
+    final List<Widget> banners = <Widget>[
+      if (!value.serverReachable || (status?.offline ?? false))
+        DsBanner(
+          kind: DsBannerKind.offline,
+          title: "You're offline",
+          message: _offlineMessage(tracking, status?.pendingPoints ?? 0),
+        ),
+      if (onDuty && status?.problem != null)
+        DsBanner(
+          kind: DsBannerKind.danger,
+          title: 'Tracking stopped',
+          message: _stoppedMessage(status!),
+          actionLabel: status.problem == TrackerProblem.gps
+              ? 'Try again'
+              : 'Turn on location',
+          onAction: () => unawaited(_fixTracking(status.problem!)),
+        ),
+      if (value.trackingProblem case final String problem)
+        DsBanner(
+          kind: DsBannerKind.danger,
+          title: 'Route is not being recorded',
+          message: problem,
+          actionLabel: 'Try again',
+          onAction: () => unawaited(_controller.refresh()),
+        ),
+      if (_batteryLevel case final int level)
+        DsBanner(
+          kind: level <= 10 ? DsBannerKind.danger : DsBannerKind.warning,
+          title: 'Battery $level%',
+          message: batteryMessage(level),
+          actionLabel: 'OK',
+          onAction: () => setState(() => _batteryLevel = null),
+        ),
+    ];
+    return <Widget>[
+      _HomeHeader(now: now),
+      for (final Widget banner in banners) ...<Widget>[
+        const SizedBox(height: DsSpace.lg),
+        banner,
+      ],
+      const SizedBox(height: DsSpace.lg),
+      _DutyCard(
+        home: value,
+        now: now,
+        busy: _busy,
+        onDutyOn: _dutyOn,
+        onDutyOff: _dutyOff,
+      ),
+      const SizedBox(height: DsSpace.lg),
+      _QuickActions(addVisitDayId: onDuty ? day!.id : null),
+      if (day != null && day.dutyOnAt != null) ...<Widget>[
+        const SizedBox(height: DsSpace.lg),
+        _VisitsCard(day: day),
+      ],
+    ];
+  }
+}
+
+/// The offline banner's text: the route is kept on the phone while on duty.
+String _offlineMessage(bool tracking, int pending) {
+  if (!tracking) return 'Showing what is saved on this phone.';
+  const String base =
+      "Your route is still recording. It's saved on this phone and uploads "
+      "when you're back online.";
+  if (pending == 0) return base;
+  return '$base\n$pending ${pending == 1 ? 'point' : 'points'} waiting to '
+      'upload';
+}
+
+/// "Location is off, so your route isn't being recorded since 11:05 AM."
+String _stoppedMessage(TrackerStatus status) {
+  final String since = status.problemSince == null
+      ? ''
+      : ' since ${IstFormat.time(status.problemSince!)}';
+  return switch (status.problem!) {
+    TrackerProblem.locationOff =>
+      "Location is off, so your route isn't being recorded$since.",
+    TrackerProblem.permissionOff =>
+      "Location permission is off, so your route isn't being "
+          'recorded$since.',
+    TrackerProblem.gps =>
+      "The GPS has a problem, so your route isn't being recorded$since.",
+  };
+}
+
+/// Initials, today's date, "Hello, Rahul", and the bell.
+class _HomeHeader extends ConsumerWidget {
+  const _HomeHeader({required this.now});
+
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final String? name = ref.watch(myProfileProvider).value?.fullName;
+    final int unread = ref.watch(unreadCountProvider);
+    return Row(
+      children: <Widget>[
+        Semantics(
+          button: true,
+          label: 'My profile',
+          excludeSemantics: true,
+          child: GestureDetector(
+            onTap: () => context.go(Routes.userProfile),
+            child: Container(
+              width: DsSize.tap,
+              height: DsSize.tap,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: DsColors.primary,
+                shape: BoxShape.circle,
+                border: Border.all(color: DsColors.white, width: 3),
+              ),
+              child: name == null
+                  ? const Icon(DsIcons.profile, size: 20, color: DsColors.white)
+                  : Text(
+                      initialsOf(name),
+                      style: DsText.button.copyWith(color: DsColors.white),
+                    ),
+            ),
+          ),
+        ),
+        const SizedBox(width: DsSpace.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                IstFormat.dayDate(now),
+                style: DsText.label.copyWith(fontWeight: FontWeight.w500),
+              ),
+              Text(
+                name == null ? 'Hello' : 'Hello, ${firstNameOf(name)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: DsText.title,
+              ),
+            ],
+          ),
+        ),
+        DsIconButton(
+          icon: DsIcons.bell,
+          label: 'Notifications',
+          badge: unread,
+          onPressed: () => context.push(Routes.userNotifications),
+        ),
+      ],
+    );
+  }
+}
+
+/// "RD" for "Rahul Das", "R" for "Rahul".
+String initialsOf(String name) {
+  final List<String> parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((String p) => p.isNotEmpty)
+      .toList();
+  if (parts.isEmpty) return '';
+  final String first = parts.first.characters.first;
+  if (parts.length == 1) return first.toUpperCase();
+  return (first + parts.last.characters.first).toUpperCase();
+}
+
+/// "Rahul" for "Rahul Das".
+String firstNameOf(String name) => name.trim().split(RegExp(r'\s+')).first;
+
+/// Add visit (only on duty), My route, and Requests with the number still
+/// waiting for the admin.
+class _QuickActions extends ConsumerWidget {
+  const _QuickActions({required this.addVisitDayId});
+
+  /// Today's duty day while on duty; null hides Add visit.
+  final int? addVisitDayId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final int waiting =
+        ref
+            .watch(myRequestsProvider)
+            .value
+            ?.where((AppRequest r) => r.isPending)
+            .length ??
+        0;
+    final int? dayId = addVisitDayId;
+    return Row(
+      children: <Widget>[
+        if (dayId != null) ...<Widget>[
+          Expanded(
+            child: _ActionTile(
+              icon: DsIcons.camera,
+              label: 'Add visit',
+              primary: true,
+              onTap: () => context.push(Routes.userAddVisit(dayId)),
+            ),
+          ),
+          const SizedBox(width: 10),
+        ],
+        Expanded(
+          child: _ActionTile(
+            icon: DsIcons.map,
+            label: 'My route',
+            onTap: () => context.go(Routes.userMap),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _ActionTile(
+            icon: DsIcons.requests,
+            label: 'Requests',
+            iconColor: DsStatus.leave.text,
+            iconBackground: DsStatus.leave.tint,
+            badge: waiting,
+            badgeLabel: '$waiting waiting',
+            onTap: () => context.push(Routes.userRequests),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.primary = false,
+    this.iconColor = DsColors.primary,
+    this.iconBackground = DsColors.primaryTint,
+    this.badge = 0,
+    this.badgeLabel,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  /// Brand blue tile (Add visit); the others are white.
+  final bool primary;
+  final Color iconColor;
+  final Color iconBackground;
+  final int badge;
+  final String? badgeLabel;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: badge > 0 ? '$label, ${badgeLabel ?? badge}' : label,
+    excludeSemantics: true,
+    child: Material(
+      color: primary ? DsColors.primary : DsColors.white,
+      borderRadius: DsRadius.large,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 92,
+          child: Stack(
+            children: <Widget>[
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: primary ? DsColors.deepRaised : iconBackground,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        icon,
+                        size: 20,
+                        color: primary ? DsColors.white : iconColor,
+                      ),
+                    ),
+                    const SizedBox(height: DsSpace.sm),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: DsSpace.xs,
+                      ),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: DsText.body.copyWith(
+                          color: primary ? DsColors.white : DsColors.ink,
+                          fontWeight: FontWeight.w700,
+                          fontVariations: const <FontVariation>[
+                            FontVariation('wght', 700),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (badge > 0)
+                Positioned(
+                  top: 10,
+                  right: 12,
+                  child: DsCountBadge(count: badge, waiting: true),
+                ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _DutyCard extends StatelessWidget {
@@ -516,37 +841,6 @@ class _Line extends StatelessWidget {
   );
 }
 
-/// Attendance and leave requests.
-class _RequestsCard extends StatelessWidget {
-  const _RequestsCard();
-
-  @override
-  Widget build(BuildContext context) => Card(
-    margin: EdgeInsets.zero,
-    child: Padding(
-      padding: AppSpacing.card,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              const Expanded(
-                child: Text('Requests', style: AppTypography.title),
-              ),
-              TextButton(
-                onPressed: () => context.push(Routes.userRequests),
-                child: const Text('My requests'),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.x2),
-          const NewRequestButtons(),
-        ],
-      ),
-    ),
-  );
-}
-
 /// Today's dealer visits, with Add visit while on duty.
 class _VisitsCard extends ConsumerWidget {
   const _VisitsCard({required this.day});
@@ -559,58 +853,69 @@ class _VisitsCard extends ConsumerWidget {
     final List<PendingVisit> waiting =
         ref.watch(pendingVisitsProvider).value ?? const <PendingVisit>[];
     final bool onDuty = day.status == DayStatus.onDuty;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: AppSpacing.card,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text('Visits today', style: AppTypography.title),
-            const SizedBox(height: AppSpacing.x2),
-            ...visits.when(
-              skipLoadingOnRefresh: true,
-              data: (List<Visit> list) => list.isEmpty
-                  ? <Widget>[
-                      Text(
-                        onDuty
-                            ? 'No visits yet. Add one at each dealer, with a '
-                                  'photo.'
-                            : 'No visits today.',
-                        style: AppTypography.body.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ]
-                  : <Widget>[for (final Visit v in list) VisitTile(visit: v)],
-              error: (_, _) => <Widget>[
-                Row(
-                  children: <Widget>[
-                    const Expanded(child: Text('Visits could not be loaded.')),
-                    TextButton(
-                      onPressed: () =>
-                          ref.invalidate(dayVisitsProvider(day.id)),
-                      child: const Text('Try again'),
-                    ),
-                  ],
+    final List<Visit>? list = visits.value;
+    final int count = (list?.length ?? 0) + waiting.length;
+    final List<Widget> rows = <Widget>[
+      for (int i = 0; i < (list?.length ?? 0); i++)
+        VisitTimelineRow(
+          visit: list![i],
+          isLast: i == list.length - 1 && waiting.isEmpty,
+        ),
+      for (int i = 0; i < waiting.length; i++)
+        PendingVisitTimelineRow(
+          visit: waiting[i],
+          isLast: i == waiting.length - 1,
+        ),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(DsSpace.lg),
+      decoration: const BoxDecoration(
+        color: DsColors.white,
+        borderRadius: DsRadius.large,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const Expanded(
+                child: Text('Visits today', style: DsText.section),
+              ),
+              if (count > 0)
+                DsTag(label: '$count of the day', status: DsStatus.onDuty),
+            ],
+          ),
+          const SizedBox(height: DsSpace.sm),
+          if (visits.hasError && list == null)
+            Row(
+              children: <Widget>[
+                const Expanded(
+                  child: Text(
+                    'Visits could not be loaded.',
+                    style: DsText.body,
+                  ),
+                ),
+                DsTextLink(
+                  label: 'Try again',
+                  onPressed: () => ref.invalidate(dayVisitsProvider(day.id)),
                 ),
               ],
-              loading: () => const <Widget>[
-                Center(child: CircularProgressIndicator()),
-              ],
-            ),
-            for (final PendingVisit v in waiting) PendingVisitTile(visit: v),
-            if (onDuty) ...<Widget>[
-              const SizedBox(height: AppSpacing.x3),
-              AppButton(
-                label: 'Add visit',
-                isFullWidth: true,
-                icon: const Icon(Icons.add_a_photo_rounded),
-                onPressed: () => context.push(Routes.userAddVisit(day.id)),
-              ),
-            ],
-          ],
-        ),
+            )
+          else if (list == null)
+            const Padding(
+              padding: EdgeInsets.all(DsSpace.md),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (rows.isEmpty)
+            Text(
+              onDuty
+                  ? 'No visits yet. Add one at each dealer, with a photo.'
+                  : 'No visits today.',
+              style: DsText.body.copyWith(color: DsColors.text2),
+            )
+          else
+            ...rows,
+        ],
       ),
     );
   }

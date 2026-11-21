@@ -9,6 +9,7 @@ abstract final class IstFormat {
   static final DateFormat _time = DateFormat('h:mm a');
   static final DateFormat _date = DateFormat('d MMM yyyy');
   static final DateFormat _shortDate = DateFormat('d MMM');
+  static final DateFormat _dayDate = DateFormat('EEEE, d MMM');
 
   /// "7:05 AM".
   static String time(DateTime instant) => _time.format(Ist.wallClock(instant));
@@ -19,6 +20,10 @@ abstract final class IstFormat {
   /// "20 Nov", the IST day of an instant.
   static String shortDate(DateTime instant) =>
       _shortDate.format(Ist.wallClock(instant));
+
+  /// "Saturday, 21 Nov", the IST day of an instant.
+  static String dayDate(DateTime instant) =>
+      _dayDate.format(Ist.wallClock(instant));
 
   /// "9 h 05 min", "45 min".
   static String duration(Duration d) {

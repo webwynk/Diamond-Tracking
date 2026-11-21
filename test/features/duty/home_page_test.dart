@@ -11,10 +11,16 @@ import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_home.dart';
 import 'package:diamond_tracking/features/duty/presentation/home_page.dart';
+import 'package:diamond_tracking/features/requests/application/requests_providers.dart';
+import 'package:diamond_tracking/features/requests/domain/app_request.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_control.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
+import 'package:diamond_tracking/features/tracking/domain/tracker_status.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracking_session.dart';
+import 'package:diamond_tracking/features/users/application/users_providers.dart';
+import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
+import 'package:diamond_tracking/features/visits/domain/visit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -30,9 +36,13 @@ void main() {
   late FakeTrackerControl tracker;
   late FixedClock time;
   late FakeVisitsRepository visits;
+  late FakeUsersRepository users;
+  late FakeRequestsRepository requests;
 
   setUp(() {
     visits = FakeVisitsRepository();
+    users = FakeUsersRepository(<Profile>[profile('u1', name: 'Rahul Das')]);
+    requests = FakeRequestsRepository();
     repo = FakeDutyRepository()..dutyOnTime = ist(7);
     tracker = FakeTrackerControl();
     time = FixedClock(ist(7));
@@ -57,6 +67,8 @@ void main() {
           serverClockProvider.overrideWithValue(time.clock),
           deviceIdStoreProvider.overrideWithValue(FakeDeviceIdStore()),
           visitsRepositoryProvider.overrideWithValue(visits),
+          usersRepositoryProvider.overrideWithValue(users),
+          requestsRepositoryProvider.overrideWithValue(requests),
         ],
         child: MaterialApp(theme: AppTheme.light, home: const HomePage()),
       ),
@@ -246,7 +258,7 @@ void main() {
     repo.error = const PostgrestException(message: 'boom');
     await pumpHome(tester);
     repo.error = null;
-    await tester.tap(find.text('Retry'));
+    await tester.tap(find.text('Try again'));
     await tester.pumpAndSettle();
     expect(find.text('Ready to start'), findsOneWidget);
   });
@@ -304,7 +316,7 @@ void main() {
 
     expect(tracker.calls, contains('dutyOff:false'));
     expect(find.text('Duty off saved'), findsOneWidget);
-    expect(find.text('No internet connection'), findsOneWidget);
+    expect(find.text("You're offline"), findsOneWidget);
   });
 
   testWidgets('duty on elsewhere: a lost session is resumed', (
@@ -358,6 +370,109 @@ void main() {
     expect(find.text('Battery 15%'), findsOneWidget);
   });
 
+  testWidgets('the header greets the employee by first name', (
+    WidgetTester tester,
+  ) async {
+    await pumpHome(tester);
+    expect(find.text('Hello, Rahul'), findsOneWidget);
+    expect(find.text('RD'), findsOneWidget);
+    expect(find.text('Friday, 20 Nov'), findsOneWidget);
+  });
+
+  testWidgets('offline on duty shows the points waiting on the phone', (
+    WidgetTester tester,
+  ) async {
+    repo.today = onDuty();
+    tracker.stored = sessionFor(repo.today!);
+    time.at = ist(12);
+    await pumpHome(tester);
+    expect(find.text("You're offline"), findsNothing);
+    tracker.status.add(const TrackerStatus(pendingPoints: 214, offline: true));
+    await tester.pumpAndSettle();
+    expect(find.text("You're offline"), findsOneWidget);
+    expect(find.textContaining('214 points waiting to upload'), findsOneWidget);
+    tracker.status.add(const TrackerStatus());
+    await tester.pumpAndSettle();
+    expect(find.text("You're offline"), findsNothing);
+  });
+
+  testWidgets('location turned off on duty shows since when, and the fix', (
+    WidgetTester tester,
+  ) async {
+    repo.today = onDuty();
+    tracker.stored = sessionFor(repo.today!);
+    time.at = ist(12);
+    await pumpHome(tester);
+    tracker.status.add(
+      TrackerStatus(
+        problem: TrackerProblem.locationOff,
+        problemSince: ist(11, 5),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Tracking stopped'), findsOneWidget);
+    expect(find.textContaining('since 11:05 AM'), findsOneWidget);
+    await tester.tap(find.text('Turn on location'));
+    await tester.pumpAndSettle();
+    expect(tracker.calls, contains('request:locationService'));
+  });
+
+  testWidgets('tracker problems are not shown when not on duty', (
+    WidgetTester tester,
+  ) async {
+    await pumpHome(tester);
+    tracker.status.add(
+      const TrackerStatus(problem: TrackerProblem.locationOff, offline: true),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Tracking stopped'), findsNothing);
+    expect(find.text("You're offline"), findsNothing);
+  });
+
+  testWidgets('the Requests tile counts requests still waiting', (
+    WidgetTester tester,
+  ) async {
+    AppRequest request(int id, RequestStatus status) => AppRequest(
+      id: id,
+      userId: 'u1',
+      kind: RequestKind.leave,
+      status: status,
+      createdAt: DateTime.utc(2026, 11, 20, 2),
+      day: DateTime.utc(2026, 11, 24),
+    );
+    requests.requests.addAll(<AppRequest>[
+      request(1, RequestStatus.pending),
+      request(2, RequestStatus.approved),
+    ]);
+    await pumpHome(tester);
+    expect(find.bySemanticsLabel('Requests, 1 waiting'), findsOneWidget);
+  });
+
+  testWidgets('Add visit shows only on duty, with today\'s visits', (
+    WidgetTester tester,
+  ) async {
+    await pumpHome(tester);
+    expect(find.text('Add visit'), findsNothing);
+    expect(find.text('My route'), findsOneWidget);
+    repo.today = onDuty();
+    tracker.stored = sessionFor(repo.today!);
+    visits.byDay[5] = <Visit>[
+      Visit(
+        id: 'v1',
+        storeName: 'Maa Tara Agro Store',
+        fromGallery: true,
+        capturedAt: ist(8, 12),
+        hasPhoto: false,
+      ),
+    ];
+    time.at = ist(12);
+    await pumpHome(tester);
+    expect(find.text('Add visit'), findsOneWidget);
+    expect(find.text('1 of the day'), findsOneWidget);
+    expect(find.text('Maa Tara Agro Store'), findsOneWidget);
+    expect(find.text('8:12 AM · gallery photo, no place'), findsOneWidget);
+  });
+
   testWidgets(
     'a silent server: the phone view and "No internet" show at once (L55)',
     (WidgetTester tester) async {
@@ -368,14 +483,14 @@ void main() {
       await pumpHome(tester, settle: false);
       await tester.pump(DutyHomeController.showPhoneViewAfter);
       await tester.pump();
-      expect(find.text('No internet connection'), findsOneWidget);
+      expect(find.text("You're offline"), findsOneWidget);
       expect(find.text('On duty'), findsOneWidget);
       expect(find.text('Since 7:00 AM'), findsOneWidget);
 
       // The server answers: the banner goes.
       gate.complete();
       await tester.pumpAndSettle();
-      expect(find.text('No internet connection'), findsNothing);
+      expect(find.text("You're offline"), findsNothing);
       expect(find.text('On duty'), findsOneWidget);
     },
   );
@@ -386,10 +501,10 @@ void main() {
     repo.forDayGate = Completer<void>();
     await pumpHome(tester, settle: false);
     await tester.pump(DutyHomeController.showPhoneViewAfter);
-    expect(find.text('No internet connection'), findsOneWidget);
+    expect(find.text("You're offline"), findsOneWidget);
     await tester.pump(DutyHomeController.serverTimeout);
     await tester.pump();
-    expect(find.text('No internet connection'), findsOneWidget);
+    expect(find.text("You're offline"), findsOneWidget);
     expect(find.text('Retry'), findsNothing);
   });
 
@@ -397,7 +512,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await pumpHome(tester);
-    expect(find.text('No internet connection'), findsNothing);
+    expect(find.text("You're offline"), findsNothing);
     expect(find.text('Ready to start'), findsOneWidget);
   });
 

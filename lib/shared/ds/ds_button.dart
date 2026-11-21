@@ -197,21 +197,25 @@ class DsSmallButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.filled = false,
+    this.color = DsColors.primary,
     super.key,
   });
 
   final String label;
   final VoidCallback? onPressed;
 
-  /// Solid primary instead of the soft tint.
+  /// Solid [color] instead of the soft tint.
   final bool filled;
+
+  /// The solid colour when [filled]: brand blue, or red on a danger banner.
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     final bool enabled = onPressed != null;
     final Color bg = !enabled
         ? DsColors.disabled
-        : (filled ? DsColors.primary : DsColors.primaryTint);
+        : (filled ? color : DsColors.primaryTint);
     final Color fg = !enabled
         ? DsColors.text2
         : (filled ? DsColors.white : DsColors.primary);
