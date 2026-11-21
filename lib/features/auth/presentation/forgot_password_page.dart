@@ -69,7 +69,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
         _step = _Step.enterCode;
         _note =
             'If this user ID has an email, a code is on its way. It works '
-            'for 15 minutes.';
+            'for 15 minutes. You can ask for up to 5 codes a day.';
       });
     });
   }

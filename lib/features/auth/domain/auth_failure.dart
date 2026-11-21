@@ -10,6 +10,10 @@ enum AuthFailure implements Exception {
   tooManyAttempts(
     'Too many attempts. Please wait a few minutes and try again.',
   ),
+  dailyEmailLimit(
+    'Too many reset emails today. Try again tomorrow, or ask your admin to '
+    'reset your password.',
+  ),
   network('No internet connection. Please try again.'),
   emailNotConfigured(
     'Password reset by email is not set up. Please ask your admin to reset '

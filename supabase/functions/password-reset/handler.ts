@@ -4,10 +4,12 @@
 //        200 { ok }  Always the same answer, so it does not reveal whether a
 //        user ID exists or has an email. 503 email_not_configured when the
 //        project has no email service (users then ask the admin).
+//        429 daily_email_limit when today's reset emails are used up.
 //   POST { action: "confirm", user_code, code, new_password }
 //        200 { ok }  400 invalid_code | validation_failed
 //
-// Codes: 6 digits, stored hashed, 15 minutes, 5 tries, one email a minute.
+// Codes: 6 digits, stored hashed, 15 minutes, 5 tries, one email a minute,
+// 5 a day per user (more send nothing) and 90 a day in total.
 // A successful reset signs the user out of every phone.
 import type { Backend } from '../_shared/backend.ts';
 import { type Json, readBody, reply, str } from '../_shared/http.ts';
@@ -47,7 +49,16 @@ async function request(body: Json, b: Backend, mail: Mailer, newCode: CodeGenera
   const profile = await b.profileByCode(code);
   if (profile && profile.is_active && profile.contact_email) {
     const value = newCode();
-    if (await b.storeResetCode(profile.id, value)) {
+    let send: boolean;
+    try {
+      send = await b.storeResetCode(profile.id, value);
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('daily_email_limit')) {
+        return reply(429, { error: 'daily_email_limit' });
+      }
+      throw e;
+    }
+    if (send) {
       await mail.send(
         profile.contact_email,
         'Diamond Agritech password reset code',

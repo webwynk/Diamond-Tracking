@@ -1419,4 +1419,71 @@ select set_config('request.jwt.claims', '', false);
 delete from public.profiles where id = '00000000-0000-0000-0000-000000000010';
 delete from auth.users where id = '00000000-0000-0000-0000-000000000010';
 
+\echo '--- reset emails: 5 per user a day, 90 a day in total (M7); a reset stops the old phone at once (L7)'
+do $$
+declare
+  e1 constant uuid := '00000000-0000-0000-0000-000000000001';
+  e2 constant uuid := '00000000-0000-0000-0000-000000000002';
+  e3 constant uuid := '00000000-0000-0000-0000-000000000003';
+  v_today date := (now() at time zone 'Asia/Kolkata')::date;
+begin
+  delete from private.reset_email_counts;
+  delete from private.password_reset_codes;
+  insert into private.reset_email_counts (day, user_id, sent) values (v_today - 3, e1, 4);
+  for i in 1..5 loop
+    update private.password_reset_codes set created_at = now() - interval '2 minutes';
+    perform set_config('role', 'service_role', false);
+    perform t.eq(public.svc_store_reset_code(e2, '12345' || i), true, 'code ' || i || ' of today sent');
+    perform t.act_as_owner();
+  end loop;
+  update private.password_reset_codes set created_at = now() - interval '2 minutes';
+  perform set_config('role', 'service_role', false);
+  perform t.eq(public.svc_store_reset_code(e2, '999999'), false, 'no 6th email today');
+  perform t.eq(public.svc_use_reset_code(e2, '999999'), false, 'the 6th code was not stored');
+  perform t.act_as_owner();
+  perform t.eq((select count(*) from private.reset_email_counts where day < v_today - 1), 0::bigint,
+               'old counts cleaned up');
+
+  -- Today's total reaches 90: the next email anyone asks for is refused.
+  insert into private.reset_email_counts (day, user_id, sent) values (v_today, e1, 85);
+  perform set_config('role', 'service_role', false);
+  perform t.expect_error(format('select public.svc_store_reset_code(%L, %L)', e3, '424242'), 'daily_email_limit');
+  perform t.act_as_owner();
+  perform t.eq((select count(*) from private.password_reset_codes where user_id = e3), 0::bigint,
+               'no code stored over the daily total');
+  -- Yesterday's emails do not count today.
+  update private.reset_email_counts set day = v_today - 1;
+  perform set_config('role', 'service_role', false);
+  perform t.eq(public.svc_store_reset_code(e3, '424242'), true, 'a new day starts again');
+  perform t.act_as_owner();
+  delete from private.reset_email_counts;
+  delete from private.password_reset_codes;
+end;
+$$;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000011', 'e11@test');
+insert into public.profiles (id, user_code, full_name, role, created_at)
+values ('00000000-0000-0000-0000-000000000011', 'DA-011', 'Employee Eleven', 'employee',
+        now() - interval '30 days');
+do $$
+declare
+  e11 constant uuid := '00000000-0000-0000-0000-000000000011';
+  s1 constant uuid := 'dddddddd-0000-0000-0000-000000000001';
+begin
+  perform t.act_as_session(e11, s1);
+  perform public.claim_device('phone-11-0001');
+  perform public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + 1], 'trip');
+  perform t.act_as_owner();
+  perform set_config('role', 'service_role', false);
+  perform public.svc_revoke_sessions(e11);  -- what a password reset does
+  perform t.act_as_session(e11, s1);
+  perform t.expect_error(
+    $q$select public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + 2], 'trip')$q$,
+    'signed_in_elsewhere');
+end;
+$$;
+select t.act_as_owner();
+select set_config('request.jwt.claims', '', false);
+delete from public.profiles where id = '00000000-0000-0000-0000-000000000011';
+delete from auth.users where id = '00000000-0000-0000-0000-000000000011';
+
 \echo 'ALL TESTS PASSED'

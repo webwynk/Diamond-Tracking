@@ -204,6 +204,8 @@ AuthFailure mapAuthError(Object e) {
     switch (code) {
       case 'email_not_configured':
         return AuthFailure.emailNotConfigured;
+      case 'daily_email_limit':
+        return AuthFailure.dailyEmailLimit;
       case 'invalid_code':
         return AuthFailure.invalidCode;
       case 'validation_failed':

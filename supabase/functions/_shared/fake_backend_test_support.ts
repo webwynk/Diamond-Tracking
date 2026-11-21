@@ -104,7 +104,14 @@ export class FakeBackend implements Backend {
     this.revoked.push(id);
     return Promise.resolve();
   }
+  /** What storeResetCode answers: send, skip (a limit for this user) or
+   * the daily total being used up. */
+  resetCodeLimit: 'none' | 'user' | 'daily' = 'none';
   storeResetCode(id: string, code: string) {
+    if (this.resetCodeLimit === 'daily') {
+      return Promise.reject(new Error('daily_email_limit'));
+    }
+    if (this.resetCodeLimit === 'user') return Promise.resolve(false);
     this.codes.set(id, code);
     return Promise.resolve(true);
   }
