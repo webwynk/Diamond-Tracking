@@ -494,7 +494,7 @@ begin
   perform t.eq(v.store_name, 'Krishi Kendra', 'store name trimmed');
   v := public.add_visit(v_id, 'Krishi Kendra', 'Order taken', true, null, null, 'visit-' || v_id, now());
   v := public.add_visit(v_cam, 'Agro Store', null, false, 22500000, 88300000, 'visit-' || v_cam,
-                        now() - interval '1 day');
+                        now() - interval '70 minutes');
   perform t.eq(v.lat_e6, 22500000, 'camera photo keeps GPS');
   perform t.eq(v.captured_at >= now() - interval '1 hour', true, 'time not before duty on');
   perform t.expect_error($q$insert into public.visits (id, user_id, duty_day_id, from_gallery, captured_at)
@@ -517,6 +517,54 @@ begin
   delete from public.duty_days where user_id = '00000000-0000-0000-0000-000000000003';
 end;
 $$;
+
+\echo '--- a visit kept on the phone without internet goes into its own duty, even after duty off (M10)'
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000014', 'e14@test');
+insert into public.profiles (id, user_code, full_name, role, created_at, active_device_id)
+values ('00000000-0000-0000-0000-000000000014', 'DA-014', 'Employee Fourteen', 'employee',
+        now() - interval '30 days', 'dev-e14-0001');
+do $$
+declare
+  e1 uuid := '00000000-0000-0000-0000-000000000014';
+  v_old public.duty_days;
+  v_late uuid := 'aaaaaaaa-0000-0000-0000-000000000010';
+  v_stale uuid := 'aaaaaaaa-0000-0000-0000-000000000011';
+  v public.visits;
+  t1130 timestamptz := private.ist_at(private.ist_today() - 2, time '11:30');
+  t2000 timestamptz := private.ist_at(private.ist_today() - 2, time '20:00');
+  t3d timestamptz := private.ist_at(private.ist_today() - 3, time '11:30');
+begin
+  -- Two days ago: duty 07:00 to 18:00, already closed.
+  insert into public.duty_days (user_id, day, status, duty_on_at, duty_off_at)
+  values (e1, private.ist_today() - 2, 'present',
+          private.ist_at(private.ist_today() - 2, time '07:00'),
+          private.ist_at(private.ist_today() - 2, time '18:00'))
+  returning * into v_old;
+  perform t.act_as(e1);
+  v := public.add_visit(v_late, 'Late Shop', null, false, 22500000, 88300000, 'visit-' || v_late,
+                        t1130);
+  perform t.eq(v.duty_day_id, v_old.id, 'late visit goes into the duty it was taken in');
+  perform t.eq(v.captured_at, t1130, 'its own time kept');
+  -- A time outside every duty (that evening, after duty off) is refused.
+  perform t.expect_error(format('select public.add_visit(%L, %L, null, true, null, null, %L, %L)',
+    v_stale, 'Shop', 'visit-' || v_stale, t2000),
+    'not_on_duty');
+  -- So is a duty more than 2 days back.
+  perform t.act_as_owner();
+  update public.duty_days set day = day - 1,
+    duty_on_at = duty_on_at - interval '1 day', duty_off_at = duty_off_at - interval '1 day'
+  where id = v_old.id;
+  perform t.act_as(e1);
+  perform t.expect_error(format('select public.add_visit(%L, %L, null, true, null, null, %L, %L)',
+    v_stale, 'Shop', 'visit-' || v_stale, t3d),
+    'not_on_duty');
+  perform t.act_as_owner();
+  delete from public.visits where id = v_late;
+  delete from public.duty_days where id = v_old.id;
+end;
+$$;
+delete from public.profiles where id = '00000000-0000-0000-0000-000000000014';
+delete from auth.users where id = '00000000-0000-0000-0000-000000000014';
 
 \echo '--- cleanup removes old raw points'
 do $$
@@ -923,6 +971,8 @@ begin
   update public.visits set created_at = created_at - interval '91 days' where id = v_id;
   select id into v_req from public.requests where kind = 'attendance' limit 1;
   update public.requests set created_at = created_at - interval '91 days' where id = v_req;
+  -- The request photo is the older one, so it goes first (L26).
+  update public.requests set created_at = now() - interval '200 days' where id = v_req;
   delete from t.pushed;
   perform private.purge_photos();
   perform t.eq((select count(*) from t.pushed), 0::bigint, 'no purge call without photos_url');
@@ -934,6 +984,7 @@ begin
   perform t.eq((select array_agg(kind || ':' || photo_id order by kind) from public.svc_photos_to_purge()),
                array['request:req-11111111-2222-3333-4444-555555555555', 'visit:visit-' || v_id],
                'old photos listed');
+  perform t.eq((select kind from public.svc_photos_to_purge(1)), 'request', 'oldest photo first');
   perform t.eq(public.svc_photos_removed(array['visit-' || v_id, 'req-11111111-2222-3333-4444-555555555555']),
                2, 'marked removed');
   perform t.eq((select count(*) from public.svc_photos_to_purge()), 0::bigint, 'purged once');

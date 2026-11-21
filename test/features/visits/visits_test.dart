@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:diamond_tracking/core/supabase/supabase_providers.dart';
 import 'package:diamond_tracking/core/time/clock_providers.dart';
@@ -10,7 +11,9 @@ import 'package:diamond_tracking/features/requests/application/requests_provider
 import 'package:diamond_tracking/features/routes/application/route_providers.dart';
 import 'package:diamond_tracking/features/routes/domain/geo_point.dart';
 import 'package:diamond_tracking/features/routes/presentation/day_route_page.dart';
+import 'package:diamond_tracking/features/visits/application/visit_sender.dart';
 import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
+import 'package:diamond_tracking/features/visits/data/visit_outbox.dart';
 import 'package:diamond_tracking/features/visits/domain/visit.dart';
 import 'package:diamond_tracking/features/visits/domain/visit_failure.dart';
 import 'package:diamond_tracking/features/visits/presentation/add_visit_page.dart';
@@ -35,10 +38,12 @@ void main() {
   late FakeVisitsRepository visits;
   late FakePhotoPicker picker;
   late FakeLocation location;
+  late VisitOutbox outbox;
   setUp(() {
     visits = FakeVisitsRepository();
     picker = FakePhotoPicker();
     location = FakeLocation();
+    outbox = tempOutbox();
   });
 
   List<Override> overrides() => <Override>[
@@ -60,6 +65,7 @@ void main() {
       const AddVisitPage(dayId: 5),
       status: employee,
       visits: visits,
+      outbox: outbox,
       overrides: overrides(),
     );
   }
@@ -154,21 +160,105 @@ void main() {
     expect(visits.lastLocation, const GeoPoint(22.6, 88.4));
   });
 
-  testWidgets('a failed save is retried without a second upload', (
-    WidgetTester tester,
-  ) async {
-    visits.addError = const SocketException('offline');
+  Future<void> fillGalleryVisit(WidgetTester tester) async {
     await openAddVisit(tester);
     await tester.enterText(find.byType(TextField).first, 'Agro Store');
     await tester.tap(find.text('Gallery'));
     await tester.pumpAndSettle();
+  }
+
+  VisitSender sender() => VisitSender(outbox, visits);
+
+  testWidgets('with no internet the visit is kept on the phone, then sent '
+      'later without a second upload (M10)', (WidgetTester tester) async {
+    visits.addError = const SocketException('offline');
+    await fillGalleryVisit(tester);
     await save(tester);
-    expect(find.text(VisitFailure.noInternet.message), findsOneWidget);
+
+    expect(find.text('below'), findsOneWidget); // closed
+    expect(find.textContaining('kept on the phone'), findsOneWidget);
+    final PendingVisit kept = (await outbox.pending()).single;
+    expect(kept.storeName, 'Agro Store');
+    expect(kept.photoId, isNotNull); // uploaded before the save failed
+    expect(visits.uploads, 1);
+
+    visits.addError = null;
+    expect(await sender().sendAll('u'), 1);
+    expect(visits.uploads, 1);
+    expect(visits.byDay[5], hasLength(1));
+    expect(await outbox.pending(), isEmpty);
+  });
+
+  testWidgets('a photo that did not upload waits on the phone too (M10)', (
+    WidgetTester tester,
+  ) async {
+    visits.uploadError = const SocketException('offline');
+    await fillGalleryVisit(tester);
+    await save(tester);
+
+    expect(find.text('below'), findsOneWidget);
+    expect((await outbox.pending()).single.photoId, isNull);
+
+    visits.uploadError = null;
+    expect(await sender().sendAll('u'), 1);
+    expect(visits.uploads, 1);
+    expect(await outbox.pending(), isEmpty);
+  });
+
+  testWidgets('a detail to fix keeps the page and the uploaded photo', (
+    WidgetTester tester,
+  ) async {
+    visits.addError = const PostgrestException(message: 'note_too_long');
+    await fillGalleryVisit(tester);
+    await save(tester);
+    expect(find.text(VisitFailure.noteTooLong.message), findsOneWidget);
+    expect(await outbox.pending(), isEmpty);
 
     visits.addError = null;
     await save(tester);
     expect(visits.uploads, 1);
     expect(visits.byDay[5], hasLength(1));
+  });
+
+  test(
+    'sending stops while offline, and drops a visit refused for good',
+    () async {
+      Future<void> keep(String store, DateTime at) => outbox.add(
+        PendingVisit(
+          id: VisitOutbox.newId(),
+          userId: 'u',
+          storeName: store,
+          capturedAt: at,
+        ),
+        Uint8List.fromList(<int>[1, 2, 3]),
+      );
+      await keep('First', DateTime.utc(2026, 11, 20, 5));
+      await keep('Second', DateTime.utc(2026, 11, 20, 6));
+
+      visits.uploadError = const SocketException('offline');
+      expect(await sender().sendAll('u'), 0);
+      expect(await outbox.pending(), hasLength(2));
+
+      visits.uploadError = null;
+      visits.addError = const PostgrestException(message: 'not_on_duty');
+      expect(await sender().sendAll('u'), 0);
+      expect(await outbox.pending(), isEmpty);
+    },
+  );
+
+  test('only the signed-in person\'s waiting visits are sent', () async {
+    await outbox.add(
+      PendingVisit(
+        id: VisitOutbox.newId(),
+        userId: 'someone-else',
+        storeName: 'Shop',
+        capturedAt: DateTime.utc(2026, 11, 20, 5),
+      ),
+      Uint8List.fromList(<int>[1]),
+    );
+    expect(await sender().sendAll('u'), 0);
+    expect(visits.uploads, 0);
+    expect(await outbox.pending(), hasLength(1));
   });
 
   test('server errors read as plain words', () {
@@ -229,6 +319,7 @@ void main() {
         const HomePage(),
         status: employee,
         visits: visits,
+        outbox: outbox,
         overrides: <Override>[
           ...overrides(),
           dutyRepositoryProvider.overrideWithValue(duty),
@@ -241,6 +332,50 @@ void main() {
       await tester.tap(find.text('Add visit'));
       await tester.pumpAndSettle();
       expect(find.text('route /home/visit/5'), findsOneWidget);
+    });
+
+    testWidgets('home shows a waiting visit and sends it once online (M10)', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      final FakeDutyRepository duty = FakeDutyRepository()
+        ..today = DutyDay(
+          id: 5,
+          day: DateTime.utc(2026, 11, 20),
+          status: DayStatus.onDuty,
+          dutyOnAt: DateTime.utc(2026, 11, 20, 1, 30),
+        );
+      await outbox.add(
+        PendingVisit(
+          id: VisitOutbox.newId(),
+          userId: 'u',
+          storeName: 'Agro Store',
+          capturedAt: DateTime.utc(2026, 11, 20, 6),
+        ),
+        Uint8List.fromList(<int>[1, 2, 3]),
+      );
+      visits.uploadError = const SocketException('offline');
+      await pumpPage(
+        tester,
+        const HomePage(),
+        status: employee,
+        visits: visits,
+        outbox: outbox,
+        overrides: <Override>[
+          ...overrides(),
+          dutyRepositoryProvider.overrideWithValue(duty),
+          deviceIdStoreProvider.overrideWithValue(FakeDeviceIdStore()),
+        ],
+      );
+      expect(find.textContaining('waiting to send'), findsOneWidget);
+
+      // Online again: the next try (once a minute) sends it.
+      visits.uploadError = null;
+      await tester.pump(const Duration(seconds: 61));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('waiting to send'), findsNothing);
+      expect(find.text('Agro Store'), findsOneWidget);
+      expect(await outbox.pending(), isEmpty);
     });
 
     testWidgets('a day\'s page lists visits and opens one', (

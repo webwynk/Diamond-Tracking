@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:diamond_tracking/core/theme/app_theme.dart';
 import 'package:diamond_tracking/features/auth/application/auth_providers.dart';
@@ -8,6 +9,7 @@ import 'package:diamond_tracking/features/notifications/application/push_service
 import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
 import 'package:diamond_tracking/features/users/application/users_providers.dart';
 import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
+import 'package:diamond_tracking/features/visits/data/visit_outbox.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -15,6 +17,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'fakes.dart';
+
+/// A visit outbox in a fresh temporary folder.
+VisitOutbox tempOutbox() {
+  final Directory dir = Directory.systemTemp.createTempSync('outbox');
+  addTearDown(() {
+    if (dir.existsSync()) dir.deleteSync(recursive: true);
+  });
+  return VisitOutbox(() async => dir);
+}
 
 /// Pumps [page] alone, with fakes, under a tiny router so push/pop work.
 /// Other routes show their path as text.
@@ -27,6 +38,7 @@ Future<void> pumpPage(
   List<Override> overrides = const <Override>[],
   FakeNotificationsRepository? notifications,
   FakeVisitsRepository? visits,
+  VisitOutbox? outbox,
   AuthStatus status = const SignedIn(
     userId: 'admin1',
     role: AppRole.admin,
@@ -74,6 +86,7 @@ Future<void> pumpPage(
         visitsRepositoryProvider.overrideWithValue(
           visits ?? FakeVisitsRepository(),
         ),
+        visitOutboxProvider.overrideWithValue(outbox ?? tempOutbox()),
         ...overrides,
       ],
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
@@ -92,6 +105,7 @@ Future<void> pumpPushed(
   List<Override> overrides = const <Override>[],
   FakeNotificationsRepository? notifications,
   FakeVisitsRepository? visits,
+  VisitOutbox? outbox,
   AuthStatus status = const SignedIn(
     userId: 'admin1',
     role: AppRole.admin,
@@ -128,6 +142,7 @@ Future<void> pumpPushed(
         visitsRepositoryProvider.overrideWithValue(
           visits ?? FakeVisitsRepository(),
         ),
+        visitOutboxProvider.overrideWithValue(outbox ?? tempOutbox()),
         ...overrides,
       ],
       child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),

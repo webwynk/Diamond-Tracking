@@ -22,7 +22,8 @@ A. DATABASE (Supabase dashboard > SQL editor)
 
 2. Database > Extensions: turn on pg_cron (for the 11 PM auto duty off)
    and pg_net (phone push: without it, notifications only show inside the
-   app, even when push_url is set).
+   app, even when push_url is set; deleting photos after 90 days needs it
+   too, with photos_url, or Cloudinary keeps filling up).
    Then paste and run, in this order:
      supabase/migrations/20261120000000_rewrite_baseline.sql
      supabase/migrations/20261121000000_login_and_devices.sql

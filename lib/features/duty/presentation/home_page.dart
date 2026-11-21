@@ -15,6 +15,8 @@ import '../../../core/time/ist_format.dart';
 import '../../../shared/widgets/app_banner.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_error_view.dart';
+import '../../auth/application/auth_providers.dart';
+import '../../auth/domain/auth_status.dart';
 import '../../notifications/presentation/notification_bell.dart';
 import '../../requests/presentation/my_requests_page.dart';
 import '../../tracking/application/tracker_control.dart';
@@ -22,6 +24,7 @@ import '../../tracking/application/tracker_providers.dart';
 import '../../tracking/presentation/tracking_setup_sheet.dart';
 import '../../tracking/service/battery_alerts.dart';
 import '../../visits/application/visits_providers.dart';
+import '../../visits/data/visit_outbox.dart';
 import '../../visits/domain/visit.dart';
 import '../../visits/presentation/visit_widgets.dart';
 import '../application/duty_providers.dart';
@@ -47,16 +50,35 @@ class _HomePageState extends ConsumerState<HomePage> {
   void initState() {
     super.initState();
     _lifecycle = AppLifecycleListener(
-      onResume: () => ref.read(dutyHomeProvider.notifier).refresh(),
+      onResume: () {
+        unawaited(ref.read(dutyHomeProvider.notifier).refresh());
+        unawaited(_sendWaitingVisits());
+      },
     );
     _battery = ref
         .read(trackerControlProvider)
         .batteryWarnings
         .listen(_showBatteryWarning);
     // Elapsed time, and the 5:00 / 8:30 window, move on their own.
-    _ticker = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) setState(() {});
+    _ticker = Timer.periodic(const Duration(seconds: 30), (Timer t) {
+      if (!mounted) return;
+      setState(() {});
+      // Visits kept on the phone without internet: try once a minute.
+      if (t.tick.isEven) unawaited(_sendWaitingVisits());
     });
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => unawaited(_sendWaitingVisits()),
+    );
+  }
+
+  /// Sends visits kept on the phone while there was no internet (M10).
+  Future<void> _sendWaitingVisits() async {
+    final AuthStatus status = ref.read(authStatusProvider);
+    if (status is! SignedIn) return;
+    final int sent = await ref.read(visitSenderProvider).sendAll(status.userId);
+    if (!mounted) return;
+    if (sent > 0) ref.invalidate(dayVisitsProvider);
+    ref.invalidate(pendingVisitsProvider);
   }
 
   @override
@@ -525,6 +547,8 @@ class _VisitsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<Visit>> visits = ref.watch(dayVisitsProvider(day.id));
+    final List<PendingVisit> waiting =
+        ref.watch(pendingVisitsProvider).value ?? const <PendingVisit>[];
     final bool onDuty = day.status == DayStatus.onDuty;
     return Card(
       margin: EdgeInsets.zero,
@@ -566,6 +590,7 @@ class _VisitsCard extends ConsumerWidget {
                 Center(child: CircularProgressIndicator()),
               ],
             ),
+            for (final PendingVisit v in waiting) PendingVisitTile(visit: v),
             if (onDuty) ...<Widget>[
               const SizedBox(height: AppSpacing.x3),
               AppButton(

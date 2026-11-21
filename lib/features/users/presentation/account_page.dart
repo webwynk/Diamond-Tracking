@@ -11,6 +11,8 @@ import '../../auth/domain/auth_status.dart';
 import '../../notifications/application/notifications_providers.dart';
 import '../../tracking/application/tracker_control.dart';
 import '../../tracking/application/tracker_providers.dart';
+import '../../visits/application/visits_providers.dart';
+import '../../visits/data/visit_outbox.dart';
 import '../application/users_providers.dart';
 import '../domain/profile.dart';
 
@@ -48,6 +50,30 @@ class AccountPage extends ConsumerWidget {
       );
       return;
     }
+    // Visits kept on the phone without internet must reach the server first.
+    final AuthStatus status = ref.read(authStatusProvider);
+    final VisitOutbox outbox = ref.read(visitOutboxProvider);
+    if (status is SignedIn &&
+        (await outbox.pending(userId: status.userId)).isNotEmpty) {
+      if (!context.mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          title: const Text('Not yet'),
+          content: const Text(
+            'Some visits are still on this phone. Connect to the internet and '
+            'open Home to send them, then try again.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
     if (!context.mounted) return;
     final bool? ok = await showDialog<bool>(
       context: context,
@@ -74,6 +100,7 @@ class AccountPage extends ConsumerWidget {
     await ref.read(pushRegistrarProvider).clear();
     await ref.read(authRepositoryProvider).signOut();
     await tracker.clear();
+    await outbox.clear();
   }
 
   @override

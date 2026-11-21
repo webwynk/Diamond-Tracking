@@ -7,6 +7,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/time/ist_format.dart';
 import '../../requests/data/photo_upload.dart';
 import '../application/visits_providers.dart';
+import '../data/visit_outbox.dart';
 import '../domain/visit.dart';
 
 /// "Camera photo at 22.57261, 88.36389" or "Gallery photo, no location".
@@ -16,6 +17,30 @@ String visitPlace(Visit v) => switch (v.location) {
   final p? => 'Camera photo at ${formatPoint(p)}',
   null => 'Gallery photo, no location',
 };
+
+/// A visit kept on the phone without internet, not yet sent (M10).
+class PendingVisitTile extends StatelessWidget {
+  const PendingVisitTile({required this.visit, super.key});
+
+  final PendingVisit visit;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: const SizedBox(
+      width: 48,
+      height: 48,
+      child: ColoredBox(
+        color: AppColors.neutral100,
+        child: Icon(Icons.cloud_upload_outlined),
+      ),
+    ),
+    title: Text(visit.storeName),
+    subtitle: Text(
+      'Visit ${IstFormat.time(visit.capturedAt)} · waiting to send',
+    ),
+  );
+}
 
 /// One visit in a list: thumbnail, store, time. Tap for the full visit.
 class VisitTile extends StatelessWidget {
