@@ -39,8 +39,8 @@ export class FakeBackend implements Backend {
   dayOwners = new Map<number, string>();
   missing: MissingPlace[] = [];
   saved: { cell_lat: number; cell_lng: number; address: string }[] = [];
-  /** request id -> owner and photo id. */
-  requests = new Map<number, { owner: string; photo: string | null }>();
+  /** request id -> owner, photo id, and the extra photo ids (photos 2 and 3). */
+  requests = new Map<number, { owner: string; photo: string | null; extra?: string[] }>();
   /** visit id -> owner and photo id. */
   visits = new Map<string, { owner: string; photo: string | null }>();
   /** photos past 90 days, and those marked removed. */
@@ -170,13 +170,13 @@ export class FakeBackend implements Backend {
     this.saved.push(...places);
     return Promise.resolve();
   }
-  requestPhoto(requestId: number, callerId: string) {
+  requestPhoto(requestId: number, callerId: string, index: number) {
     const r = this.requests.get(requestId);
     const caller = this.profiles.get(callerId);
     if (!r || !caller || (r.owner !== callerId && caller.role !== 'admin')) {
       return Promise.resolve('not_allowed' as const);
     }
-    return Promise.resolve(r.photo);
+    return Promise.resolve(index === 0 ? r.photo : r.extra?.[index - 1] ?? null);
   }
   visitPhoto(visitId: string, callerId: string) {
     const v = this.visits.get(visitId);

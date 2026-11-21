@@ -12,13 +12,14 @@ import { handler, type PhotoDeps } from './handler.ts';
 const cfg = { cloudName: 'demo', apiKey: 'key1', apiSecret: 'abcd' };
 const ID = '11111111-2222-3333-4444-555555555555';
 const VISIT = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+const ID2 = '22222222-2222-3333-4444-555555555555';
 
 function setup() {
   const b = new FakeBackend();
   const emp = b.addUser({ user_code: 'DA-001' }, 'emp');
   b.addUser({ user_code: 'DA-002' }, 'other');
   b.addUser({ user_code: 'boss', role: 'admin' }, 'admin');
-  b.requests.set(5, { owner: emp, photo: `req-${ID}` });
+  b.requests.set(5, { owner: emp, photo: `req-${ID}`, extra: [`req-${ID2}`] });
   b.requests.set(6, { owner: emp, photo: null });
   b.visits.set(VISIT, { owner: emp, photo: `visit-${VISIT}` });
   const fetched: string[] = [];
@@ -103,6 +104,19 @@ Deno.test('the owner and admins see the photo, others do not', async () => {
   assertEquals((await handler(get('request_id=5'), b, deps)).status, 401);
   assertEquals((await handler(get('request_id=6', 'emp'), b, deps)).status, 404);
   assertEquals((await handler(get('request_id=abc', 'emp'), b, deps)).status, 400);
+});
+
+Deno.test("a request's 2nd and 3rd photos are asked for with n", async () => {
+  const { b, deps, fetched } = setup();
+  assertEquals((await handler(get('request_id=5&n=0', 'emp'), b, deps)).status, 200);
+  assertEquals(fetched.at(-1), await deliveryUrl(cfg, `req-${ID}`));
+  assertEquals((await handler(get('request_id=5&n=1', 'admin'), b, deps)).status, 200);
+  assertEquals(fetched.at(-1), await deliveryUrl(cfg, `req-${ID2}`));
+  assertEquals((await handler(get('request_id=5&n=2', 'emp'), b, deps)).status, 404);
+  assertEquals((await handler(get('request_id=5&n=1', 'other'), b, deps)).status, 403);
+  for (const n of ['3', '-1', 'x', '']) {
+    assertEquals((await handler(get(`request_id=5&n=${n}`, 'emp'), b, deps)).status, 400, n);
+  }
 });
 
 Deno.test('signs a visit photo id', async () => {

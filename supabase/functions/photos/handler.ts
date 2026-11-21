@@ -10,6 +10,8 @@
 //   GET  ?request_id=N | ?visit_id=<uuid>    the owner or an admin
 //        200 the image bytes. Add &size=small for the small list version
 //        (L57); if Cloudinary cannot make it, the full photo is sent.
+//        A request has up to 3 photos: &n=1 or &n=2 for the 2nd or 3rd
+//        (no n, or n=0, is the first). 404 no_photo when there is none.
 //   POST { action: "purge" }                 no sign-in (the nightly job)
 //        Deletes photos older than 90 days. Only the database decides which,
 //        so calling it early does nothing.
@@ -94,7 +96,9 @@ async function view(req: Request, b: Backend, deps: PhotoDeps): Promise<Response
     const raw = params.get('request_id') ?? '';
     const requestId = /^[1-9][0-9]{0,15}$/.test(raw) ? Number(raw) : NaN;
     if (!Number.isSafeInteger(requestId)) return reply(400, { error: 'validation_failed' });
-    photo = await b.requestPhoto(requestId, caller.profile.id);
+    const n = params.get('n') ?? '0';
+    if (!/^[0-2]$/.test(n)) return reply(400, { error: 'validation_failed' });
+    photo = await b.requestPhoto(requestId, caller.profile.id, Number(n));
   }
   if (photo === 'not_allowed') return reply(403, { error: 'not_allowed' });
   if (!photo || !isPhotoId(photo)) return reply(404, { error: 'no_photo' });

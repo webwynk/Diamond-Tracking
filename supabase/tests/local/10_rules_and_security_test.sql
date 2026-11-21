@@ -1950,4 +1950,152 @@ begin
 end;
 $$;
 
+\echo '--- a request takes up to 3 photos; all are shown, kept and deleted together (redesign)'
+do $$
+declare
+  v_today date := private.ist_today();
+  p1 text := 'req-00000001-0000-0000-0000-000000000001';
+  p2 text := 'req-00000002-0000-0000-0000-000000000002';
+  p3 text := 'req-00000003-0000-0000-0000-000000000003';
+  v_req public.requests;
+  v_leave public.requests;
+begin
+  perform t.act_as('00000000-0000-0000-0000-000000000003');
+  -- Wrong extra photos are refused: too many, the same twice, the first again, not an id.
+  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', %L, array[%L, %L, %L])$q$,
+                                v_today - 6, p1, p2, p3, 'req-00000004-0000-0000-0000-000000000004'), 'invalid_photo');
+  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', %L, array[%L, %L])$q$,
+                                v_today - 6, p1, p2, p2), 'invalid_photo');
+  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', %L, array[%L])$q$,
+                                v_today - 6, p1, p1), 'invalid_photo');
+  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', %L, array['photo/2'])$q$,
+                                v_today - 6, p1), 'invalid_photo');
+  perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', %L, array[null::text])$q$,
+                                v_today - 6, p1), 'invalid_photo');
+  -- 3 photos.
+  v_req := public.request_attendance(v_today - 6, '09:00', '18:00', 'Phone broke', p1, array[p2, p3]);
+  perform t.eq(v_req.photo_id, p1, 'first photo kept where it was');
+  perform t.eq(v_req.extra_photo_ids, array[p2, p3], 'photos 2 and 3 kept');
+  -- An empty list is no extra photos; leave proof works the same way.
+  v_leave := public.request_leave('sick', array[v_today + 40], 'Fever', null, '{}');
+  perform t.eq(v_leave.extra_photo_ids, null::text[], 'empty list is none');
+  perform public.cancel_request(v_leave.id);
+  perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date], 'x', null, array[%L])$q$,
+                                v_today + 41, p2), 'invalid_photo');
+  v_leave := public.request_leave('sick', array[v_today + 41], 'Fever',
+                                  'req-00000005-0000-0000-0000-000000000005',
+                                  array['req-00000006-0000-0000-0000-000000000006']);
+  perform t.eq(cardinality(v_leave.extra_photo_ids), 1, 'leave proof with a 2nd photo');
+  perform public.cancel_request(v_leave.id);
+
+  -- Each photo is shown to the owner and admins only.
+  perform set_config('role', 'service_role', false);
+  perform t.eq(public.svc_request_photo(v_req.id, '00000000-0000-0000-0000-000000000003'), p1, 'photo 1 by default');
+  perform t.eq(public.svc_request_photo(v_req.id, '00000000-0000-0000-0000-00000000000a', 1), p2, 'admin sees photo 2');
+  perform t.eq(public.svc_request_photo(v_req.id, '00000000-0000-0000-0000-000000000003', 2), p3, 'photo 3');
+  perform t.eq(public.svc_request_photo(v_req.id, '00000000-0000-0000-0000-000000000003', 3), null::text, 'no photo 4');
+  perform t.expect_error(format('select public.svc_request_photo(%s, %L, 1)',
+                 v_req.id, '00000000-0000-0000-0000-000000000002'), 'not_allowed');
+
+  -- An extra photo in use is never deleted as unused.
+  perform public.svc_note_signed_photo(p2);
+  perform t.act_as_owner();
+  update private.signed_photos set signed_at = now() - interval '5 days' where photo_id = p2;
+  perform set_config('role', 'service_role', false);
+  perform t.eq((select count(*) from public.svc_photos_to_purge() where photo_id = p2), 0::bigint,
+               'an extra photo in use is not an orphan');
+  perform public.svc_note_signed_photo('req-00000009-0000-0000-0000-000000000009');
+  perform t.act_as_owner();
+  perform t.eq((select count(*) from private.signed_photos where photo_id = p2), 0::bigint,
+               'an old extra photo in use is forgotten');
+
+  -- After 90 days all 3 photos are deleted, and the request is marked only
+  -- when all 3 are gone.
+  update public.requests set created_at = now() - interval '300 days' where id = v_req.id;
+  perform set_config('role', 'service_role', false);
+  perform t.eq((select array_agg(photo_id order by photo_id) from public.svc_photos_to_purge()
+                where kind = 'request' and id = v_req.id::text),
+               array[p1, p2, p3], 'all 3 photos listed');
+  perform t.eq(public.svc_photos_removed(array[p1, p2]), 0, 'not marked while photo 3 is left');
+  perform t.eq((select count(*) from public.svc_photos_to_purge() where id = v_req.id::text), 3::bigint,
+               'listed again the next night');
+  perform t.eq(public.svc_photos_removed(array[p1, p2, p3]), 1, 'marked once all are gone');
+  perform t.eq((select count(*) from public.svc_photos_to_purge() where id = v_req.id::text), 0::bigint,
+               'deleted once');
+  perform t.eq(public.svc_request_photo(v_req.id, '00000000-0000-0000-0000-00000000000a', 1), null::text,
+               'removed photos are not shown');
+  perform t.act_as_owner();
+  delete from private.signed_photos;
+end;
+$$;
+
+\echo '--- the 11 PM automatic duty off tells the employee (redesign)'
+do $$
+declare
+  v_day date := private.ist_today() - 9;
+  v_id bigint;
+begin
+  perform t.act_as_owner();
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values ('00000000-0000-0000-0000-000000000003', v_day, 'on_duty', private.ist_at(v_day, time '07:00'))
+  returning id into v_id;
+  -- Other tests may leave a past duty running too, so check this one.
+  perform private.auto_duty_off();
+  perform t.eq((select end_reason from public.duty_days where id = v_id),
+               'auto'::public.duty_end_reason, 'closed by the 11 PM job');
+  perform t.eq((select count(*) from public.notifications
+                where user_id = '00000000-0000-0000-0000-000000000003' and kind = 'duty_auto_off'
+                  and (data->>'duty_day_id')::bigint = v_id),
+               1::bigint, 'the employee is told');
+  perform t.eq((select title from public.notifications where kind = 'duty_auto_off'
+                and (data->>'duty_day_id')::bigint = v_id),
+               'Duty turned off at 11 PM', 'notification title');
+  perform t.eq(private.auto_duty_off(), 0, 'nothing to close again');
+  perform t.eq((select count(*) from public.notifications where kind = 'duty_auto_off'
+                and (data->>'duty_day_id')::bigint = v_id),
+               1::bigint, 'told once');
+end;
+$$;
+
+\echo '--- an admin can turn off phone alerts for new requests (redesign)'
+do $$
+declare
+  v_tok text := repeat('z', 30);
+  v_req bigint;
+  v_other bigint;
+  v_claim jsonb;
+begin
+  perform t.act_as('00000000-0000-0000-0000-000000000001');
+  perform t.expect_error($q$select public.set_request_alerts(false)$q$, 'not_admin');
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.expect_error($q$select public.set_request_alerts(null)$q$, 'validation_failed');
+  perform public.set_push_token('admin-phone-0001', v_tok);
+  perform t.eq(public.set_request_alerts(false), false, 'turned off');
+  perform t.act_as_owner();
+  perform t.eq((select request_alerts from public.profiles
+                where id = '00000000-0000-0000-0000-00000000000a'), false, 'saved');
+  perform private.notify('00000000-0000-0000-0000-00000000000a', 'leave_request', 'Leave', 'x');
+  select max(id) into v_req from public.notifications where kind = 'leave_request';
+  perform private.notify('00000000-0000-0000-0000-00000000000a', 'other_kind', 'Other', 'x');
+  select max(id) into v_other from public.notifications where kind = 'other_kind';
+  perform set_config('role', 'service_role', false);
+  v_claim := public.svc_claim_push(v_req);
+  perform t.eq(v_claim->'tokens', '[]'::jsonb, 'no phone alert for a request');
+  perform t.eq(public.svc_claim_push(v_req), null::jsonb, 'and not sent later');
+  perform t.eq(public.svc_claim_push(v_other)->'tokens', jsonb_build_array(v_tok), 'other alerts still sent');
+  perform t.act_as_owner();
+  perform t.eq((select count(*) from public.notifications where id = v_req), 1::bigint,
+               'the request still shows in the app');
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.eq(public.set_request_alerts(true), true, 'turned back on');
+  perform t.act_as_owner();
+  perform private.notify('00000000-0000-0000-0000-00000000000a', 'leave_request', 'Leave 2', 'x');
+  select max(id) into v_req from public.notifications where kind = 'leave_request';
+  perform set_config('role', 'service_role', false);
+  perform t.eq(public.svc_claim_push(v_req)->'tokens', jsonb_build_array(v_tok), 'on again: sent');
+  perform t.act_as_owner();
+  delete from private.push_tokens where token = v_tok;
+end;
+$$;
+
 \echo 'ALL TESTS PASSED'
