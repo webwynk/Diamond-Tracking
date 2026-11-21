@@ -1564,4 +1564,50 @@ select t.act_as_owner();
 delete from public.profiles where id = '00000000-0000-0000-0000-000000000012';
 delete from auth.users where id = '00000000-0000-0000-0000-000000000012';
 
+\echo '--- one break note per time span: phone off wins over tracking stopped (L11)'
+select t.act_as_owner();
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000013', 'e13@test');
+insert into public.profiles (id, user_code, full_name, role, created_at, active_device_id)
+values ('00000000-0000-0000-0000-000000000013', 'DA-013', 'Employee Thirteen', 'employee',
+        now() - interval '30 days', 'dev-13-0001');
+do $$
+declare
+  e13 constant uuid := '00000000-0000-0000-0000-000000000013';
+  v_day public.duty_days;
+  v_pass text;
+  v_on timestamptz := private.auto_off_at(private.ist_today() - 1) - interval '12 hours';
+begin
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values (e13, private.ist_today() - 1, 'on_duty', v_on) returning * into v_day;
+  v_pass := private.new_upload_pass(v_day, 'dev-13-0001');
+  perform t.act_as(null);
+  -- 2:00-2:40 tracking stopped, then the phone says it was off 2:10-2:30.
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_on + interval '2 hours',
+               v_on + interval '2 hours 40 minutes', 'tracking_stopped'), true, 'first break');
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_on + interval '2 hours 10 minutes',
+               v_on + interval '2 hours 30 minutes', 'phone_off'), true, 'phone off replaces it');
+  -- A tracking-stopped break over the phone-off time is not added.
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_on + interval '2 hours 20 minutes',
+               v_on + interval '3 hours', 'tracking_stopped'), false, 'overlap ignored');
+  -- Nor a second phone-off over it.
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_on + interval '2 hours 5 minutes',
+               v_on + interval '2 hours 15 minutes', 'phone_off'), false, 'second phone off ignored');
+  -- A break at another time is kept.
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_on + interval '5 hours',
+               v_on + interval '5 hours 30 minutes', 'tracking_stopped'), true, 'separate break kept');
+  perform t.act_as_owner();
+  perform t.eq((select count(*) from public.duty_breaks where duty_day_id = v_day.id), 2::bigint, 'two notes');
+  perform t.eq((select kind from public.duty_breaks where duty_day_id = v_day.id
+                and started_at = v_on + interval '2 hours 10 minutes'),
+               'phone_off'::public.duty_break_kind, 'phone off kept');
+  perform t.eq((select count(*) from public.duty_breaks a join public.duty_breaks b
+                on a.duty_day_id = b.duty_day_id and a.started_at < b.started_at
+                and b.started_at < a.ended_at
+                where a.duty_day_id = v_day.id), 0::bigint, 'no overlaps');
+end;
+$$;
+select t.act_as_owner();
+delete from public.profiles where id = '00000000-0000-0000-0000-000000000013';
+delete from auth.users where id = '00000000-0000-0000-0000-000000000013';
+
 \echo 'ALL TESTS PASSED'

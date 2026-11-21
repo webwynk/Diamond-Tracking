@@ -47,6 +47,27 @@ void main() {
     expect(notes.first.label, 'Phone was off');
   });
 
+  test('overlapping breaks show one note, phone off first (L11)', () {
+    final List<RouteNote> notes = explainGaps(<RouteNote>[], <TrackBreak>[
+      TrackBreak(from: at(0), to: at(40), kind: TrackBreakKind.trackingStopped),
+      TrackBreak(from: at(10), to: at(30), kind: TrackBreakKind.phoneOff),
+      TrackBreak(
+        from: at(20),
+        to: at(50),
+        kind: TrackBreakKind.trackingStopped,
+      ),
+      TrackBreak(
+        from: at(100),
+        to: at(110),
+        kind: TrackBreakKind.trackingStopped,
+      ),
+    ]);
+    expect(notes.map((RouteNote n) => (n.kind, n.from)), <(NoteKind, DateTime)>[
+      (NoteKind.phoneOff, at(10)),
+      (NoteKind.trackingStopped, at(100)),
+    ]);
+  });
+
   test('reads a day_routes row', () {
     final DayRoute r = DayRoute.fromRow(<String, dynamic>{
       'duty_day_id': 9,
