@@ -226,7 +226,7 @@ void main() {
     });
   }
 
-  testWidgets('leave request needs dates and a message', (
+  testWidgets('leave request: type, days, reason, note photos', (
     WidgetTester tester,
   ) async {
     tall(tester);
@@ -236,14 +236,88 @@ void main() {
       status: employee,
       overrides: overrides(),
     );
-    expect(find.text('Casual leave'), findsOneWidget);
+    expect(find.text('November 2026'), findsOneWidget);
+    expect(button('Pick the type of leave'), findsOneWidget);
     await tester.tap(find.text('Sick leave'));
-    await tester.ensureVisible(find.text('Send request'));
-    await tester.tap(find.text('Send request'));
+    await tester.pump();
+    expect(button('Pick the days'), findsOneWidget);
+    // 12 Nov is more than 7 days back: can't be picked.
+    await tester.tap(find.text('12'));
+    await tester.pump();
+    expect(find.text('0 days'), findsOneWidget);
+    for (final String d in <String>['24', '25', '26']) {
+      await tester.tap(find.text(d));
+    }
+    await tester.tap(find.text('25'));
+    await tester.pump();
+    expect(find.text('2 days'), findsOneWidget);
+    expect(button('Write the reason to send'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Fever');
+    await tester.pump();
+
+    await tester.tap(find.text('Attach'));
     await tester.pumpAndSettle();
-    expect(find.text('Add the leave dates.'), findsOneWidget);
-    expect(repo.calls, isEmpty);
+    await tester.tap(find.text('From gallery'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add more'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Take photo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Up to 3 photos · 2 added'), findsOneWidget);
+
+    await tester.tap(button('Send request · 2 days'));
+    await tester.pumpAndSettle();
+    expect(
+      repo.calls.single,
+      matches(
+        RegExp(r'^leave:sick:2026-11-24,2026-11-26:Fever:req-\S+\+req-\S+$'),
+      ),
+    );
+    expect(find.text('Leave request sent.'), findsOneWidget);
   });
+
+  testWidgets('leave: days with a waiting request are faded', (
+    WidgetTester tester,
+  ) async {
+    tall(tester);
+    repo.requests.add(attendance()); // waiting, for 19 Nov
+    await pumpPushed(
+      tester,
+      const LeaveRequestPage(),
+      status: employee,
+      overrides: overrides(),
+    );
+    await tester.tap(find.text('Casual leave'));
+    await tester.tap(find.text('19'));
+    await tester.pump();
+    expect(find.text('0 days'), findsOneWidget);
+    await tester.tap(find.text('20'));
+    await tester.pump();
+    expect(find.text('1 day'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Next month'));
+    await tester.pumpAndSettle();
+    expect(find.text('December 2026'), findsOneWidget);
+  });
+
+  for (final double width in <double>[360, 390, 430]) {
+    testWidgets('leave request fits a $width wide phone', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = Size(width * 3, 2400);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await pumpPushed(
+        tester,
+        const LeaveRequestPage(),
+        status: employee,
+        overrides: overrides(),
+      );
+      await tester.tap(find.text('Casual leave'));
+      await tester.tap(find.text('24'));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('my requests: short duty with hours, filters with counts', (
     WidgetTester tester,

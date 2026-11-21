@@ -21,6 +21,7 @@ abstract final class DsIcons {
   static const IconData bell = LucideIcons.bell;
   static const IconData camera = LucideIcons.camera;
   static const IconData gallery = LucideIcons.image;
+  static const IconData attach = LucideIcons.paperclip;
   static const IconData pin = LucideIcons.mapPin;
   static const IconData lock = LucideIcons.lock;
   static const IconData clock = LucideIcons.clock;

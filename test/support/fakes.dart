@@ -563,10 +563,12 @@ class FakeRequestsRepository implements RequestsRepository {
     required List<DateTime> dates,
     required String message,
     String? proofId,
+    List<String> extraPhotoIds = const <String>[],
   }) async {
     _maybeFail();
     calls.add(
-      'leave:${type.wire}:${dates.map(isoDate).join(',')}:$message:$proofId',
+      'leave:${type.wire}:${dates.map(isoDate).join(',')}:$message:$proofId'
+      '${extraPhotoIds.map((String id) => '+$id').join()}',
     );
   }
 

@@ -39,6 +39,7 @@ abstract interface class RequestsRepository {
     required List<DateTime> dates,
     required String message,
     String? proofId,
+    List<String> extraPhotoIds = const <String>[],
   });
 
   Future<void> cancel(int id);
@@ -159,6 +160,7 @@ class SupabaseRequestsRepository implements RequestsRepository {
     required List<DateTime> dates,
     required String message,
     String? proofId,
+    List<String> extraPhotoIds = const <String>[],
   }) => _client.rpc<Object?>(
     'request_leave',
     params: <String, Object?>{
@@ -166,6 +168,7 @@ class SupabaseRequestsRepository implements RequestsRepository {
       'p_dates': dates.map(isoDate).toList(),
       'p_message': message,
       'p_proof_id': proofId,
+      if (extraPhotoIds.isNotEmpty) 'p_extra_photo_ids': extraPhotoIds,
     },
   );
 

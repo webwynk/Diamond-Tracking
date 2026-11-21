@@ -65,6 +65,22 @@ enum BlockedDay {
   asked,
 }
 
+/// Days that already have a request waiting (the server allows one waiting
+/// request per day). Empty while loading.
+final Provider<Set<DateTime>> waitingRequestDaysProvider =
+    Provider.autoDispose<Set<DateTime>>(
+      (Ref ref) => <DateTime>{
+        for (final AppRequest r
+            in ref.watch(myRequestsProvider).value ?? const <AppRequest>[])
+          if (r.isPending)
+            ...switch (r.kind) {
+              RequestKind.leave => r.dates,
+              RequestKind.attendance => <DateTime>[r.day!],
+              RequestKind.shortDuty => const <DateTime>[],
+            },
+      },
+    );
+
 /// Days of the attendance window that the server would refuse, so the form
 /// greys them out. Empty while loading or when the lists can't load; the
 /// server still checks.
@@ -72,17 +88,10 @@ final Provider<Map<DateTime, BlockedDay>> attendanceBlockedDaysProvider =
     Provider.autoDispose<Map<DateTime, BlockedDay>>((Ref ref) {
       final AuthStatus status = ref.watch(authStatusProvider);
       if (status is! SignedIn) return const <DateTime, BlockedDay>{};
-      final Map<DateTime, BlockedDay> blocked = <DateTime, BlockedDay>{};
-      for (final AppRequest r
-          in ref.watch(myRequestsProvider).value ?? const <AppRequest>[]) {
-        if (!r.isPending) continue;
-        for (final DateTime d
-            in r.kind == RequestKind.leave
-                ? r.dates
-                : <DateTime>[if (r.kind == RequestKind.attendance) r.day!]) {
-          blocked[d] = BlockedDay.asked;
-        }
-      }
+      final Map<DateTime, BlockedDay> blocked = <DateTime, BlockedDay>{
+        for (final DateTime d in ref.watch(waitingRequestDaysProvider))
+          d: BlockedDay.asked,
+      };
       for (final DutyDay d
           in ref.watch(historyProvider(status.userId)).value ??
               const <DutyDay>[]) {

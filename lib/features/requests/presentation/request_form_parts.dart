@@ -8,6 +8,8 @@ import '../../../core/design/ds_icons.dart';
 import '../../../core/design/ds_layout.dart';
 import '../../../core/design/ds_text.dart';
 import '../../../core/logging/app_log.dart';
+import '../../../shared/ds/ds_button.dart';
+import '../../../shared/ds/ds_frame.dart';
 import '../application/requests_providers.dart';
 import '../data/photo_picker.dart';
 import '../data/requests_repository.dart';
@@ -90,12 +92,51 @@ class RequestPhotos extends ConsumerWidget {
     required this.photos,
     required this.onChanged,
     this.enabled = true,
+    this.attachLabel,
     super.key,
   });
 
   final List<PickedPhoto> photos;
   final ValueChanged<List<PickedPhoto>> onChanged;
   final bool enabled;
+
+  /// For optional photos ("Doctor's note"): one dashed "Attach" row that
+  /// asks camera or gallery, instead of the two big tiles.
+  final String? attachLabel;
+
+  Future<void> _attach(BuildContext context, WidgetRef ref) async {
+    final PhotoFrom? from = await showDsSheet<PhotoFrom>(
+      context: context,
+      builder: (BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(attachLabel!, style: DsText.title),
+          const SizedBox(height: DsSpace.lg),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _PickTile(
+                  icon: DsIcons.camera,
+                  label: 'Take photo',
+                  primary: true,
+                  onTap: () => Navigator.pop(context, PhotoFrom.camera),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _PickTile(
+                  icon: DsIcons.gallery,
+                  label: 'From gallery',
+                  onTap: () => Navigator.pop(context, PhotoFrom.gallery),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (from != null) await _pick(ref, from);
+  }
 
   Future<void> _pick(WidgetRef ref, PhotoFrom from) async {
     try {
@@ -137,7 +178,13 @@ class RequestPhotos extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
         ],
-        if (room)
+        if (room && attachLabel != null)
+          _AttachRow(
+            label: attachLabel!,
+            more: photos.isNotEmpty,
+            onTap: enabled ? () => _attach(context, ref) : null,
+          )
+        else if (room)
           Row(
             children: <Widget>[
               Expanded(
@@ -158,17 +205,93 @@ class RequestPhotos extends ConsumerWidget {
               ),
             ],
           ),
-        const SizedBox(height: DsSpace.sm),
-        Text(
-          room
-              ? 'Up to $maxRequestPhotos photos · ${photos.length} added'
-              : '$maxRequestPhotos photos added, the most allowed',
-          textAlign: TextAlign.center,
-          style: DsText.caption,
-        ),
+        if (attachLabel == null || photos.isNotEmpty) ...<Widget>[
+          const SizedBox(height: DsSpace.sm),
+          Text(
+            room
+                ? 'Up to $maxRequestPhotos photos · ${photos.length} added'
+                : '$maxRequestPhotos photos added, the most allowed',
+            textAlign: TextAlign.center,
+            style: DsText.caption,
+          ),
+        ],
       ],
     );
   }
+}
+
+/// "Doctor's note · optional  [Attach]" in a dashed box.
+class _AttachRow extends StatelessWidget {
+  const _AttachRow({
+    required this.label,
+    required this.more,
+    required this.onTap,
+  });
+
+  final String label;
+
+  /// A photo is already added: the button says "Add more".
+  final bool more;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: '$label, optional, ${more ? 'add more' : 'attach'}',
+    excludeSemantics: true,
+    child: Material(
+      color: const Color(0xFFF5FAFC),
+      shape: const RoundedRectangleBorder(
+        borderRadius: DsRadius.medium,
+        side: BorderSide(color: Color(0xFF9CC3D5), width: 1.5),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.fromLTRB(14, 0, DsSpace.sm, 0),
+          child: Row(
+            children: <Widget>[
+              const Icon(DsIcons.attach, size: 20, color: DsColors.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: DsText.body.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontVariations: const <FontVariation>[
+                          FontVariation('wght', 700),
+                        ],
+                      ),
+                    ),
+                    const Text(
+                      'Optional · up to $maxRequestPhotos photos',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: DsText.caption,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: DsSpace.sm),
+              DsSmallButton(
+                label: more ? 'Add more' : 'Attach',
+                filled: true,
+                onPressed: onTap,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _Thumb extends StatelessWidget {
