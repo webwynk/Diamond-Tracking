@@ -13,6 +13,7 @@ import 'package:diamond_tracking/features/routes/domain/geo_point.dart';
 import 'package:diamond_tracking/features/routes/presentation/day_route_page.dart';
 import 'package:diamond_tracking/features/visits/application/visit_sender.dart';
 import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
+import 'package:diamond_tracking/features/visits/data/current_location.dart';
 import 'package:diamond_tracking/features/visits/data/visit_outbox.dart';
 import 'package:diamond_tracking/features/visits/domain/visit.dart';
 import 'package:diamond_tracking/features/visits/domain/visit_failure.dart';
@@ -126,6 +127,58 @@ void main() {
     await tester.pumpAndSettle();
     await save(tester);
     expect(visits.lastMocked, isFalse);
+  });
+
+  testWidgets('a poor location is saved with its accuracy (L59)', (
+    WidgetTester tester,
+  ) async {
+    location.accuracyM = 300;
+    await openAddVisit(tester);
+    await tester.enterText(find.byType(TextField).first, 'Krishi Kendra');
+    await tester.tap(find.text('Camera'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('22.50000, 88.30000 (approximate, ±300 m)'),
+      findsOneWidget,
+    );
+    await save(tester);
+    expect(visits.lastAccuracyM, 300);
+    expect(
+      visitPlace(visits.byDay[5]!.single),
+      'Camera photo at 22.50000, 88.30000 (approximate, ±300 m)',
+    );
+  });
+
+  testWidgets('a good location is not marked approximate (L59)', (
+    WidgetTester tester,
+  ) async {
+    location.accuracyM = 12;
+    await openAddVisit(tester);
+    await tester.enterText(find.byType(TextField).first, 'Krishi Kendra');
+    await tester.tap(find.text('Camera'));
+    await tester.pumpAndSettle();
+    await save(tester);
+    expect(visits.lastAccuracyM, 12);
+    expect(
+      visitPlace(visits.byDay[5]!.single),
+      'Camera photo at 22.50000, 88.30000',
+    );
+  });
+
+  test('a last known location counts only for 2 minutes (L59)', () {
+    final DateTime now = DateTime.utc(2026, 11, 20, 6);
+    expect(
+      lastKnownIsFresh(now.subtract(const Duration(seconds: 90)), now),
+      isTrue,
+    );
+    expect(
+      lastKnownIsFresh(now.subtract(const Duration(minutes: 2)), now),
+      isFalse,
+    );
+    expect(
+      lastKnownIsFresh(now.subtract(const Duration(minutes: 4)), now),
+      isFalse,
+    );
   });
 
   testWidgets('a gallery photo saves no place', (WidgetTester tester) async {
@@ -246,6 +299,23 @@ void main() {
     },
   );
 
+  test('a waiting visit keeps its accuracy until sent (L59)', () async {
+    await outbox.add(
+      PendingVisit(
+        id: VisitOutbox.newId(),
+        userId: 'u',
+        storeName: 'Shop',
+        location: const GeoPoint(22.5, 88.3),
+        accuracyM: 250,
+        capturedAt: DateTime.utc(2026, 11, 20, 5),
+      ),
+      Uint8List.fromList(<int>[1, 2, 3]),
+    );
+    expect((await outbox.pending()).single.accuracyM, 250);
+    expect(await sender().sendAll('u'), 1);
+    expect(visits.lastAccuracyM, 250);
+  });
+
   test('over the daily photo limit a visit waits for tomorrow (L62)', () async {
     await outbox.add(
       PendingVisit(
@@ -318,9 +388,12 @@ void main() {
       'photo_id': 'visit-a',
       'photo_removed_at': '2026-11-20T00:00:00Z',
       'captured_at': '2026-08-20T05:00:00Z',
+      'accuracy_m': 150,
     });
     expect(formatPoint(v.location!), '22.57261, 88.36389');
     expect(v.showsPhoto, isFalse);
+    expect(v.accuracyM, 150);
+    expect(v.isApproximate, isTrue);
   });
 
   group('lists', () {
@@ -437,9 +510,13 @@ void main() {
 
       expect(find.text('Visits (2)'), findsOneWidget);
       expect(find.textContaining('no location'), findsOneWidget);
+      // The list asks for small photos only (L57).
+      expect(visits.photosAsked.toSet(), <String>{'v1:small', 'v2:small'});
       await tester.tap(find.text('Krishi Kendra'));
       await tester.pumpAndSettle();
       expect(find.text('Camera photo at 22.50000, 88.30000'), findsOneWidget);
+      // The visit page shows the full photo.
+      expect(visits.photosAsked, contains('v1'));
     });
   });
 }

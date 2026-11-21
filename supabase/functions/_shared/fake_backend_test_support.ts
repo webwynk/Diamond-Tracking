@@ -15,7 +15,8 @@ type FailingCall =
   | 'mergeAppMetadata'
   | 'setPassword'
   | 'revokeSessions'
-  | 'deleteAuthUser';
+  | 'deleteAuthUser'
+  | 'noteSignedPhoto';
 
 export class FakeBackend implements Backend {
   profiles = new Map<string, Profile>();
@@ -144,6 +145,13 @@ export class FakeBackend implements Backend {
     if (n >= this.photoLimit) return Promise.resolve(false);
     this.photoUploads.set(userId, n + 1);
     return Promise.resolve(true);
+  }
+  /** Photo ids noted when signed (L56). */
+  signedPhotos: string[] = [];
+  noteSignedPhoto(photoId: string) {
+    if (this.fails('noteSignedPhoto')) return Promise.reject(new Error('dropped'));
+    this.signedPhotos.push(photoId);
+    return Promise.resolve();
   }
   useResetCode(id: string, code: string) {
     const ok = this.codes.get(id) === code;

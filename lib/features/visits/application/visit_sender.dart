@@ -42,6 +42,7 @@ class VisitSender {
         note: v.note,
         location: v.location,
         mocked: v.location != null && v.mocked,
+        accuracyM: v.location == null ? null : v.accuracyM,
         capturedAt: v.capturedAt,
       );
       await _outbox.remove(v);

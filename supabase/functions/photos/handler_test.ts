@@ -1,6 +1,12 @@
 import { assert, assertEquals } from '@std/assert';
 import { FakeBackend, post } from '../_shared/fake_backend_test_support.ts';
-import { deliveryUrl, destroyFields, isPhotoId, signParams } from './cloudinary.ts';
+import {
+  deliveryUrl,
+  destroyFields,
+  isPhotoId,
+  signParams,
+  THUMBNAIL_TRANSFORMATION,
+} from './cloudinary.ts';
 import { handler, type PhotoDeps } from './handler.ts';
 
 const cfg = { cloudName: 'demo', apiKey: 'key1', apiSecret: 'abcd' };
@@ -179,4 +185,56 @@ Deno.test('at most 60 photos a day per person (L62)', async () => {
   assertEquals((await res.json()).error, 'photo_limit');
   // Someone else can still upload.
   assertEquals((await handler(post({ action: 'sign' }, 'other'), b, deps)).status, 200);
+});
+
+Deno.test('the small version is a signed Cloudinary transformation (L57)', async () => {
+  const { b, deps, fetched } = setup();
+  const res = await handler(get(`visit_id=${VISIT}&size=small`, 'emp'), b, deps);
+  assertEquals(res.status, 200);
+  assertEquals(fetched, [await deliveryUrl(cfg, `visit-${VISIT}`, THUMBNAIL_TRANSFORMATION)]);
+  assert(fetched[0].endsWith(`--/${THUMBNAIL_TRANSFORMATION}/visit-${VISIT}`));
+  // The signature covers the transformation, so it differs from the full one.
+  const full = await deliveryUrl(cfg, `visit-${VISIT}`);
+  assert(fetched[0].split('/')[6] !== full.split('/')[6]);
+  // Requests get it too; anything else than "small" is the full photo.
+  await handler(get('request_id=5&size=small', 'emp'), b, deps);
+  await handler(get('request_id=5&size=big', 'emp'), b, deps);
+  assertEquals(fetched[1], await deliveryUrl(cfg, `req-${ID}`, THUMBNAIL_TRANSFORMATION));
+  assertEquals(fetched[2], await deliveryUrl(cfg, `req-${ID}`));
+});
+
+Deno.test('when the small version fails, the full photo is sent (L57)', async () => {
+  const { b, deps, fetched } = setup();
+  for (const fail of ['status', 'throw']) {
+    fetched.length = 0;
+    const res = await handler(get(`visit_id=${VISIT}&size=small`, 'emp'), b, {
+      ...deps,
+      fetcher: (url, init) => {
+        if (String(url).includes(THUMBNAIL_TRANSFORMATION)) {
+          fetched.push(String(url));
+          if (fail === 'throw') return Promise.reject(new TypeError('network'));
+          return Promise.resolve(new Response('no', { status: 400 }));
+        }
+        return deps.fetcher(url, init);
+      },
+    });
+    assertEquals(res.status, 200, fail);
+    assertEquals(new Uint8Array(await res.arrayBuffer()), new Uint8Array([1, 2, 3]));
+    assertEquals(fetched[1], await deliveryUrl(cfg, `visit-${VISIT}`));
+  }
+});
+
+Deno.test('every signed photo id is noted for the orphan clean-up (L56)', async () => {
+  const { b, deps } = setup();
+  await handler(post({ action: 'sign', kind: 'visit' }, 'emp'), b, deps);
+  await handler(post({ action: 'sign' }, 'emp'), b, deps);
+  assertEquals(b.signedPhotos, [`visit-${ID}`, `req-${ID}`]);
+  // Noting is not needed to upload: a failure still signs.
+  b.failNext.add('noteSignedPhoto');
+  const res = await handler(post({ action: 'sign' }, 'emp'), b, deps);
+  assertEquals(res.status, 200);
+  // Refused uploads are not noted.
+  b.photoLimit = 0;
+  await handler(post({ action: 'sign' }, 'emp'), b, deps);
+  assertEquals(b.signedPhotos.length, 2);
 });

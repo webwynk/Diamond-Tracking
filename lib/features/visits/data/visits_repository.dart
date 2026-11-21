@@ -24,9 +24,11 @@ abstract interface class VisitsRepository {
     required GeoPoint? location,
     required DateTime capturedAt,
     bool mocked = false,
+    int? accuracyM,
   });
 
-  PhotoSource photo(String visitId);
+  /// The photo; [small] asks for the small list version (L57).
+  PhotoSource photo(String visitId, {bool small = false});
 }
 
 /// The visit id inside a visit photo id.
@@ -45,7 +47,7 @@ class SupabaseVisitsRepository implements VisitsRepository {
         .from('visits')
         .select(
           'id, store_name, note, from_gallery, lat_e6, lng_e6, photo_id, '
-          'photo_removed_at, captured_at, mocked',
+          'photo_removed_at, captured_at, mocked, accuracy_m',
         )
         .eq('duty_day_id', dayId)
         .order('captured_at');
@@ -64,6 +66,7 @@ class SupabaseVisitsRepository implements VisitsRepository {
     required GeoPoint? location,
     required DateTime capturedAt,
     bool mocked = false,
+    int? accuracyM,
   }) => _client.rpc<Object?>(
     'add_visit',
     params: <String, Object?>{
@@ -76,10 +79,11 @@ class SupabaseVisitsRepository implements VisitsRepository {
       'p_photo_id': photoId,
       'p_captured_at': capturedAt.toUtc().toIso8601String(),
       'p_mocked': location != null && mocked,
+      'p_accuracy_m': location == null ? null : accuracyM,
     },
   );
 
   @override
-  PhotoSource photo(String visitId) =>
-      PhotoSource.of(_client, 'visit_id=$visitId');
+  PhotoSource photo(String visitId, {bool small = false}) =>
+      PhotoSource.of(_client, 'visit_id=$visitId${small ? '&size=small' : ''}');
 }

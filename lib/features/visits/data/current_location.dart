@@ -4,9 +4,12 @@ import '../../routes/domain/geo_point.dart';
 
 /// A location for a camera photo.
 class LocationFix {
-  const LocationFix(this.point, {this.mocked = false});
+  const LocationFix(this.point, {this.mocked = false, this.accuracyM});
 
   final GeoPoint point;
+
+  /// How far off it may be, in metres (L59).
+  final int? accuracyM;
 
   /// Android says it came from a fake-location ("mock location") app.
   final bool mocked;
@@ -16,6 +19,17 @@ class LocationFix {
 abstract interface class CurrentLocation {
   Future<LocationFix?> find();
 }
+
+/// The oldest last-known location a camera photo may use when no new one
+/// comes in time (L59). Older ones can be far away after driving.
+const Duration lastKnownMaxAge = Duration(minutes: 2);
+
+/// Whether a last-known location taken at [fixAt] is fresh enough at [now].
+bool lastKnownIsFresh(DateTime fixAt, DateTime now) =>
+    now.difference(fixAt) < lastKnownMaxAge;
+
+int? _accuracy(Position p) =>
+    p.accuracy.isFinite && p.accuracy > 0 ? p.accuracy.round() : null;
 
 class GeolocatorLocation implements CurrentLocation {
   const GeolocatorLocation();
@@ -38,17 +52,20 @@ class GeolocatorLocation implements CurrentLocation {
           timeLimit: Duration(seconds: 20),
         ),
       );
-      return LocationFix(GeoPoint(p.latitude, p.longitude), mocked: p.isMocked);
+      return LocationFix(
+        GeoPoint(p.latitude, p.longitude),
+        mocked: p.isMocked,
+        accuracyM: _accuracy(p),
+      );
     } on Object {
-      // Timed out indoors: a fix from the last 5 minutes is close enough.
+      // Timed out indoors: a fix from the last 2 minutes is close enough.
       try {
         final Position? last = await Geolocator.getLastKnownPosition();
-        if (last != null &&
-            DateTime.now().difference(last.timestamp) <
-                const Duration(minutes: 5)) {
+        if (last != null && lastKnownIsFresh(last.timestamp, DateTime.now())) {
           return LocationFix(
             GeoPoint(last.latitude, last.longitude),
             mocked: last.isMocked,
+            accuracyM: _accuracy(last),
           );
         }
       } on Object {

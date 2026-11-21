@@ -44,6 +44,7 @@ class _AddVisitPageState extends ConsumerState<AddVisitPage> {
   DateTime? _takenAt;
   GeoPoint? _location;
   bool _mocked = false;
+  int? _accuracyM;
   _Gps _gps = _Gps.none;
   int _gpsTry = 0;
 
@@ -77,6 +78,7 @@ class _AddVisitPageState extends ConsumerState<AddVisitPage> {
     _takenAt = ref.read(serverClockProvider).now();
     _location = null;
     _mocked = false;
+    _accuracyM = null;
     if (from == PhotoFrom.camera) {
       _findLocation();
     } else {
@@ -92,6 +94,7 @@ class _AddVisitPageState extends ConsumerState<AddVisitPage> {
     setState(() {
       _location = fix?.point;
       _mocked = fix?.mocked ?? false;
+      _accuracyM = fix?.accuracyM;
       _gps = fix == null ? _Gps.failed : _Gps.found;
     });
   }
@@ -133,6 +136,7 @@ class _AddVisitPageState extends ConsumerState<AddVisitPage> {
         note: _note.text.trim().isEmpty ? null : _note.text.trim(),
         location: _from == PhotoFrom.camera ? _location : null,
         mocked: _from == PhotoFrom.camera && _mocked,
+        accuracyM: _from == PhotoFrom.camera ? _accuracyM : null,
         capturedAt: _takenAt ?? ref.read(serverClockProvider).now(),
         photoId: _photoId,
       );
@@ -189,7 +193,8 @@ class _AddVisitPageState extends ConsumerState<AddVisitPage> {
       _Gps.found => (
         Icons.location_on_rounded,
         AppColors.success,
-        'Location found: ${formatPoint(_location!)}',
+        'Location found: ${formatPoint(_location!)}'
+            '${(_accuracyM ?? 0) > approximateOverM ? ' (approximate, ±$_accuracyM m)' : ''}',
       ),
       _Gps.failed => (
         Icons.location_disabled_rounded,
