@@ -23,6 +23,7 @@ import 'package:diamond_tracking/features/routes/domain/day_route.dart';
 import 'package:diamond_tracking/features/routes/domain/geo_point.dart';
 import 'package:diamond_tracking/features/routes/domain/live_position.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_control.dart';
+import 'package:diamond_tracking/features/tracking/domain/tracker_status.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracking_session.dart';
 import 'package:diamond_tracking/features/users/data/users_repository.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
@@ -387,6 +388,14 @@ class FakeTrackerControl implements TrackerControl {
 
   @override
   Stream<int> get batteryWarnings => battery.stream;
+
+  // Lives as long as the test; nothing to clean up.
+  // ignore: close_sinks
+  final StreamController<TrackerStatus> status =
+      StreamController<TrackerStatus>.broadcast();
+
+  @override
+  Stream<TrackerStatus> get statusUpdates => status.stream;
 
   @override
   Future<void> clear() async {

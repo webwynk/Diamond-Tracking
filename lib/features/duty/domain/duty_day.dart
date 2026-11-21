@@ -1,3 +1,5 @@
+import '../../requests/domain/app_request.dart' show LeaveType;
+
 /// A day's attendance status, as the database stores it.
 enum DayStatus {
   onDuty('on_duty'),
@@ -37,6 +39,7 @@ class DutyDay {
     this.autoEnded = false,
     this.workedMinutes,
     this.distanceM,
+    this.leaveType,
     this.userId,
   });
 
@@ -49,6 +52,9 @@ class DutyDay {
     autoEnded: json['end_reason'] == 'auto',
     workedMinutes: (json['worked_minutes'] as num?)?.toInt(),
     distanceM: (json['distance_m'] as num?)?.toInt(),
+    leaveType: json['leave_type'] is String
+        ? LeaveType.fromWire(json['leave_type'] as String)
+        : null,
     userId: json['user_id'] as String?,
   );
 
@@ -64,6 +70,9 @@ class DutyDay {
   final bool autoEnded;
   final int? workedMinutes;
   final int? distanceM;
+
+  /// Sick or casual, on a leave day.
+  final LeaveType? leaveType;
 
   /// Set when the row was read with its user (admin lists).
   final String? userId;

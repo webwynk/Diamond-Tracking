@@ -36,7 +36,7 @@ class SupabaseRouteRepository implements RouteRepository {
 
   static const String _dayColumns =
       'id, user_id, day, status, duty_on_at, duty_off_at, end_reason, '
-      'worked_minutes, distance_m';
+      'worked_minutes, distance_m, leave_type';
 
   @override
   Future<DayRoute?> dayRoute(int dayId) async {

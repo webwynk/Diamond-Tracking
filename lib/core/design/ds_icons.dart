@@ -25,6 +25,7 @@ abstract final class DsIcons {
   static const IconData clock = LucideIcons.clock;
   static const IconData phone = LucideIcons.phone;
   static const IconData search = LucideIcons.search;
+  static const IconData requests = LucideIcons.inbox;
 
   // Actions and states
   static const IconData check = LucideIcons.check;
@@ -37,4 +38,14 @@ abstract final class DsIcons {
   static const IconData error = LucideIcons.circleAlert;
   static const IconData info = LucideIcons.info;
   static const IconData empty = LucideIcons.inbox;
+
+  // Duty
+  static const IconData dutyOn = LucideIcons.play;
+  static const IconData dutyOff = LucideIcons.square;
+  static const IconData closed = LucideIcons.calendarX;
+  static const IconData dayDone = LucideIcons.circleCheck;
+  static const IconData waiting = LucideIcons.hourglass;
+  static const IconData upload = LucideIcons.cloudUpload;
+  static const IconData sickLeave = LucideIcons.heartPulse;
+  static const IconData casualLeave = LucideIcons.palmtree;
 }

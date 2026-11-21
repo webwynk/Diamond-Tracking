@@ -15,6 +15,7 @@ import '../../../core/time/server_clock.dart';
 import '../data/track_uploader.dart';
 import '../data/tracker_files.dart';
 import '../domain/track_fix.dart';
+import '../domain/tracker_status.dart';
 import '../engine/tracker_engine.dart';
 import 'battery_alerts.dart';
 import 'proc_system_info.dart';
@@ -39,7 +40,8 @@ class TrackerTaskHandler extends TaskHandler {
   ServerClock? _clock;
   StreamSubscription<Position>? _positions;
   TrackerMode _mode = TrackerMode.tracking;
-  String? _locationProblem;
+  TrackerProblem? _problem;
+  DateTime? _problemSince;
   bool _ticking = false;
   int _ticks = 0;
 
@@ -140,25 +142,58 @@ class TrackerTaskHandler extends TaskHandler {
         return;
     }
     await _updateNotification();
-    FlutterForegroundTask.sendDataToMain(TrackerMessages.status);
+    _sendStatus();
   }
+
+  /// Tells the app (when it is open) what Home should show (points waiting,
+  /// no internet, recording stopped).
+  void _sendStatus() {
+    final TrackerEngine? engine = _engine;
+    if (engine == null) return;
+    FlutterForegroundTask.sendDataToMain(
+      TrackerStatus(
+        pendingPoints: engine.pendingCount,
+        offline: engine.isOffline,
+        problem: _problem,
+        problemSince: _problemSince,
+      ).toMessage(),
+    );
+  }
+
+  /// Notes why recording stopped, keeping the time it first stopped.
+  void _setProblem(TrackerProblem? problem) {
+    if (problem == null) {
+      _problemSince = null;
+    } else if (_problem == null) {
+      _problemSince = _clock?.now() ?? DateTime.now().toUtc();
+    }
+    _problem = problem;
+  }
+
+  /// The notification's line for [_problem].
+  String? get _problemText => switch (_problem) {
+    TrackerProblem.locationOff => 'Location is off. Turn it on.',
+    TrackerProblem.permissionOff => 'Location permission is off. Open the app.',
+    TrackerProblem.gps => 'GPS problem. Open the app.',
+    null => null,
+  };
 
   /// Starts the GPS stream if it is not running, and notes why it cannot.
   Future<void> _ensureGps() async {
     if (_positions != null) return;
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
-        _locationProblem = 'Location is off. Turn it on.';
+        _setProblem(TrackerProblem.locationOff);
         return;
       }
       final LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever ||
           permission == LocationPermission.unableToDetermine) {
-        _locationProblem = 'Location permission is off. Open the app.';
+        _setProblem(TrackerProblem.permissionOff);
         return;
       }
-      _locationProblem = null;
+      _setProblem(null);
       _positions =
           Geolocator.getPositionStream(
             locationSettings: AndroidSettings(
@@ -168,17 +203,20 @@ class TrackerTaskHandler extends TaskHandler {
             _onPosition,
             onError: (Object e) {
               AppLog.failure('Tracker.gps', e);
-              _locationProblem = e is LocationServiceDisabledException
-                  ? 'Location is off. Turn it on.'
-                  : 'GPS problem. Open the app.';
+              _setProblem(
+                e is LocationServiceDisabledException
+                    ? TrackerProblem.locationOff
+                    : TrackerProblem.gps,
+              );
               unawaited(_positions?.cancel());
               _positions = null;
               unawaited(_updateNotification());
+              _sendStatus();
             },
           );
     } on Object catch (e, st) {
       AppLog.failure('Tracker.ensureGps', e, st);
-      _locationProblem = 'GPS problem. Open the app.';
+      _setProblem(TrackerProblem.gps);
     }
   }
 
@@ -218,7 +256,7 @@ class TrackerTaskHandler extends TaskHandler {
           : 'On duty since ${IstFormat.time(since)}';
       final int pending = engine.pendingCount;
       text =
-          _locationProblem ??
+          _problemText ??
           (engine.isOffline && pending > 0
               ? 'No internet. $pending points saved on the phone.'
               : 'Your route is being recorded.');

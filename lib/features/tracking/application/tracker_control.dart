@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../../../core/logging/app_log.dart';
 import '../data/tracker_files.dart';
+import '../domain/tracker_status.dart';
 import '../domain/tracking_session.dart';
 import '../service/tracker_directory.dart';
 import '../service/tracker_messages.dart';
@@ -70,6 +71,10 @@ abstract interface class TrackerControl {
   /// Battery warnings from the service while the app is open.
   Stream<int> get batteryWarnings;
 
+  /// The service's status after each check (about once a minute) while the
+  /// app is open: points waiting, no internet, recording stopped.
+  Stream<TrackerStatus> get statusUpdates;
+
   /// Sign out: stop and forget everything.
   Future<void> clear();
 }
@@ -96,6 +101,8 @@ class ForegroundTrackerControl implements TrackerControl {
   final DateTime Function() _now;
 
   final StreamController<int> _battery = StreamController<int>.broadcast();
+  final StreamController<TrackerStatus> _status =
+      StreamController<TrackerStatus>.broadcast();
   TrackerFiles? _files;
 
   Future<TrackerFiles> _getFiles() async =>
@@ -104,10 +111,15 @@ class ForegroundTrackerControl implements TrackerControl {
   void _onData(Object data) {
     final int? level = TrackerMessages.batteryLevelOf(data);
     if (level != null) _battery.add(level);
+    final TrackerStatus? status = TrackerStatus.fromMessage(data);
+    if (status != null) _status.add(status);
   }
 
   @override
   Stream<int> get batteryWarnings => _battery.stream;
+
+  @override
+  Stream<TrackerStatus> get statusUpdates => _status.stream;
 
   @override
   Future<List<TrackerRequirement>> missingRequirements() async {

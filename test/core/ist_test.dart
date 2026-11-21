@@ -1,4 +1,5 @@
 import 'package:diamond_tracking/core/time/ist.dart';
+import 'package:diamond_tracking/core/time/ist_format.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -25,5 +26,13 @@ void main() {
   test('a local DateTime is read by its instant, not its fields', () {
     final DateTime local = DateTime.utc(2026, 1, 1, 0, 0).toLocal();
     expect(Ist.minuteOfDay(local), 5 * 60 + 30);
+  });
+
+  test('dayDate is the weekday and date in India', () {
+    // 20 Nov 2026, 11:00 PM UTC is already Saturday 21 Nov in India.
+    expect(
+      IstFormat.dayDate(DateTime.utc(2026, 11, 20, 23)),
+      'Saturday, 21 Nov',
+    );
   });
 }

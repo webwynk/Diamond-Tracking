@@ -6,9 +6,6 @@ abstract final class TrackerMessages {
   /// App to service: the session changed (duty off, resume), check now.
   static const String refresh = 'refresh';
 
-  /// Service to app: status changed (points uploaded, GPS problem).
-  static const String status = 'status';
-
   /// Service to app: the service stopped itself.
   static const String stopped = 'stopped';
 

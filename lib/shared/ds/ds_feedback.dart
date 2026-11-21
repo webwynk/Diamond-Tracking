@@ -106,6 +106,9 @@ class DsBanner extends StatelessWidget {
                         label: actionLabel!,
                         onPressed: onAction,
                         filled: true,
+                        color: kind == DsBannerKind.danger
+                            ? DsColors.dangerDot
+                            : DsColors.primary,
                       ),
                     ),
                 ],

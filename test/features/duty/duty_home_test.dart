@@ -4,6 +4,7 @@ import 'package:diamond_tracking/core/time/ist.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_failure.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_home.dart';
+import 'package:diamond_tracking/features/requests/domain/app_request.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracking_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -93,5 +94,25 @@ void main() {
     expect(back.isActiveAt(ist(12)), isFalse);
     expect(session.isActiveAt(ist(22, 59)), isTrue);
     expect(session.isActiveAt(ist(23)), isFalse);
+  });
+
+  test('a leave day reads sick or casual from the server', () {
+    final DutyDay day = DutyDay.fromJson(<String, dynamic>{
+      'id': 1,
+      'day': '2026-11-20',
+      'status': 'leave',
+      'leave_type': 'casual',
+      'distance_m': null,
+    });
+    expect(day.leaveType, LeaveType.casual);
+    expect(
+      DutyDay.fromJson(<String, dynamic>{
+        'id': 2,
+        'day': '2026-11-20',
+        'status': 'present',
+        'distance_m': 1200,
+      }).distanceM,
+      1200,
+    );
   });
 }
