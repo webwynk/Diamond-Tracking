@@ -371,7 +371,7 @@ class _DutyCard extends StatelessWidget {
         const _Heading(icon: Icons.verified_rounded, title: 'Ready to start'),
         const _Line(
           'The admin allowed you to do duty on today. It works once, until '
-          '11:00 PM.',
+          '9:00 PM.',
         ),
         const SizedBox(height: AppSpacing.x4),
         AppButton(

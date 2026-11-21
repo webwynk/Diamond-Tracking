@@ -28,7 +28,8 @@ String dutyPermitProblem(Object error) {
         'absent), so duty on cannot be allowed again.';
   }
   if (text.contains('too_late')) {
-    return 'It is after 11:00 PM, when duty ends by itself.';
+    return 'It is after 9:00 PM. A duty started now would be too short to '
+        'count, so duty on can no longer be allowed today.';
   }
   if (text.contains('user_not_found')) {
     return 'Only an active employee can be allowed.';
@@ -108,9 +109,9 @@ class _DutyOnPermissionCardState extends ConsumerState<DutyOnPermissionCard> {
           allowed.hasError
               ? 'Could not check. Pull to reload this screen.'
               : isAllowed
-              ? 'Allowed for today. Not used yet.'
+              ? 'Allowed for today, until 9:00 PM. Not used yet.'
               : 'Normally only 5:00 to 8:30 AM. You can allow one duty on '
-                    'today outside those times.',
+                    'today outside those times, until 9:00 PM.',
           style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
         ),
         if (_error case final String e) ...<Widget>[
@@ -172,8 +173,8 @@ class _AllowDialogState extends State<_AllowDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         const Text(
-          'Today only, once, until 11:00 PM. They get a notification and can '
-          'then press Duty on at any time today.',
+          'Today only, once, until 9:00 PM. They get a notification and can '
+          'then press Duty on at any time until 9:00 PM.',
         ),
         const SizedBox(height: AppSpacing.x3),
         TextField(

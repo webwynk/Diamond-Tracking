@@ -26,6 +26,32 @@ void main() {
     );
   });
 
+  group('admin permission can start a duty until 21:00 IST (L28)', () {
+    test(
+      'early morning',
+      () => expect(DutyRules.canUsePermitAt(ist(3, 0)), isTrue),
+    );
+    test(
+      'last minute 20:59',
+      () => expect(DutyRules.canUsePermitAt(ist(20, 59)), isTrue),
+    );
+    test(
+      'closed at 21:00',
+      () => expect(DutyRules.canUsePermitAt(ist(21, 0)), isFalse),
+    );
+    test(
+      'closed at 22:50',
+      () => expect(DutyRules.canUsePermitAt(ist(22, 50)), isFalse),
+    );
+    test(
+      'ends before the 23:00 auto duty off',
+      () => expect(
+        DutyRules.dutyPermitEndMinute < DutyRules.autoDutyOffMinute,
+        isTrue,
+      ),
+    );
+  });
+
   test('auto duty off is 23:00 IST on the duty day', () {
     expect(DutyRules.autoDutyOffFor(ist(5, 10)), ist(23, 0));
   });

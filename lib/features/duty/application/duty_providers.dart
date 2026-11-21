@@ -182,8 +182,10 @@ class DutyHomeController extends AsyncNotifier<DutyHome> {
     }
     // Outside the window only with the admin's permission; the server checks
     // it again.
-    if (!DutyRules.canDutyOn(_clock.now()) &&
-        !(state.value?.dutyOnAllowed ?? false)) {
+    final DateTime now = _clock.now();
+    if (!DutyRules.canDutyOn(now) &&
+        !((state.value?.dutyOnAllowed ?? false) &&
+            DutyRules.canUsePermitAt(now))) {
       throw const DutyException(DutyFailure.closed);
     }
     final DutyStart start;
