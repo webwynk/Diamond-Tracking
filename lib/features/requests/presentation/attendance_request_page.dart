@@ -30,6 +30,10 @@ class _AttendanceRequestPageState extends ConsumerState<AttendanceRequestPage> {
   int? _on; // minutes since midnight
   int? _off;
   Uint8List? _photo;
+
+  /// Set once the photo is uploaded, so a retry does not upload it again
+  /// (L68). Cleared when the photo changes.
+  String? _photoId;
   bool _busy = false;
   String? _error;
 
@@ -108,7 +112,7 @@ class _AttendanceRequestPageState extends ConsumerState<AttendanceRequestPage> {
     });
     try {
       final RequestsRepository repo = ref.read(requestsRepositoryProvider);
-      final String photoId = await repo.uploadPhoto(_photo!);
+      final String photoId = _photoId ??= await repo.uploadPhoto(_photo!);
       await repo.requestAttendance(
         day: _day,
         dutyOnMinute: _on!,
@@ -182,7 +186,10 @@ class _AttendanceRequestPageState extends ConsumerState<AttendanceRequestPage> {
           label: 'Photo (required)',
           photo: _photo,
           enabled: !_busy,
-          onChanged: (Uint8List? p) => setState(() => _photo = p),
+          onChanged: (Uint8List? p) => setState(() {
+            _photo = p;
+            _photoId = null;
+          }),
         ),
         if (_error case final String e) ...<Widget>[
           const SizedBox(height: AppSpacing.x4),

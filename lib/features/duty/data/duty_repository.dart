@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/time/ist.dart';
 import '../domain/duty_day.dart';
+import 'duty_permit_lookup.dart';
 
 /// Duty on, duty off and today's record. Every call needs the internet.
 abstract interface class DutyRepository {
@@ -44,17 +45,8 @@ class SupabaseDutyRepository implements DutyRepository {
   }
 
   @override
-  Future<bool> dutyOnAllowed(String userId, DateTime day) async {
-    final String date = isoDate(day);
-    final Map<String, dynamic>? row = await _client
-        .from('duty_permits')
-        .select('user_id')
-        .eq('user_id', userId)
-        .eq('day', date)
-        .isFilter('used_at', null)
-        .maybeSingle();
-    return row != null;
-  }
+  Future<bool> dutyOnAllowed(String userId, DateTime day) =>
+      hasUnusedDutyPermit(_client, userId, day);
 
   @override
   Future<DutyStart> dutyOn(String deviceId) async {

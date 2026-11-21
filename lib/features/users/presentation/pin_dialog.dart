@@ -1,9 +1,30 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
+
+/// How long a copied PIN stays on the clipboard (L78).
+const Duration pinClipboardTime = Duration(minutes: 1);
+
+/// Copies [text], then clears the clipboard after [pinClipboardTime] unless
+/// something else was copied since.
+Future<void> copyForAMinute(String text) async {
+  await Clipboard.setData(ClipboardData(text: text));
+  Timer(pinClipboardTime, () async {
+    try {
+      final ClipboardData? now = await Clipboard.getData(Clipboard.kTextPlain);
+      if (now?.text == text) {
+        await Clipboard.setData(const ClipboardData(text: ''));
+      }
+    } on Object {
+      // The clipboard could not be read; leave it.
+    }
+  });
+}
 
 /// Shows the user ID and temporary PIN once, for the admin to pass on.
 Future<void> showPinDialog(
@@ -36,9 +57,7 @@ Future<void> showPinDialog(
           icon: const Icon(Icons.copy_rounded, size: 18),
           label: const Text('Copy'),
           onPressed: () async {
-            await Clipboard.setData(
-              ClipboardData(text: 'User ID: $userCode\nTemporary PIN: $pin'),
-            );
+            await copyForAMinute('User ID: $userCode\nTemporary PIN: $pin');
             if (context.mounted) {
               ScaffoldMessenger.of(context)
                   .showSnackBar(const SnackBar(content: Text('Copied')));

@@ -17,6 +17,8 @@ import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_error_view.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/auth_status.dart';
+import '../../notifications/application/notifications_providers.dart';
+import '../../notifications/domain/app_notification.dart';
 import '../../notifications/presentation/notification_bell.dart';
 import '../../requests/presentation/my_requests_page.dart';
 import '../../tracking/application/tracker_control.dart';
@@ -266,6 +268,15 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final AsyncValue<DutyHome> home = ref.watch(dutyHomeProvider);
+    // The admin allowed duty on today: show the Duty on button at once (L81).
+    ref.listen<AsyncValue<List<AppNotification>>>(notificationsProvider, (
+      AsyncValue<List<AppNotification>>? before,
+      AsyncValue<List<AppNotification>> now,
+    ) {
+      if (newDutyOnAllowed(before?.value, now.value)) {
+        unawaited(_controller.refresh());
+      }
+    });
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home'),
@@ -603,4 +614,19 @@ class _VisitsCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// True when [now] has an unread "duty on allowed" notification that
+/// [before] did not have (L81).
+bool newDutyOnAllowed(
+  List<AppNotification>? before,
+  List<AppNotification>? now,
+) {
+  final Set<int> seen = <int>{
+    for (final AppNotification n in before ?? []) n.id,
+  };
+  return (now ?? const <AppNotification>[]).any(
+    (AppNotification n) =>
+        n.kind == dutyOnAllowedKind && n.unread && !seen.contains(n.id),
+  );
 }

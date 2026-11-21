@@ -1,5 +1,7 @@
+import 'dart:isolate';
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -33,19 +35,75 @@ String _km(int metres) => (metres / 1000).toStringAsFixed(1);
 String _hours(int minutes) =>
     minutes == 0 ? '-' : IstFormat.duration(Duration(minutes: minutes));
 
+/// The app's DM Sans font for the PDF (L82): it knows accented letters
+/// (é, ñ, ü...), which the built-in PDF font does not.
+class ReportFonts {
+  const ReportFonts({required this.regular, required this.bold});
+
+  final ByteData regular;
+  final ByteData bold;
+}
+
+Future<ReportFonts> loadReportFonts() async => ReportFonts(
+  regular: await rootBundle.load('assets/fonts/DMSans-Regular.ttf'),
+  bold: await rootBundle.load('assets/fonts/DMSans-Bold.ttf'),
+);
+
+/// The letters a font can write; with no font, the built-in font's (ASCII).
+Set<int> supportedRunes(ByteData? font) => font == null
+    ? <int>{for (int c = 0x20; c < 0x7f; c++) c}
+    : TtfParser(font).charToGlyphIndexMap.keys.toSet();
+
+/// [text] with every letter the font cannot write shown as "?", so a name in
+/// another script never breaks the PDF (L82).
+String fitText(String text, Set<int> supported) => String.fromCharCodes(
+  text.runes.map((int c) => c == 0x20 || supported.contains(c) ? c : 0x3f),
+);
+
+/// [buildReportPdf] on a background thread, so a big report does not freeze
+/// the screen (L83). The fonts are read first, on the main thread.
+Future<Uint8List> buildReportPdfInBackground({
+  required ReportRange range,
+  required List<PersonReport> people,
+  required StatusFilter filter,
+  required bool detail,
+  required DateTime madeAt,
+}) async {
+  final ReportFonts fonts = await loadReportFonts();
+  return Isolate.run(
+    () => buildReportPdf(
+      range: range,
+      people: people,
+      filter: filter,
+      detail: detail,
+      madeAt: madeAt,
+      fonts: fonts,
+    ),
+  );
+}
+
 /// The report as a PDF: a summary row per person, then (with [detail]) every
-/// person's days, narrowed by [filter]. Plain ASCII text, so the built-in
-/// PDF font can write all of it.
+/// person's days, narrowed by [filter]. Written in [fonts] when given,
+/// otherwise in the built-in PDF font (English letters only).
 Future<Uint8List> buildReportPdf({
   required ReportRange range,
   required List<PersonReport> people,
   required StatusFilter filter,
   required bool detail,
   required DateTime madeAt,
+  ReportFonts? fonts,
 }) {
+  final Set<int> letters = supportedRunes(fonts?.regular);
+  String fit(String text) => fitText(text, letters);
   final pw.Document doc = pw.Document(
     title: 'Attendance report',
     author: 'Diamond Agritech',
+    theme: fonts == null
+        ? null
+        : pw.ThemeData.withFont(
+            base: pw.Font.ttf(fonts.regular),
+            bold: pw.Font.ttf(fonts.bold),
+          ),
   );
   const pw.TextStyle small = pw.TextStyle(fontSize: 8);
   const pw.TextStyle head = pw.TextStyle(
@@ -131,8 +189,8 @@ Future<Uint8List> buildReportPdf({
             <List<String>>[
               for (final PersonReport p in people)
                 <String>[
-                  p.userCode,
-                  p.name,
+                  fit(p.userCode),
+                  fit(p.name),
                   formatDays(p.attendance),
                   '${p.present}',
                   '${p.halfDays}',
@@ -155,7 +213,7 @@ Future<Uint8List> buildReportPdf({
           for (final PersonReport p in people) ...<pw.Widget>[
             pw.SizedBox(height: 14),
             pw.Text(
-              '${p.name} (${p.userCode})',
+              fit('${p.name} (${p.userCode})'),
               style: const pw.TextStyle(
                 fontSize: 11,
                 fontWeight: pw.FontWeight.bold,

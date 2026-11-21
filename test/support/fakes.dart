@@ -119,7 +119,14 @@ class FakeUsersRepository implements UsersRepository {
   Exception? failWith;
 
   @override
-  Future<List<Profile>> list() async => List<Profile>.of(users);
+  Future<List<Profile>> list() async {
+    final Exception? e = listError;
+    if (e != null) throw e;
+    return List<Profile>.of(users);
+  }
+
+  /// Thrown by [list] only.
+  Exception? listError;
 
   @override
   Future<Profile?> byId(String id) async {
@@ -409,9 +416,15 @@ class FakeRouteRepository implements RouteRepository {
       days.values.where((DutyDay d) => d.userId == userId).toList()
         ..sort((DutyDay a, DutyDay b) => b.day.compareTo(a.day));
 
+  /// Thrown by [daysOn] only.
+  Exception? daysOnError;
+
   @override
-  Future<List<DutyDay>> daysOn(DateTime day) async =>
-      days.values.where((DutyDay d) => d.day == day).toList();
+  Future<List<DutyDay>> daysOn(DateTime day) async {
+    final Exception? e = daysOnError;
+    if (e != null) throw e;
+    return days.values.where((DutyDay d) => d.day == day).toList();
+  }
 
   @override
   Future<int> requestAddresses(int dayId) async {
@@ -481,22 +494,35 @@ class FakeRequestsRepository implements RequestsRepository {
   );
 
   @override
-  Future<List<AppRequest>> mine(String userId) async {
+  Future<List<AppRequest>> mine(
+    String userId, {
+    int limit = requestPageSize,
+  }) async {
     _maybeFail();
-    return requests.where((AppRequest r) => r.userId == userId).toList();
+    return requests
+        .where((AppRequest r) => r.userId == userId)
+        .take(limit)
+        .toList();
   }
 
   @override
-  Future<List<AppRequest>> forAdmin({required bool pendingOnly}) async {
+  Future<List<AppRequest>> forAdmin({
+    required bool pendingOnly,
+    int limit = requestPageSize,
+  }) async {
     _maybeFail();
     return requests
         .where((AppRequest r) => !pendingOnly || r.isPending)
+        .take(limit)
         .toList();
   }
 
   @override
   Future<AppRequest?> byId(int id) async =>
       requests.where((AppRequest r) => r.id == id).firstOrNull;
+
+  /// Thrown by sending a request only, after the photo is up.
+  Exception? sendError;
 
   @override
   Future<void> requestAttendance({
@@ -507,6 +533,8 @@ class FakeRequestsRepository implements RequestsRepository {
     required String photoId,
   }) async {
     _maybeFail();
+    final Exception? e = sendError;
+    if (e != null) throw e;
     calls.add(
       'attendance:${isoDate(day)}:$dutyOnMinute-$dutyOffMinute:$message:$photoId',
     );
@@ -628,8 +656,8 @@ class FakePushService implements PushService {
   final String? tokenValue;
   // Lives as long as the test.
   // ignore: close_sinks
-  final StreamController<int?> openedController =
-      StreamController<int?>.broadcast();
+  final StreamController<PushOpen> openedController =
+      StreamController<PushOpen>.broadcast();
   // ignore: close_sinks
   final StreamController<String> refreshController =
       StreamController<String>.broadcast();
@@ -644,7 +672,7 @@ class FakePushService implements PushService {
   Stream<String> get tokenRefresh => refreshController.stream;
 
   @override
-  Stream<int?> get opened => openedController.stream;
+  Stream<PushOpen> get opened => openedController.stream;
 }
 
 /// Visits in memory, by day. Saved visits go to [day] like the server's
@@ -752,6 +780,20 @@ class FakeReportsRepository implements ReportsRepository {
   Future<List<PersonReport>> load(ReportRange range) async {
     asked.add(range);
     return people;
+  }
+
+  /// Exports written to the admin log: range, detail, people.
+  final List<(ReportRange, bool, int)> exports = <(ReportRange, bool, int)>[];
+  bool failLog = false;
+
+  @override
+  Future<void> logExport(
+    ReportRange range, {
+    required bool detail,
+    required int people,
+  }) async {
+    if (failLog) throw Exception('offline');
+    exports.add((range, detail, people));
   }
 }
 

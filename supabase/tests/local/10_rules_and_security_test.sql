@@ -1830,4 +1830,29 @@ begin
 end;
 $$;
 
+\echo '--- PDF exports are logged, by admins only (L84)'
+do $$
+begin
+  perform t.act_as('00000000-0000-0000-0000-000000000001');
+  perform t.expect_error($q$select public.log_report_export('2026-11-01', '2026-11-30', true, 3)$q$,
+                         'not_admin');
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.expect_error($q$select public.log_report_export('2026-11-30', '2026-11-01', true, 3)$q$,
+                         'validation_failed');
+  perform public.log_report_export('2026-11-01', '2026-11-30', true, 3);
+  perform t.act_as_owner();
+  perform t.eq((select details from public.admin_log where action = 'export_report'
+                order by id desc limit 1),
+               '{"from": "2026-11-01", "to": "2026-11-30", "detail": true, "people": 3}'::jsonb,
+               'export logged with its range');
+  perform t.eq((select admin_id from public.admin_log where action = 'export_report'
+                order by id desc limit 1),
+               '00000000-0000-0000-0000-00000000000a'::uuid, 'by the admin');
+  perform t.act_as(null);
+  perform t.expect_error($q$select public.log_report_export('2026-11-01', '2026-11-30', true, 3)$q$,
+                         'permission denied');
+  perform t.act_as_owner();
+end;
+$$;
+
 \echo 'ALL TESTS PASSED'

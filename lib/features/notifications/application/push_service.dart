@@ -17,8 +17,36 @@ abstract interface class PushService {
 
   Stream<String> get tokenRefresh;
 
-  /// The request id of a tapped notification (null if it names none).
-  Stream<int?> get opened;
+  /// A tapped notification: the request it names (if any) and its kind.
+  Stream<PushOpen> get opened;
+}
+
+/// What a tapped notification is about.
+class PushOpen {
+  const PushOpen({this.requestId, this.kind});
+
+  factory PushOpen.fromData(Map<String, dynamic> data) => PushOpen(
+    requestId: int.tryParse(data['request_id']?.toString() ?? ''),
+    kind: data['kind']?.toString(),
+  );
+
+  /// Reads [toPayload]; a plain number (older notifications) is a request id.
+  factory PushOpen.fromPayload(String? payload) {
+    final String p = payload ?? '';
+    final int bar = p.indexOf('|');
+    if (bar < 0) return PushOpen(requestId: int.tryParse(p));
+    final String kind = p.substring(0, bar);
+    return PushOpen(
+      requestId: int.tryParse(p.substring(bar + 1)),
+      kind: kind.isEmpty ? null : kind,
+    );
+  }
+
+  final int? requestId;
+  final String? kind;
+
+  /// "kind|request id", kept with a notification shown by the app.
+  String toPayload() => '${kind ?? ''}|${requestId ?? ''}';
 }
 
 /// Push is not set up: notifications show inside the app only.
@@ -35,7 +63,7 @@ class NoPushService implements PushService {
   Stream<String> get tokenRefresh => const Stream<String>.empty();
 
   @override
-  Stream<int?> get opened => const Stream<int?>.empty();
+  Stream<PushOpen> get opened => const Stream<PushOpen>.empty();
 }
 
 /// The channel Firebase posts to (named in the push function's message).
@@ -47,7 +75,8 @@ const AndroidNotificationChannel requestsChannel = AndroidNotificationChannel(
 );
 
 class FirebasePushService implements PushService {
-  final StreamController<int?> _opened = StreamController<int?>.broadcast();
+  final StreamController<PushOpen> _opened =
+      StreamController<PushOpen>.broadcast();
   final FlutterLocalNotificationsPlugin _local =
       FlutterLocalNotificationsPlugin();
   Future<bool>? _started;
@@ -72,7 +101,7 @@ class FirebasePushService implements PushService {
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         ),
         onDidReceiveNotificationResponse: (NotificationResponse r) =>
-            _opened.add(int.tryParse(r.payload ?? '')),
+            _opened.add(PushOpen.fromPayload(r.payload)),
       );
       await _local
           .resolvePlatformSpecificImplementation<
@@ -85,12 +114,12 @@ class FirebasePushService implements PushService {
       // While the app is open Android does not show the push itself.
       FirebaseMessaging.onMessage.listen(_showInApp);
       FirebaseMessaging.onMessageOpenedApp.listen(
-        (RemoteMessage m) => _opened.add(_requestId(m)),
+        (RemoteMessage m) => _opened.add(PushOpen.fromData(m.data)),
       );
       final RemoteMessage? initial = await fm.getInitialMessage();
       if (initial != null) {
         // After the listeners of [opened] are attached.
-        scheduleMicrotask(() => _opened.add(_requestId(initial)));
+        scheduleMicrotask(() => _opened.add(PushOpen.fromData(initial.data)));
       }
       return true;
     } on Object catch (e, s) {
@@ -99,9 +128,6 @@ class FirebasePushService implements PushService {
     }
   }
 
-  static int? _requestId(RemoteMessage m) =>
-      int.tryParse(m.data['request_id']?.toString() ?? '');
-
   Future<void> _showInApp(RemoteMessage m) async {
     final RemoteNotification? n = m.notification;
     if (n == null) return;
@@ -109,7 +135,7 @@ class FirebasePushService implements PushService {
       id: m.hashCode & 0x7fffffff,
       title: n.title,
       body: n.body,
-      payload: _requestId(m)?.toString(),
+      payload: PushOpen.fromData(m.data).toPayload(),
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           requestsChannel.id,
@@ -142,5 +168,5 @@ class FirebasePushService implements PushService {
       : FirebaseMessaging.instance.onTokenRefresh;
 
   @override
-  Stream<int?> get opened => _opened.stream;
+  Stream<PushOpen> get opened => _opened.stream;
 }

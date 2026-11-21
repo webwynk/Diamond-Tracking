@@ -166,7 +166,15 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
             style: AppTypography.label,
           ),
           const SizedBox(height: AppSpacing.x2),
-          RequestPhoto(requestId: r.id),
+          if (r.photoRemoved)
+            Text(
+              'Photo removed after 90 days.',
+              style: AppTypography.body.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            )
+          else
+            RequestPhoto(requestId: r.id),
         ],
         if (!r.isPending) ...<Widget>[
           const SizedBox(height: AppSpacing.x4),

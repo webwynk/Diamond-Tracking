@@ -125,7 +125,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     if (detail == null || !mounted) return;
     setState(() => _makingPdf = true);
     try {
-      final Uint8List bytes = await buildReportPdf(
+      final Uint8List bytes = await buildReportPdfInBackground(
         range: _range,
         people: people,
         filter: _filter,
@@ -133,6 +133,14 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
         madeAt: ref.read(serverClockProvider).now(),
       );
       await ref.read(pdfSharerProvider).share(bytes, reportFileName(_range));
+      // In the admin log (L84); a failure here does not stop the export.
+      try {
+        await ref
+            .read(reportsRepositoryProvider)
+            .logExport(_range, detail: detail, people: people.length);
+      } on Object catch (e, s) {
+        AppLog.failure('report export log', e, s);
+      }
     } on Object catch (e, s) {
       AppLog.failure('report pdf', e, s);
       if (mounted) {

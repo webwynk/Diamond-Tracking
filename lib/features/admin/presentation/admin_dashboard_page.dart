@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,7 @@ import '../../../app/routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_banner.dart';
 import '../../duty/domain/duty_day.dart';
 import '../../notifications/presentation/notification_bell.dart';
 import '../../requests/application/requests_providers.dart';
@@ -13,16 +16,51 @@ import '../../requests/domain/app_request.dart';
 import '../../routes/application/route_providers.dart';
 import '../../users/presentation/account_button.dart';
 
+/// How often the dashboard reloads by itself (L85).
+const Duration dashboardRefreshEvery = Duration(minutes: 2);
+
 /// Today at a glance: who is on duty and what is waiting for a decision.
-class AdminDashboardPage extends ConsumerWidget {
+class AdminDashboardPage extends ConsumerStatefulWidget {
   const AdminDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final List<DutyDay>? days = ref.watch(todayDaysProvider).value;
-    final List<AppRequest>? waiting = ref
-        .watch(adminRequestsProvider(true))
-        .value;
+  ConsumerState<AdminDashboardPage> createState() => _AdminDashboardState();
+}
+
+class _AdminDashboardState extends ConsumerState<AdminDashboardPage> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(dashboardRefreshEvery, (_) => _reload());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _reload() {
+    if (!mounted) return;
+    ref
+      ..invalidate(todayDaysProvider)
+      ..invalidate(adminRequestsProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AsyncValue<List<DutyDay>> daysValue = ref.watch(todayDaysProvider);
+    final AsyncValue<List<AppRequest>> waitingValue = ref.watch(
+      adminRequestsProvider(true),
+    );
+    final List<DutyDay>? days = daysValue.value;
+    final List<AppRequest>? waiting = waitingValue.value;
+    final bool failed =
+        (daysValue.hasError && !daysValue.hasValue) ||
+        (waitingValue.hasError && !waitingValue.hasValue);
+    final int limit = ref.watch(adminRequestsLimitProvider(true));
     int count(DayStatus s) =>
         days?.where((DutyDay d) => d.status == s).length ?? 0;
     String n(int? v) => v == null ? '–' : '$v';
@@ -32,14 +70,23 @@ class AdminDashboardPage extends ConsumerWidget {
         actions: const <Widget>[NotificationBell(), AccountButton()],
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          ref
-            ..invalidate(todayDaysProvider)
-            ..invalidate(adminRequestsProvider);
-        },
+        onRefresh: () async => _reload(),
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.x4),
           children: <Widget>[
+            if (failed) ...<Widget>[
+              AppBanner(
+                icon: Icons.cloud_off_rounded,
+                backgroundColor: AppColors.errorBg,
+                iconColor: AppColors.error,
+                title: 'Could not load today',
+                subtitle: 'Check the internet.',
+                actionLabel: 'Retry',
+                onAction: _reload,
+                isActionPill: true,
+              ),
+              const SizedBox(height: AppSpacing.x3),
+            ],
             const Text('Today', style: AppTypography.h3),
             const SizedBox(height: AppSpacing.x3),
             Row(
@@ -76,7 +123,9 @@ class AdminDashboardPage extends ConsumerWidget {
                 const SizedBox(width: AppSpacing.x3),
                 _Tile(
                   label: 'Waiting requests',
-                  value: n(waiting?.length),
+                  value: waiting != null && waiting.length >= limit
+                      ? '${waiting.length}+'
+                      : n(waiting?.length),
                   color: (waiting?.isNotEmpty ?? false)
                       ? AppColors.warning
                       : AppColors.neutral500,

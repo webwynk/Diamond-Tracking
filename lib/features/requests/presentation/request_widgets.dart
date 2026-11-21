@@ -126,3 +126,18 @@ class RequestPhoto extends ConsumerWidget {
     );
   }
 }
+
+/// "Show more" at the end of a request list (L70).
+class ShowMoreButton extends StatelessWidget {
+  const ShowMoreButton({required this.onPressed, super.key});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(AppSpacing.x4),
+    child: Center(
+      child: TextButton(onPressed: onPressed, child: const Text('Show more')),
+    ),
+  );
+}

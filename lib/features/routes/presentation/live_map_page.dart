@@ -30,13 +30,29 @@ class LiveMapPage extends ConsumerStatefulWidget {
 class _LiveMapPageState extends ConsumerState<LiveMapPage> {
   Timer? _timer;
 
+  /// Duty days a reload was already asked for, so it is asked once.
+  final Set<int> _asked = <int>{};
+
   @override
   void initState() {
     super.initState();
-    // Positions arrive live; duty status and "no update" age move on their own.
-    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
-      ref.invalidate(todayDaysProvider);
+    // Positions arrive live. The "no update" age moves every minute; the duty
+    // list reloads every 5 minutes (L76), and at once when someone new shows
+    // up on the map (below).
+    _timer = Timer.periodic(const Duration(minutes: 1), (Timer t) {
+      if (t.tick % dutyListReloadMinutes == 0) {
+        ref.invalidate(todayDaysProvider);
+      }
       if (mounted) setState(() {});
+    });
+  }
+
+  void _reloadForNewDuties(List<LivePosition> live, List<DutyDay> days) {
+    final Set<int> fresh = unknownDutyDays(live, days, _asked);
+    if (fresh.isEmpty) return;
+    _asked.addAll(fresh);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.invalidate(todayDaysProvider);
     });
   }
 
@@ -68,6 +84,7 @@ class _LiveMapPageState extends ConsumerState<LiveMapPage> {
     } else if (!live.hasValue || !days.hasValue || !people.hasValue) {
       body = const Center(child: CircularProgressIndicator());
     } else {
+      _reloadForNewDuties(live.value!, days.value!);
       final List<LiveRow> rows = liveRows(
         positions: live.value!,
         days: days.value!,
@@ -93,6 +110,25 @@ class _LiveMapPageState extends ConsumerState<LiveMapPage> {
       body: body,
     );
   }
+}
+
+/// How often the live map reloads today's duty list (L76).
+const int dutyListReloadMinutes = 5;
+
+/// Duty days that send positions but are not in [days] yet (a new duty on),
+/// leaving out those in [asked].
+Set<int> unknownDutyDays(
+  List<LivePosition> positions,
+  List<DutyDay> days,
+  Set<int> asked,
+) {
+  final Set<int> known = <int>{for (final DutyDay d in days) d.id};
+  return <int>{
+    for (final LivePosition p in positions)
+      if (p.dutyDayId case final int id
+          when !known.contains(id) && !asked.contains(id))
+        id,
+  };
 }
 
 /// One person on today's live map.

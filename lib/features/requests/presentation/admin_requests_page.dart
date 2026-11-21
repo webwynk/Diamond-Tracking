@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/routes.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
+import '../../../shared/widgets/app_banner.dart';
 import '../../../shared/widgets/app_empty_state.dart';
 import '../../../shared/widgets/app_error_view.dart';
 import '../../notifications/application/notifications_providers.dart';
@@ -67,10 +69,13 @@ class _RequestList extends ConsumerWidget {
     final AsyncValue<List<AppRequest>> list = ref.watch(
       adminRequestsProvider(pendingOnly),
     );
+    final AsyncValue<List<Profile>> users = ref.watch(usersListProvider);
     final Map<String, String> names = <String, String>{
-      for (final Profile p in ref.watch(usersListProvider).value ?? <Profile>[])
-        p.id: p.fullName,
+      for (final Profile p in users.value ?? <Profile>[]) p.id: p.fullName,
     };
+    // Names come from the users list; when it failed, say so (L71).
+    final bool namesFailed = users.hasError && !users.hasValue;
+    final int limit = ref.watch(adminRequestsLimitProvider(pendingOnly));
     return list.when(
       skipLoadingOnRefresh: true,
       data: (List<AppRequest> items) => RefreshIndicator(
@@ -93,14 +98,37 @@ class _RequestList extends ConsumerWidget {
                   ),
                 ],
               )
-            : ListView.separated(
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (BuildContext context, int i) => RequestTile(
-                  request: items[i],
-                  personName: names[items[i].userId] ?? 'Unknown',
-                  onTap: () => context.push(Routes.adminRequest(items[i].id)),
-                ),
+            : ListView(
+                children: <Widget>[
+                  if (namesFailed)
+                    AppBanner(
+                      icon: Icons.person_off_rounded,
+                      backgroundColor: AppColors.warningBg,
+                      iconColor: AppColors.warning,
+                      title: 'Names could not load',
+                      actionLabel: 'Retry',
+                      onAction: () => ref.invalidate(usersListProvider),
+                      isActionPill: true,
+                    ),
+                  for (final AppRequest r in items) ...<Widget>[
+                    RequestTile(
+                      request: r,
+                      personName:
+                          names[r.userId] ??
+                          (namesFailed || !users.hasValue ? '…' : 'Unknown'),
+                      onTap: () => context.push(Routes.adminRequest(r.id)),
+                    ),
+                    const Divider(height: 1),
+                  ],
+                  if (items.length >= limit)
+                    ShowMoreButton(
+                      onPressed: () => ref
+                          .read(
+                            adminRequestsLimitProvider(pendingOnly).notifier,
+                          )
+                          .more(),
+                    ),
+                ],
               ),
       ),
       error: (_, _) => AppErrorView(

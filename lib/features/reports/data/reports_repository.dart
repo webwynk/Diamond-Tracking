@@ -7,12 +7,34 @@ abstract interface class ReportsRepository {
   /// Every employee's days in [range], with their visit counts, sorted by
   /// name. Employees with no days in the range are left out.
   Future<List<PersonReport>> load(ReportRange range);
+
+  /// Writes a PDF export into the admin log (L84).
+  Future<void> logExport(
+    ReportRange range, {
+    required bool detail,
+    required int people,
+  });
 }
 
 class SupabaseReportsRepository implements ReportsRepository {
   SupabaseReportsRepository(this._client);
 
   final SupabaseClient _client;
+
+  @override
+  Future<void> logExport(
+    ReportRange range, {
+    required bool detail,
+    required int people,
+  }) => _client.rpc<Object?>(
+    'log_report_export',
+    params: <String, Object?>{
+      'p_from': isoDate(range.from),
+      'p_to': isoDate(range.to),
+      'p_detail': detail,
+      'p_people': people,
+    },
+  );
 
   /// The server returns at most 1000 rows per call.
   static const int _page = 1000;

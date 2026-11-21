@@ -7,6 +7,7 @@ import 'package:diamond_tracking/features/auth/application/auth_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
 import 'package:diamond_tracking/features/notifications/application/notifications_providers.dart';
+import 'package:diamond_tracking/features/notifications/application/push_service.dart';
 import 'package:diamond_tracking/features/requests/application/requests_providers.dart';
 import 'package:diamond_tracking/features/routes/application/route_providers.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
@@ -124,7 +125,7 @@ void main() {
     expect(notifications.calls, contains('set:test-device-0001:push-token-1'));
 
     // A tapped push opens the request it is about.
-    push.openedController.add(5);
+    push.openedController.add(const PushOpen(requestId: 5));
     await tester.pumpAndSettle();
     expect(find.text('This request was not found.'), findsOneWidget);
     await tester.pageBack();
