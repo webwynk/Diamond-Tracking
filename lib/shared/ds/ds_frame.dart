@@ -86,6 +86,8 @@ Future<T?> showDsSheet<T>({
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    // The sheet draws its own handle; the app theme's would make two.
+    showDragHandle: false,
     backgroundColor: DsColors.white,
     barrierColor: DsColors.scrim,
     shape: const RoundedRectangleBorder(borderRadius: DsRadius.sheetTop),

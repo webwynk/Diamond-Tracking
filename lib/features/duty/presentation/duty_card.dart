@@ -403,10 +403,10 @@ class _OnDutyCard extends ConsumerWidget {
             child: IntrinsicHeight(
               child: Row(
                 children: <Widget>[
-                  _HeroStat(value: _km(day.distanceM), label: 'Distance'),
+                  _HeroStat(value: kmText(day.distanceM), label: 'Distance'),
                   const VerticalDivider(width: 1, color: Color(0xFF1B6E8F)),
                   _HeroStat(
-                    value: '${_visitCount(ref, day.id)}',
+                    value: '${dayVisitCount(ref, day.id)}',
                     label: 'Visits',
                   ),
                   const VerticalDivider(width: 1, color: Color(0xFF1B6E8F)),
@@ -499,10 +499,10 @@ class _DayDoneCard extends ConsumerWidget {
                   label: '${IstFormat.clock(on)} – ${IstFormat.clock(off)}',
                 ),
                 const SizedBox(width: DsSpace.sm),
-                _DoneTile(value: _km(day.distanceM), label: 'Distance'),
+                _DoneTile(value: kmText(day.distanceM), label: 'Distance'),
                 const SizedBox(width: DsSpace.sm),
                 _DoneTile(
-                  value: '${_visitCount(ref, day.id)}',
+                  value: '${dayVisitCount(ref, day.id)}',
                   label: 'Visits',
                 ),
               ],
@@ -601,7 +601,7 @@ class _LeaveCard extends StatelessWidget {
 }
 
 /// "38 km", "0.4 km", or "0 km" before the first upload.
-String _km(int? metres) {
+String kmText(int? metres) {
   final int m = metres ?? 0;
   if (m == 0) return '0 km';
   if (m < 10000) return '${(m / 1000).toStringAsFixed(1)} km';
@@ -609,7 +609,7 @@ String _km(int? metres) {
 }
 
 /// Today's visits from the server plus those still on the phone.
-int _visitCount(WidgetRef ref, int dayId) {
+int dayVisitCount(WidgetRef ref, int dayId) {
   final List<Visit> sent =
       ref.watch(dayVisitsProvider(dayId)).value ?? const <Visit>[];
   final List<PendingVisit> waiting =

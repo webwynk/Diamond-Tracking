@@ -263,7 +263,7 @@ void main() {
     expect(find.text('Ready to start?'), findsOneWidget);
   });
 
-  testWidgets('a short duty off warns, then says not eligible', (
+  testWidgets('a short duty off warns, then waits for the admin', (
     WidgetTester tester,
   ) async {
     repo.today = onDuty();
@@ -274,15 +274,34 @@ void main() {
 
     await tester.tap(find.text('Duty off'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('less than 10 hours'), findsOneWidget);
-    await tester.tap(find.widgetWithText(TextButton, 'Duty off'));
+    expect(find.text('End your duty?'), findsOneWidget);
+    expect(find.text('2h 00m short'), findsOneWidget);
+    expect(find.textContaining("Won't count for attendance"), findsOneWidget);
+    await tester.tap(find.text('Yes, duty off'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Not eligible for attendance'), findsOneWidget);
+    expect(
+      find.text('Duty off done. The admin will decide your day.'),
+      findsOneWidget,
+    );
     expect(tracker.calls, contains('dutyOff:true'));
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
     expect(find.text('Waiting for admin'), findsOneWidget);
+  });
+
+  testWidgets('Keep working closes the sheet and duty stays on', (
+    WidgetTester tester,
+  ) async {
+    repo.today = onDuty();
+    tracker.stored = sessionFor(repo.today!);
+    time.at = ist(15);
+    await pumpHome(tester);
+    await tester.tap(find.text('Duty off'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Keep working'));
+    await tester.pumpAndSettle();
+    expect(find.text('End your duty?'), findsNothing);
+    expect(tracker.calls, isNot(contains(startsWith('dutyOff'))));
+    expect(find.text('Started 7:00 AM'), findsOneWidget);
   });
 
   testWidgets('a full day duty off just says done', (
@@ -294,8 +313,9 @@ void main() {
     await pumpHome(tester);
     await tester.tap(find.text('Duty off'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('less than 10 hours'), findsNothing);
-    await tester.tap(find.widgetWithText(TextButton, 'Duty off'));
+    expect(find.text('10 h done'), findsWidgets);
+    expect(find.textContaining("Won't count for attendance"), findsNothing);
+    await tester.tap(find.text('Yes, duty off'));
     await tester.pumpAndSettle();
     expect(find.text('Duty off done. Thank you.'), findsOneWidget);
     expect(find.text('Present'), findsOneWidget);
@@ -311,7 +331,7 @@ void main() {
     repo.error = const SocketException('offline');
     await tester.tap(find.text('Duty off'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, 'Duty off'));
+    await tester.tap(find.text('Yes, duty off'));
     await tester.pumpAndSettle();
 
     expect(tracker.calls, contains('dutyOff:false'));
@@ -578,7 +598,7 @@ void main() {
     repo.forDayError = const PostgrestException(message: 'boom');
     await tester.tap(find.text('Duty off'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, 'Duty off'));
+    await tester.tap(find.text('Yes, duty off'));
     await tester.pumpAndSettle();
     expect(find.text('Duty off done. Thank you.'), findsOneWidget);
     expect(find.text('Retry'), findsNothing);

@@ -11,10 +11,6 @@ import '../../../core/design/ds_icons.dart';
 import '../../../core/design/ds_layout.dart';
 import '../../../core/design/ds_status.dart';
 import '../../../core/design/ds_text.dart';
-import '../../../core/rules/duty_rules.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_dimens.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/time/clock_providers.dart';
 import '../../../core/time/ist_format.dart';
 import '../../../shared/ds/ds_button.dart';
@@ -42,6 +38,7 @@ import '../domain/duty_day.dart';
 import '../domain/duty_failure.dart';
 import '../domain/duty_home.dart';
 import 'duty_card.dart';
+import 'duty_off_sheet.dart';
 
 /// The employee's home: duty on, duty off, and today's status.
 class HomePage extends ConsumerStatefulWidget {
@@ -156,51 +153,12 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _dutyOff(DutyDay day) async {
-    final Duration worked = ref
-        .read(serverClockProvider)
-        .now()
-        .difference(day.dutyOnAt!);
-    final bool short = worked < DutyRules.minimumDuty;
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Duty off?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text('You have worked ${IstFormat.duration(worked)} today.'),
-            const SizedBox(height: AppSpacing.x2),
-            const Text(
-              'After duty off you cannot do duty on again today, and your '
-              'route stops being recorded.',
-            ),
-            if (short) ...<Widget>[
-              const SizedBox(height: AppSpacing.x3),
-              Text(
-                'This is less than 10 hours. The day will not count for '
-                'attendance unless the admin approves it.',
-                style: AppTypography.body.copyWith(
-                  color: AppColors.warningText,
-                ),
-              ),
-            ],
-          ],
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Duty off'),
-          ),
-        ],
-      ),
+    final bool ok = await showDutyOffSheet(
+      context,
+      day: day,
+      now: ref.read(serverClockProvider).now(),
     );
-    if (!(ok ?? false) || !mounted) return;
+    if (!ok || !mounted) return;
     setState(() => _busy = true);
     DutyOffOutcome? outcome;
     String? problem;
@@ -214,33 +172,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (!mounted) return;
     if (problem != null) {
       await _showProblem(problem);
-    } else if (outcome!.isShort) {
-      await _showShortDay(outcome);
-    } else if (outcome.savedOffline) {
+    } else if (outcome!.savedOffline) {
       _snack('No internet. Duty off is saved and will be sent by itself.');
+    } else if (outcome.isShort) {
+      _snack('Duty off done. The admin will decide your day.');
     } else {
       _snack('Duty off done. Thank you.');
     }
   }
-
-  Future<void> _showShortDay(DutyOffOutcome outcome) => showDialog<void>(
-    context: context,
-    builder: (BuildContext context) => AlertDialog(
-      icon: const Icon(Icons.info_outline_rounded, color: AppColors.warning),
-      title: const Text('Not eligible for attendance'),
-      content: Text(
-        'You worked ${IstFormat.duration(outcome.worked)}, less than 10 '
-        'hours. The admin will decide: present, half day or absent.'
-        '${outcome.savedOffline ? '\n\nNo internet: the duty off is saved and will be sent by itself.' : ''}',
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('OK'),
-        ),
-      ],
-    ),
-  );
 
   Future<void> _showProblem(String message) async {
     if (!mounted) return;
