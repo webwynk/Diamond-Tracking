@@ -125,11 +125,27 @@ class DayRoute {
   bool get needsAddresses => stops.any((RouteStop s) => s.address == null);
 }
 
-/// Every reported break becomes a note (the phone knows why it stopped).
+/// Every reported break becomes a note (the phone knows why it stopped),
+/// one note per time span: where breaks overlap, "phone off" wins over
+/// "tracking stopped", otherwise the earlier one stays.
 /// Holes in the route that no break explains are "No location".
 List<RouteNote> explainGaps(List<RouteNote> gaps, List<TrackBreak> breaks) {
+  final List<TrackBreak> ordered = List<TrackBreak>.of(breaks)
+    ..sort((TrackBreak a, TrackBreak b) {
+      final bool aOff = a.kind == TrackBreakKind.phoneOff;
+      final bool bOff = b.kind == TrackBreakKind.phoneOff;
+      if (aOff != bOff) return aOff ? -1 : 1;
+      return a.from.compareTo(b.from);
+    });
+  final List<TrackBreak> kept = <TrackBreak>[];
+  for (final TrackBreak b in ordered) {
+    final bool overlaps = kept.any(
+      (TrackBreak k) => k.from.isBefore(b.to) && k.to.isAfter(b.from),
+    );
+    if (!overlaps) kept.add(b);
+  }
   final List<RouteNote> notes = <RouteNote>[
-    for (final TrackBreak b in breaks)
+    for (final TrackBreak b in kept)
       RouteNote(
         from: b.from,
         to: b.to,
