@@ -1,6 +1,8 @@
-/// Sign-in identity and password rules. The same rules are checked again on
-/// the server (supabase/functions/_shared/rules.ts); these give instant
-/// feedback in the form.
+/// Sign-in identity, password and profile rules. The same rules are checked
+/// again on the server (supabase/functions/_shared/rules.ts); these give
+/// instant feedback in the form. Both are tested against the same cases in
+/// supabase/functions/_shared/rule_cases.json, so they cannot drift apart
+/// (L37).
 library;
 
 import 'dart:convert';
@@ -38,6 +40,32 @@ String? loginIdProblem(String value) {
   if (v.isEmpty) return 'Enter your user ID';
   if (v.contains('@')) return null;
   return userCodeProblem(v);
+}
+
+/// A person's full name: 1 to 80 characters.
+String? nameProblem(String name) {
+  final int n = name.trim().length;
+  return n < 1 || n > 80 ? 'Enter a name (up to 80)' : null;
+}
+
+final RegExp _phone = RegExp(r'^\+?[0-9]{7,15}$');
+
+/// An optional phone number: 7 to 15 digits, with + in front if needed.
+String? phoneProblem(String phone) {
+  final String s = phone.trim();
+  return s.isEmpty || _phone.hasMatch(s)
+      ? null
+      : 'Use 7 to 15 digits, with + in front if needed';
+}
+
+final RegExp _email = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+/// An optional contact email, up to 120 characters.
+String? emailProblem(String email) {
+  final String s = email.trim();
+  return s.isEmpty || (s.length <= 120 && _email.hasMatch(s))
+      ? null
+      : 'Enter a valid email';
 }
 
 /// Shown when a password is 72 characters or fewer but over 72 bytes. Same

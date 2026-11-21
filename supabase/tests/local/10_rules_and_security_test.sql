@@ -2098,4 +2098,56 @@ begin
 end;
 $$;
 
+\echo '--- a temporary PIN locks the employee and admin functions (L39)'
+do $$
+begin
+  update auth.users set raw_app_meta_data = '{"must_change_password": true}'
+  where id in ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000a');
+  perform t.act_as('00000000-0000-0000-0000-000000000002');
+  perform t.expect_error($q$select public.duty_on('dev-e2-0001')$q$, 'must_change_password');
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.expect_error($q$select public.set_request_alerts(true)$q$, 'must_change_password');
+  -- Claiming the phone at sign-in still works.
+  perform t.act_as('00000000-0000-0000-0000-000000000002');
+  perform public.claim_device('dev-e2-0001');
+  perform t.act_as_owner();
+  update auth.users set raw_app_meta_data = '{"must_change_password": false}'
+  where id = '00000000-0000-0000-0000-00000000000a';
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.eq(public.set_request_alerts(true), true, 'password chosen: works at once');
+  perform t.act_as_owner();
+end;
+$$;
+
+\echo '--- account claims are merged in one update (L30)'
+do $$
+begin
+  perform t.act_as('00000000-0000-0000-0000-000000000002');
+  perform t.expect_error($q$select public.svc_merge_app_metadata(
+    '00000000-0000-0000-0000-000000000002', '{"must_change_password": false}')$q$,
+    'permission denied');
+  perform t.act_as_owner();
+  update auth.users set raw_app_meta_data = '{"role": "employee", "must_change_password": true}'
+  where id = '00000000-0000-0000-0000-000000000002';
+  perform set_config('role', 'service_role', false);
+  -- Two changes, each naming only its own key: both are kept.
+  perform public.svc_merge_app_metadata('00000000-0000-0000-0000-000000000002',
+                                        '{"must_change_password": false}');
+  perform public.svc_merge_app_metadata('00000000-0000-0000-0000-000000000002',
+                                        '{"role": "admin"}');
+  perform t.expect_error($q$select public.svc_merge_app_metadata(
+    '00000000-0000-0000-0000-0000000000ff', '{"role": "admin"}')$q$, 'user_not_found');
+  perform t.expect_error($q$select public.svc_merge_app_metadata(
+    '00000000-0000-0000-0000-000000000002', '"admin"')$q$, 'invalid_values');
+  perform t.act_as_owner();
+  perform t.eq((select raw_app_meta_data from auth.users
+                where id = '00000000-0000-0000-0000-000000000002'),
+               '{"role": "admin", "must_change_password": false}'::jsonb, 'both changes kept');
+  perform t.eq(private.on_temporary_pin('00000000-0000-0000-0000-000000000002'), false,
+               'no longer on a temporary PIN');
+  update auth.users set raw_app_meta_data = '{}'
+  where id in ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000a');
+end;
+$$;
+
 \echo 'ALL TESTS PASSED'

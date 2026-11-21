@@ -62,10 +62,14 @@ export interface Backend {
   deleteAuthUser(id: string): Promise<void>;
   insertProfile(p: NewProfile): Promise<'ok' | 'code_taken'>;
   updateProfile(id: string, changes: ProfileChanges): Promise<Profile>;
-  /** Sets the password and, in the same save, merges [appMetadata] into the
-   * account's app_metadata, so the two never end up half done. */
-  setPassword(id: string, password: string, appMetadata?: Record<string, unknown>): Promise<void>;
-  /** Merges keys into the account's app_metadata (server-only claims). */
+  /** Sets the password. With [mustChange] it also sets the "must change
+   * password" claim, in the order that is safe if the second step fails:
+   * the flag goes on before a temporary PIN, and off only after the user's
+   * own password is saved. */
+  setPassword(id: string, password: string, mustChange?: boolean): Promise<void>;
+  /** Merges keys into the account's app_metadata (server-only claims) in
+   * one database update, so changes at the same moment never undo each
+   * other (L30). */
   mergeAppMetadata(id: string, values: Record<string, unknown>): Promise<void>;
   revokeSessions(id: string): Promise<void>;
   storeResetCode(id: string, code: string): Promise<boolean>;
@@ -138,6 +142,9 @@ export function supabaseBackend(): Backend {
   const db: SupabaseClient = createClient(url, secretKey(), {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const mergeAppMetadata = async (id: string, values: Record<string, unknown>) => {
+    check(await db.rpc('svc_merge_app_metadata', { p_user: id, p_values: values }));
+  };
 
   return {
     async userFromToken(token) {
@@ -190,26 +197,13 @@ export function supabaseBackend(): Backend {
       if (!row) throw new Error('Profile not found after update');
       return row as Profile;
     },
-    async setPassword(id, password, appMetadata) {
-      let app_metadata: Record<string, unknown> | undefined;
-      if (appMetadata) {
-        const { data, error } = await db.auth.admin.getUserById(id);
-        if (error) throw new Error(error.message);
-        app_metadata = { ...(data.user.app_metadata ?? {}), ...appMetadata };
-      }
-      const { error } = await db.auth.admin.updateUserById(
-        id,
-        app_metadata ? { password, app_metadata } : { password },
-      );
+    async setPassword(id, password, mustChange) {
+      if (mustChange === true) await mergeAppMetadata(id, { must_change_password: true });
+      const { error } = await db.auth.admin.updateUserById(id, { password });
       if (error) throw new Error(error.message);
+      if (mustChange === false) await mergeAppMetadata(id, { must_change_password: false });
     },
-    async mergeAppMetadata(id, values) {
-      const { data, error } = await db.auth.admin.getUserById(id);
-      if (error) throw new Error(error.message);
-      const merged = { ...(data.user.app_metadata ?? {}), ...values };
-      const res = await db.auth.admin.updateUserById(id, { app_metadata: merged });
-      if (res.error) throw new Error(res.error.message);
-    },
+    mergeAppMetadata,
     async revokeSessions(id) {
       check(await db.rpc('svc_revoke_sessions', { p_user: id }));
     },

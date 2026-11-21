@@ -71,14 +71,26 @@ class PointQueue {
     _open.renameSync('${dir.path}/batch-$stamp.jsonl');
   }
 
+  /// Records per batch file, by path (L46). A batch never changes after it
+  /// is sealed (its name is unique, and it is only renamed or deleted), so it
+  /// is read once, not on every count. The open file still grows and is
+  /// always read, but it is small: every upload try seals it.
+  final Map<String, int> _batchCounts = <String, int>{};
+
   /// Points and breaks not yet uploaded.
   int get pendingCount {
-    if (!dir.existsSync()) return 0;
-    int count = 0;
-    for (final File f in _files()) {
-      count += _records(f).length;
+    if (!dir.existsSync()) {
+      _batchCounts.clear();
+      return 0;
     }
-    return count;
+    final List<File> batches = _batches();
+    final Set<String> paths = <String>{for (final File f in batches) f.path};
+    _batchCounts.removeWhere((String path, int _) => !paths.contains(path));
+    int count = 0;
+    for (final File f in batches) {
+      count += _batchCounts[f.path] ??= _records(f).length;
+    }
+    return count + _records(_open).length;
   }
 
   bool get isEmpty => pendingCount == 0;
@@ -225,8 +237,6 @@ class PointQueue {
           ..sort((File a, File b) => a.path.compareTo(b.path));
     return files;
   }
-
-  List<File> _files() => <File>[..._batches(), if (_open.existsSync()) _open];
 
   static _Header? _readHeader(File file) {
     if (!file.existsSync()) return null;

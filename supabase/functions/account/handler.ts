@@ -15,7 +15,7 @@ import { passwordProblem } from '../_shared/rules.ts';
 export async function handler(req: Request, b: Backend): Promise<Response> {
   const body = await readBody(req);
   if (body instanceof Response) return body;
-  const caller = await callerProfile(req, b);
+  const caller = await callerProfile(req, b, { allowTemporaryPin: true });
   if (caller instanceof Response) return caller;
 
   if (body.action !== 'set_password') return reply(400, { error: 'unknown_action' });
@@ -26,6 +26,6 @@ export async function handler(req: Request, b: Backend): Promise<Response> {
   const problem = passwordProblem(password, caller.profile.user_code);
   if (problem) return reply(400, { error: 'validation_failed', fields: { new_password: problem } });
 
-  await b.setPassword(caller.profile.id, password, { must_change_password: false });
+  await b.setPassword(caller.profile.id, password, false);
   return reply(200, { ok: true });
 }

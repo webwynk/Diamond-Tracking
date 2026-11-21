@@ -182,6 +182,29 @@ void main() {
     ]);
   });
 
+  test('the count stays right as batches come and go (L46)', () async {
+    final PointQueue other = PointQueue(Directory('${dir.path}/q'));
+    up.offline = true;
+    for (int i = 0; i < 5; i++) {
+      queue.addPoint(1, 'pass1', point(i));
+      await queue.drain(up); // offline: seals a batch, sends nothing
+    }
+    queue.addPoint(1, 'pass1', point(5)); // still in the open file
+    expect(queue.pendingCount, 6);
+    // Another reader of the same folder (the app beside the tracker).
+    expect(other.pendingCount, 6);
+
+    up.offline = false;
+    await queue.drain(up);
+    expect(queue.pendingCount, 0);
+    expect(other.pendingCount, 0);
+
+    queue.addPoint(1, 'pass1', point(6));
+    expect(other.pendingCount, 1);
+    queue.clear();
+    expect(queue.pendingCount, 0);
+  });
+
   test('a line cut short by a crash is skipped', () async {
     queue.addPoint(1, 'p', point(0));
     File('${dir.path}/q/open.jsonl')

@@ -88,7 +88,7 @@ async function confirm(body: Json, b: Backend) {
   const problem = passwordProblem(password, profile.user_code);
   if (problem) return reply(400, { error: 'validation_failed', fields: { new_password: problem } });
 
-  await b.setPassword(profile.id, password, { must_change_password: false });
+  await b.setPassword(profile.id, password, false);
   await b.revokeSessions(profile.id);
   return reply(200, { ok: true });
 }
