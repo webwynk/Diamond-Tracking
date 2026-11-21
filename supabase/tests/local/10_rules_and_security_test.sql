@@ -1128,4 +1128,44 @@ $$;
 delete from public.profiles where id = '00000000-0000-0000-0000-000000000009';
 delete from auth.users where id = '00000000-0000-0000-0000-000000000009';
 
+\echo '--- km driven while the phone is off are not counted (decided: L2)'
+do $$
+declare
+  e1 uuid := '00000000-0000-0000-0000-000000000001';
+  v_day public.duty_days;
+  v_t timestamptz;
+  v_pts jsonb := '[]';
+  v_pass text;
+  i integer;
+begin
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values (e1, private.ist_today() - 22, 'on_duty', private.ist_at(private.ist_today() - 22, time '07:00'))
+  returning * into v_day;
+  v_t := v_day.duty_on_at;
+  -- 10 minutes driving north (1 km), phone off for an hour, then the phone
+  -- comes back 10 km further north and drives another 1 km.
+  for i in 0..10 loop
+    v_pts := v_pts || jsonb_build_object('t', v_t + make_interval(mins => i),
+      'la', 22500000 + i * 899, 'lo', 88300000, 'a', 8);
+  end loop;
+  for i in 0..10 loop
+    v_pts := v_pts || jsonb_build_object('t', v_t + make_interval(mins => 70 + i),
+      'la', 22599000 + i * 899, 'lo', 88300000, 'a', 8);
+  end loop;
+  v_pass := private.new_upload_pass(v_day, 'dev-e1-0001');
+  update private.upload_passes set expires_at = now() + interval '1 day' where duty_day_id = v_day.id;
+  perform t.act_as(null);
+  perform public.upload_points_with_pass(v_day.id, v_pass, v_pts);
+  perform t.act_as_owner();
+  perform private.build_route(v_day.id);
+  perform t.eq((select jsonb_array_length(gaps) from public.day_routes where duty_day_id = v_day.id), 1,
+               'the phone-off hour is a gap');
+  if (select distance_m from public.day_routes where duty_day_id = v_day.id) not between 1900 and 2100 then
+    raise exception 'only the 2 km the phone saw count, not the 10 km while it was off; got %',
+      (select distance_m from public.day_routes where duty_day_id = v_day.id);
+  end if;
+  delete from public.duty_days where id = v_day.id;
+end;
+$$;
+
 \echo 'ALL TESTS PASSED'
