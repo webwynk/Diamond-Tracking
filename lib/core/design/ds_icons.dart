@@ -49,4 +49,8 @@ abstract final class DsIcons {
   static const IconData sickLeave = LucideIcons.heartPulse;
   static const IconData casualLeave = LucideIcons.palmtree;
   static const IconData battery = LucideIcons.batteryLow;
+
+  // Map
+  static const IconData locate = LucideIcons.locateFixed;
+  static const IconData route = LucideIcons.route;
 }

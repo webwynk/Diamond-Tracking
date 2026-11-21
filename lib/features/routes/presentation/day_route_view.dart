@@ -9,10 +9,13 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/time/ist_format.dart';
 import '../../../shared/widgets/app_error_view.dart';
 import '../../duty/domain/duty_day.dart';
+import '../../visits/application/visits_providers.dart';
+import '../../visits/domain/visit.dart';
 import '../../visits/presentation/visit_widgets.dart';
 import '../application/route_providers.dart';
 import '../domain/day_route.dart';
 import 'app_map.dart';
+import 'day_pins.dart';
 
 /// A day's route: the map on top, the day's summary, stops and notes below.
 /// While the duty is on it refreshes every 2 minutes.
@@ -72,45 +75,18 @@ class _Body extends StatelessWidget {
       children: <Widget>[
         Expanded(
           flex: 5,
-          child: AppMap(
-            lines: route?.segments ?? const [],
-            pins: <MapPin>[
-              if (route?.start case final start?)
-                MapPin(
-                  id: 'start',
-                  point: start,
-                  kind: PinKind.start,
-                  title: day?.dutyOnAt == null
-                      ? 'Start'
-                      : 'Duty on ${IstFormat.time(day!.dutyOnAt!)}',
-                ),
-              for (int i = 0; i < (route?.stops.length ?? 0); i++)
-                MapPin(
-                  id: 'stop$i',
-                  point: route!.stops[i].point,
-                  kind: PinKind.stop,
-                  title: route.stops[i].address ?? 'Stop',
-                  snippet: _stopTimes(route.stops[i]),
-                ),
-              if (route?.end case final end?
-                  when day?.status != DayStatus.onDuty)
-                MapPin(
-                  id: 'end',
-                  point: end,
-                  kind: PinKind.end,
-                  title: day?.dutyOffAt == null
-                      ? 'End'
-                      : 'Duty off ${IstFormat.time(day!.dutyOffAt!)}',
-                ),
-              if (route?.end case final end?
-                  when day?.status == DayStatus.onDuty)
-                MapPin(
-                  id: 'now',
-                  point: end,
-                  kind: PinKind.person,
-                  title: 'Last position',
-                ),
-            ],
+          child: Consumer(
+            builder: (BuildContext context, WidgetRef ref, Widget? _) => AppMap(
+              lines: route?.segments ?? const [],
+              pins: dayPins(
+                day,
+                route,
+                day == null
+                    ? const <Visit>[]
+                    : ref.watch(dayVisitsProvider(day.id)).value ??
+                          const <Visit>[],
+              ),
+            ),
           ),
         ),
         Expanded(
@@ -135,10 +111,6 @@ class _Body extends StatelessWidget {
     );
   }
 
-  static String _stopTimes(RouteStop s) =>
-      '${IstFormat.time(s.start)} to ${IstFormat.time(s.end)} '
-      '(${IstFormat.duration(s.length)})';
-
   /// Stops and notes in time order.
   static List<Widget> _timeline(DayRoute? route) {
     if (route == null) return const <Widget>[];
@@ -150,7 +122,7 @@ class _Body extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.place_rounded, color: AppColors.warning),
             title: Text(s.address ?? 'Finding address…'),
-            subtitle: Text(_stopTimes(s)),
+            subtitle: Text(stopTimes(s)),
           ),
         ),
       for (final RouteNote n in route.notes)
