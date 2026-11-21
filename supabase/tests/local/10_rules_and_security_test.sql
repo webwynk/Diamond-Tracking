@@ -22,15 +22,20 @@ end;
 $$;
 
 -- Runs p_sql and checks that it fails with a message containing p_expected.
+-- The "it succeeded" error is raised outside the handler: raised inside, its
+-- own text contains the expected word and the check passed by mistake.
 create function t.expect_error(p_sql text, p_expected text) returns void
 language plpgsql as $$
 begin
-  execute p_sql;
+  begin
+    execute p_sql;
+  exception when others then
+    if sqlerrm not like '%' || p_expected || '%' then
+      raise exception 'expected error "%" but got "%" for: %', p_expected, sqlerrm, p_sql;
+    end if;
+    return;
+  end;
   raise exception 'expected error "%" but it succeeded: %', p_expected, p_sql;
-exception when others then
-  if sqlerrm not like '%' || p_expected || '%' then
-    raise exception 'expected error "%" but got "%" for: %', p_expected, sqlerrm, p_sql;
-  end if;
 end;
 $$;
 
@@ -1167,5 +1172,78 @@ begin
   delete from public.duty_days where id = v_day.id;
 end;
 $$;
+
+\echo '--- approving attendance never overwrites a real duty; a leave day counts no time; long notes say so'
+select t.act_as_owner();
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000008', 'e8@test');
+insert into public.profiles (id, user_code, full_name, role, created_at, active_device_id)
+values ('00000000-0000-0000-0000-000000000008', 'DA-008', 'Employee Eight', 'employee',
+        now() - interval '30 days', 'dev-e8-0001');
+do $$
+declare
+  e8 uuid := '00000000-0000-0000-0000-000000000008';
+  adm uuid := '00000000-0000-0000-0000-00000000000a';
+  d1 date := private.ist_today() - 3;
+  d2 date := private.ist_today() - 4;
+  v_req1 bigint;
+  v_req2 bigint;
+  v_on timestamptz := private.ist_at(private.ist_today() - 3, time '07:00');
+  v_off timestamptz := private.ist_at(private.ist_today() - 3, time '18:00');
+begin
+  -- Two attendance requests, sent before any duty existed on those days.
+  perform t.act_as(e8);
+  select id into v_req1 from public.request_attendance(d1, time '09:00', time '19:30', 'Forgot',
+    'req-11111111-2222-3333-4444-555555555555');
+  select id into v_req2 from public.request_attendance(d2, time '09:00', time '19:30', 'Forgot',
+    'req-11111111-2222-3333-4444-555555555555');
+  perform t.act_as_owner();
+  -- Then a real duty was recorded on the first day (11 hours).
+  insert into public.duty_days (user_id, day, status, duty_on_at, duty_off_at, worked_minutes)
+  values (e8, d1, 'present', v_on, v_off, 660);
+
+  perform t.act_as(adm);
+  perform t.expect_error(format($q$select public.decide_request(%s, 'present')$q$, v_req1), 'day_has_duty');
+  perform t.expect_error(format($q$select public.decide_request(%s, 'half_day', %L)$q$, v_req2, repeat('x', 301)),
+                         'note_too_long');
+  -- Rejecting closes the request and leaves the real duty alone.
+  perform public.decide_request(v_req1, 'absent', 'You worked that day');
+  perform t.act_as_owner();
+  perform t.eq((select status from public.requests where id = v_req1), 'rejected'::public.request_status,
+               'the request is rejected');
+  perform t.eq((select status from public.duty_days where user_id = e8 and day = d1), 'present'::public.day_status,
+               'the real duty keeps its status');
+  perform t.eq((select duty_on_at from public.duty_days where user_id = e8 and day = d1), v_on,
+               'the real duty keeps its times');
+
+  -- A day without a duty is still approved as before.
+  perform t.act_as(adm);
+  perform public.decide_request(v_req2, 'present');
+  perform t.act_as_owner();
+  perform t.eq((select status from public.duty_days where user_id = e8 and day = d2), 'present'::public.day_status,
+               'a day with no duty is approved');
+
+  -- Leave counts no worked time, and going back brings it back.
+  perform t.act_as(adm);
+  perform public.set_day_status(e8, d1, 'leave', 'casual');
+  perform t.act_as_owner();
+  perform t.eq((select worked_minutes from public.duty_days where user_id = e8 and day = d1), null::integer,
+               'a leave day counts no worked time');
+  perform t.eq((select duty_on_at from public.duty_days where user_id = e8 and day = d1), v_on,
+               'the duty times stay saved');
+  perform t.act_as(adm);
+  perform public.set_day_status(e8, d1, 'present');
+  perform t.expect_error(format($q$select public.set_day_status(%L, %L, 'absent', null, %L)$q$, e8, d1, repeat('x', 301)),
+                         'note_too_long');
+  perform t.act_as_owner();
+  perform t.eq((select worked_minutes from public.duty_days where user_id = e8 and day = d1), 660,
+               'back to present brings the minutes back');
+
+  delete from public.notifications where user_id = e8;
+  delete from public.requests where user_id = e8;
+  delete from public.duty_days where user_id = e8;
+end;
+$$;
+delete from public.profiles where id = '00000000-0000-0000-0000-000000000008';
+delete from auth.users where id = '00000000-0000-0000-0000-000000000008';
 
 \echo 'ALL TESTS PASSED'

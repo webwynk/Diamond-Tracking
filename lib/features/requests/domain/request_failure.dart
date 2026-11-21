@@ -16,6 +16,11 @@ enum RequestFailure {
   invalidDates('Pick dates from the last 7 days up to 90 days ahead.'),
   notCancellable('This request is already decided.'),
   alreadyDecided('Another admin already decided this request.'),
+  dayHasDuty(
+    'This person already has a recorded duty that day. '
+    'Reject this request instead.',
+  ),
+  noteTooLong('Note too long (300 characters max).'),
   photosNotReady('Photo upload is not set up yet. Tell the admin.'),
   photoUploadFailed(
     'The photo did not upload. Check the internet and try again.',
@@ -66,6 +71,8 @@ RequestFailure mapRequestError(Object error) {
     'invalid_dates': RequestFailure.invalidDates,
     'request_not_cancellable': RequestFailure.notCancellable,
     'request_already_decided': RequestFailure.alreadyDecided,
+    'day_has_duty': RequestFailure.dayHasDuty,
+    'note_too_long': RequestFailure.noteTooLong,
     'photos_not_configured': RequestFailure.photosNotReady,
   };
   for (final MapEntry<String, RequestFailure> e in codes.entries) {
