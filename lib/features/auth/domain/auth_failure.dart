@@ -3,8 +3,8 @@ enum AuthFailure implements Exception {
   invalidCredentials('Wrong user ID or password.'),
   wrongCurrentPassword('Your current password is not right.'),
   signedInElsewhere(
-    'This account is signed in on another phone. Log out there first, '
-    'or ask your admin to reset your password.',
+    'Already logged in on another phone. Log out there first, or ask your '
+    'admin to release the phone.',
   ),
   accountInactive('This account is turned off. Please contact your admin.'),
   tooManyAttempts(

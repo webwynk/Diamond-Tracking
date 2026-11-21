@@ -19,6 +19,10 @@ enum VisitFailure {
   photoUploadFailed(
     'The photo did not upload. Check the internet and try again.',
   ),
+  signedInElsewhere(
+    'Your account is logged in on another phone. Log out there first, or '
+    'ask your admin to release the phone.',
+  ),
   noInternet('No internet. Try again.'),
   unknown('Something went wrong. Try again.');
 
@@ -61,6 +65,7 @@ VisitFailure mapVisitError(Object error) {
     'location_required': VisitFailure.noLocation,
     'note_too_long': VisitFailure.noteTooLong,
     'photos_not_configured': VisitFailure.photosNotReady,
+    'signed_in_elsewhere': VisitFailure.signedInElsewhere,
   };
   for (final MapEntry<String, VisitFailure> e in codes.entries) {
     if (text.contains(e.key)) return e.value;

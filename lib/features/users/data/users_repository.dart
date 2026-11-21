@@ -19,6 +19,10 @@ abstract interface class UsersRepository {
   Future<Profile> update(String id, ProfileDraft draft);
   Future<void> resetPin(String id, {required String tempPin});
 
+  /// Signs [id] out of their phone and frees the account for another phone,
+  /// without changing the password. False if no phone held it.
+  Future<bool> releasePhone(String id);
+
   /// Whether the admin has allowed [userId] to do duty on on [day] (an IST
   /// date) and it is not used yet.
   Future<bool> dutyOnAllowed(String userId, DateTime day);
@@ -92,6 +96,23 @@ class SupabaseUsersRepository implements UsersRepository {
       'id': id,
       'temp_pin': tempPin,
     });
+  }
+
+  @override
+  Future<bool> releasePhone(String id) async {
+    try {
+      final Object? held = await _client.rpc<Object?>(
+        'release_phone',
+        params: <String, Object?>{'p_user': id},
+      );
+      return held == true;
+    } on Object catch (e, st) {
+      final AuthFailure failure = mapAuthError(e);
+      if (failure == AuthFailure.unknown) {
+        AppLog.failure('UsersRepository.releasePhone', e, st);
+      }
+      throw failure;
+    }
   }
 
   Future<Map<String, dynamic>> _invoke(Map<String, Object?> body) async {
