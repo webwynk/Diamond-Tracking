@@ -1486,4 +1486,82 @@ select set_config('request.jwt.claims', '', false);
 delete from public.profiles where id = '00000000-0000-0000-0000-000000000011';
 delete from auth.users where id = '00000000-0000-0000-0000-000000000011';
 
+\echo '--- offline duty off on a short day corrects it (M9); one bad point does not fail the upload (L10)'
+select t.act_as_owner();
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000012', 'e12@test');
+insert into public.profiles (id, user_code, full_name, role, created_at, active_device_id)
+values ('00000000-0000-0000-0000-000000000012', 'DA-012', 'Employee Twelve', 'employee',
+        now() - interval '30 days', 'dev-12-0001');
+do $$
+declare
+  e12 constant uuid := '00000000-0000-0000-0000-000000000012';
+  v_day public.duty_days;
+  v_pass text;
+  v_on timestamptz;
+  v_off timestamptz;
+  v_req bigint;
+begin
+  -- Yesterday: a late start at 5 PM (the admin allowed it), so 11 PM makes
+  -- it a 6-hour "pending" day with a short-duty review.
+  v_off := private.auto_off_at(private.ist_today() - 1);
+  v_on := v_off - interval '6 hours';
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values (e12, private.ist_today() - 1, 'on_duty', v_on) returning * into v_day;
+  v_pass := private.new_upload_pass(v_day, 'dev-12-0001');
+  perform private.close_duty(v_day.id, v_off, 'auto');
+  select id into v_req from public.requests where user_id = e12 and kind = 'short_duty';
+  perform t.eq((select count(*) from public.notifications
+                where kind = 'short_duty' and data->>'request_id' = v_req::text) > 0, true,
+               'admins told about the 11 PM hours');
+
+  -- The duty off pressed offline at 9 PM arrives the next day.
+  perform t.act_as(null);
+  perform t.eq(public.duty_off_with_pass(v_day.id, v_pass, v_on + interval '4 hours'),
+               'pending'::public.day_status, 'still short');
+  perform t.act_as_owner();
+  perform t.eq((select duty_off_at from public.duty_days where id = v_day.id),
+               v_on + interval '4 hours', 'the real duty off time is used');
+  perform t.eq((select worked_minutes from public.duty_days where id = v_day.id), 240, 'real hours');
+  perform t.eq((select end_reason from public.duty_days where id = v_day.id),
+               'manual'::public.duty_end_reason, 'ended by hand');
+  perform t.eq((select count(*) from public.requests where user_id = e12 and kind = 'short_duty'),
+               1::bigint, 'one review, not two');
+  perform t.eq((select count(*) from public.requests where id = v_req), 0::bigint, 'old review replaced');
+  perform t.eq((select count(*) from public.notifications
+                where kind = 'short_duty' and data->>'request_id' = v_req::text), 0::bigint,
+               'old notice removed');
+  perform t.eq((select body like '%4 h 0 min' from public.notifications
+                where kind = 'short_duty' and data->>'user_id' = e12::text limit 1), true,
+               'new notice has the real hours');
+
+  -- A day the admin already decided is never changed.
+  update public.duty_days set status = 'pending', duty_off_at = v_off, end_reason = 'auto',
+    worked_minutes = 360, status_source = 'admin' where id = v_day.id;
+  perform t.act_as(null);
+  perform t.eq(public.duty_off_with_pass(v_day.id, v_pass, v_on + interval '1 hour'),
+               'pending'::public.day_status, 'decided day answers its status');
+  perform t.act_as_owner();
+  perform t.eq((select duty_off_at from public.duty_days where id = v_day.id), v_off, 'decided day kept');
+
+  -- L10: bad values skip only their own point.
+  update public.duty_days set status = 'on_duty', duty_off_at = null, end_reason = null,
+    worked_minutes = null, status_source = 'auto' where id = v_day.id;
+  perform t.act_as(null);
+  perform t.eq(public.upload_points_with_pass(v_day.id, v_pass, jsonb_build_array(
+    jsonb_build_object('t', v_on + interval '1 minute', 'la', 22510000, 'lo', 88300000, 'a', 8, 'b', 45),
+    jsonb_build_object('t', 'not a time', 'la', 22510000, 'lo', 88300000),
+    jsonb_build_object('t', v_on + interval '2 minutes', 'la', 99999999999, 'lo', 88300000),
+    jsonb_build_object('t', v_on + interval '3 minutes', 'la', 22510000, 'lo', 88300000, 'b', 99999),
+    jsonb_build_object('t', v_on + interval '4 minutes', 'la', 22510000, 'lo', 88300000, 'a', -99999),
+    jsonb_build_object('t', v_on + interval '5 minutes', 'la', 'x', 'lo', 88300000),
+    '"just text"'::jsonb,
+    jsonb_build_object('t', v_on + interval '6 minutes', 'la', 22520000, 'lo', 88300000, 'a', 9, 'b', 44))),
+    2, 'the two good points kept, the bad ones skipped');
+  perform t.act_as_owner();
+end;
+$$;
+select t.act_as_owner();
+delete from public.profiles where id = '00000000-0000-0000-0000-000000000012';
+delete from auth.users where id = '00000000-0000-0000-0000-000000000012';
+
 \echo 'ALL TESTS PASSED'
