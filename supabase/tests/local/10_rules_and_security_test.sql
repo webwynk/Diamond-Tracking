@@ -1855,4 +1855,50 @@ begin
 end;
 $$;
 
+-- L88: app errors are saved for the signed-in person, read by admins only,
+-- capped at 200 a person a day, and kept 30 days.
+do $$
+declare
+  v_emp uuid := '00000000-0000-0000-0000-000000000001';
+begin
+  perform t.act_as(null);
+  perform t.expect_error($q$select public.report_app_error('Home', 'boom', '2.0.0+46')$q$,
+                         'permission denied');
+  perform t.act_as(v_emp);
+  perform t.expect_error($q$select public.report_app_error(' ', 'boom', null)$q$,
+                         'validation_failed');
+  perform public.report_app_error('DutyHome.refresh', repeat('x', 900), '2.0.0+46',
+                                  now() - interval '1 year');
+  perform t.eq((select count(*)::int from public.app_errors), 0,
+               'an employee cannot read app errors');
+  perform t.expect_error($q$insert into public.app_errors (location, message) values ('a', 'b')$q$,
+                         'permission denied');
+  perform t.act_as('00000000-0000-0000-0000-00000000000a');
+  perform t.eq((select count(*)::int from public.app_errors where user_id = v_emp), 1,
+               'the admin reads it');
+  perform t.eq((select length(message) from public.app_errors where user_id = v_emp), 500,
+               'long messages are cut');
+  perform t.eq((select happened_at > now() - interval '1 minute' from public.app_errors
+                where user_id = v_emp), true, 'a far-off phone time is replaced');
+  perform t.act_as_owner();
+  insert into public.app_errors (user_id, created_at, location, message)
+  select v_emp, now(), 'Loop', 'again' from generate_series(1, 199);
+  insert into public.app_errors (user_id, created_at, location, message)
+  values (v_emp, now() - interval '31 days', 'Old', 'old');
+  perform t.act_as(v_emp);
+  perform public.report_app_error('Over', 'the limit', null);
+  perform t.act_as_owner();
+  perform t.eq((select count(*)::int from public.app_errors where location = 'Over'), 0,
+               'over 200 a day is dropped');
+  delete from public.app_errors where location = 'Loop';
+  perform t.act_as(v_emp);
+  perform public.report_app_error('New', 'after cleanup', null);
+  perform t.act_as_owner();
+  perform t.eq((select count(*)::int from public.app_errors where location = 'Old'), 0,
+               'entries older than 30 days are removed');
+  perform t.eq((select count(*)::int from public.app_errors where location = 'New'), 1,
+               'saved again under the limit');
+end;
+$$;
+
 \echo 'ALL TESTS PASSED'

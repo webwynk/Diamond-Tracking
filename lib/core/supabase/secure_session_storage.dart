@@ -7,9 +7,9 @@ import '../logging/app_log.dart';
 /// plain preferences. The session holds a refresh token, which works like a
 /// password until it is revoked.
 ///
-/// Phase 4 runs GPS tracking in a background service with its own Supabase
-/// client. That client must use this same storage and key, or it uploads
-/// while signed out (the bug the audit found in the old app).
+/// Only the app itself uses this session. The GPS tracker service does not
+/// sign in: it uploads with its own upload pass, given at duty on, so signing
+/// out or a lost session never stops it mid-day.
 ///
 /// A session that cannot be read (for example after a restore onto another
 /// phone) counts as signed out: the user signs in again instead of the app

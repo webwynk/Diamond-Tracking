@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config/env.dart';
 import '../core/logging/app_log.dart';
+import '../core/logging/error_reporter.dart';
 import '../core/supabase/secure_session_storage.dart';
 import '../core/supabase/supabase_time_source.dart';
 import '../core/theme/app_theme.dart';
@@ -46,6 +48,8 @@ Future<void> bootstrap() async {
       ),
     );
 
+    await _installErrorReporter(Supabase.instance.client);
+
     final ServerClock clock = ServerClock(
       source: supabaseTimeSource(
         supabaseUrl: Env.supabaseUrl,
@@ -66,6 +70,29 @@ Future<void> bootstrap() async {
     AppLog.failure('Startup', error, stack);
     runApp(StartupErrorApp(error: error));
   }
+}
+
+/// From here on, errors and crashes go to the server's app errors list.
+Future<void> _installErrorReporter(SupabaseClient client) async {
+  String? version;
+  try {
+    final PackageInfo info = await PackageInfo.fromPlatform();
+    version = '${info.version}+${info.buildNumber}';
+  } on Object catch (e, st) {
+    AppLog.failure('PackageInfo', e, st);
+  }
+  ErrorReporter(
+    isSignedIn: () => client.auth.currentSession != null,
+    send: (String where, String message, DateTime at) => client.rpc<Object?>(
+      'report_app_error',
+      params: <String, Object?>{
+        'p_where': where,
+        'p_message': message,
+        'p_app_version': version,
+        'p_happened_at': at.toUtc().toIso8601String(),
+      },
+    ),
+  ).install();
 }
 
 /// Shown when the app cannot start, with the reason.

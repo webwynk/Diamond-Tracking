@@ -113,7 +113,6 @@ abstract final class AppColors {
   // Must match the PRD status table exactly. Used by map, lists and reports.
   //
   // RULE: always render the label alongside the colour. Never colour alone.
-  // Use AppStatusColors.labelFor to get the matching text.
   // ---------------------------------------------------------------------------
 
   /// On duty, position fresh.
@@ -127,9 +126,6 @@ abstract final class AppColors {
 
   /// No open duty session.
   static const Color statusOff = neutral400;
-
-  /// Account blocked.
-  static const Color statusBlocked = neutral800;
 
   // ---------------------------------------------------------------------------
   // Surfaces
@@ -166,43 +162,4 @@ abstract final class AppColors {
 
   /// Modal barrier scrim: #0F172A at 50% opacity.
   static const Color scrim = Color(0x800F172A);
-}
-
-/// Pairs a duty status colour with the text that must always accompany it.
-///
-/// Exists so the design system rule "status is colour **plus** a text label,
-/// never colour alone" is awkward to break. Reach for this rather than using a
-/// `status*` colour directly.
-///
-/// The real `DutyStatus` enum arrives with the schema in Phase 2; until then
-/// these string keys mirror the PRD status table.
-abstract final class AppStatusColors {
-  const AppStatusColors._();
-
-  /// Status key to colour.
-  static const Map<String, Color> colours = <String, Color>{
-    'active': AppColors.statusActive,
-    'stale': AppColors.statusStale,
-    'suspect': AppColors.statusSuspect,
-    'off': AppColors.statusOff,
-    'blocked': AppColors.statusBlocked,
-  };
-
-  /// Status key to the label shown to the user. Required, never optional.
-  static const Map<String, String> labels = <String, String>{
-    'active': 'On duty',
-    'stale': 'No update 5 min',
-    'suspect': 'Check needed',
-    'off': 'Off duty',
-    'blocked': 'Blocked',
-  };
-
-  /// Background tint for a status pill.
-  static const Map<String, Color> backgrounds = <String, Color>{
-    'active': AppColors.successBg,
-    'stale': AppColors.warningBg,
-    'suspect': AppColors.errorBg,
-    'off': AppColors.neutral100,
-    'blocked': AppColors.neutral200,
-  };
 }
