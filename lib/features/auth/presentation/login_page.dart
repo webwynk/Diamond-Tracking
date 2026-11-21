@@ -13,7 +13,9 @@ import '../domain/auth_failure.dart';
 import '../domain/credentials.dart';
 import 'widgets/auth_scaffold.dart';
 
-/// Sign in with user ID (or an admin's email) and password.
+/// Sign in with user ID and password. The first admin, whose account was made
+/// in Supabase, types their email instead. Admins added in the app use their
+/// user ID; their contact email is not a sign-in name.
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 

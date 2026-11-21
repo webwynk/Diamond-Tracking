@@ -83,8 +83,7 @@ async function confirm(body: Json, b: Backend) {
 
   if (!(await b.useResetCode(profile.id, value))) return reply(400, { error: 'invalid_code' });
 
-  await b.setPassword(profile.id, password);
-  await b.mergeAppMetadata(profile.id, { must_change_password: false });
+  await b.setPassword(profile.id, password, { must_change_password: false });
   await b.revokeSessions(profile.id);
   return reply(200, { ok: true });
 }

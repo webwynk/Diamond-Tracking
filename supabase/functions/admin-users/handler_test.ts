@@ -134,3 +134,114 @@ Deno.test('reset PIN for an unknown user', async () => {
   );
   assertEquals(res.status, 404);
 });
+
+Deno.test('the log shows each real change as before and after (L40)', async () => {
+  const { b, adminId, empId } = setup();
+  const before = b.profiles.get(empId)!;
+  // The app sends every field; only the phone and active really change.
+  const res = await handler(
+    post(
+      {
+        action: 'update',
+        id: empId,
+        full_name: before.full_name,
+        phone: '9123456780',
+        contact_email: before.contact_email ?? '',
+        role: before.role,
+        is_active: false,
+      },
+      'admin-token',
+    ),
+    b,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(b.log.at(-1), { admin: adminId, action: 'update_user', target: empId });
+  assertEquals(b.logDetails.at(-1), {
+    changes: {
+      phone: { from: before.phone, to: '9123456780' },
+      is_active: { from: true, to: false },
+    },
+  });
+  // Turning back on reads differently from turning off.
+  await handler(post({ action: 'update', id: empId, is_active: true }, 'admin-token'), b);
+  assertEquals(b.logDetails.at(-1), { changes: { is_active: { from: false, to: true } } });
+});
+
+Deno.test('saving with nothing changed writes and logs nothing (L40)', async () => {
+  const { b, empId } = setup();
+  const p = b.profiles.get(empId)!;
+  const res = await handler(
+    post({ action: 'update', id: empId, full_name: p.full_name, role: p.role }, 'admin-token'),
+    b,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(b.log, []);
+  assertEquals(b.revoked, []);
+});
+
+Deno.test('a failed role save puts the sign-in role back (L41)', async () => {
+  const { b, empId } = setup();
+  b.meta.set(empId, { role: 'employee' });
+  b.failNext.add('updateProfile');
+  let threw = false;
+  try {
+    await handler(post({ action: 'update', id: empId, role: 'admin' }, 'admin-token'), b);
+  } catch {
+    threw = true;
+  }
+  assertEquals(threw, true);
+  assertEquals(b.profiles.get(empId)!.role, 'employee');
+  assertEquals(b.meta.get(empId)!.role, 'employee');
+  assertEquals(b.log, []);
+});
+
+Deno.test('a failed sign-in role save leaves the profile alone (L41)', async () => {
+  const { b, empId } = setup();
+  b.meta.set(empId, { role: 'employee' });
+  b.failNext.add('mergeAppMetadata');
+  let threw = false;
+  try {
+    await handler(post({ action: 'update', id: empId, role: 'admin' }, 'admin-token'), b);
+  } catch {
+    threw = true;
+  }
+  assertEquals(threw, true);
+  assertEquals(b.profiles.get(empId)!.role, 'employee');
+  assertEquals(b.meta.get(empId)!.role, 'employee');
+});
+
+Deno.test('reset PIN saves the PIN and "must change" together (L42)', async () => {
+  const { b, empId } = setup();
+  b.meta.set(empId, { role: 'employee', must_change_password: false });
+  b.passwords.set(empId, 'old-password');
+  b.failNext.add('setPassword');
+  let threw = false;
+  try {
+    await handler(post({ action: 'reset_pin', id: empId, temp_pin: '305127' }, 'admin-token'), b);
+  } catch {
+    threw = true;
+  }
+  assertEquals(threw, true);
+  assertEquals(b.passwords.get(empId), 'old-password');
+  assertEquals(b.meta.get(empId)!.must_change_password, false);
+});
+
+Deno.test('reset PIN: a failed sign-out says the PIN is set (L42)', async () => {
+  const { b, empId } = setup();
+  b.failNext.add('revokeSessions');
+  const res = await handler(
+    post({ action: 'reset_pin', id: empId, temp_pin: '305127' }, 'admin-token'),
+    b,
+  );
+  assertEquals(res.status, 500);
+  assertEquals((await res.json()).error, 'reset_incomplete');
+  assertEquals(b.passwords.get(empId), '305127');
+  assertEquals(b.meta.get(empId)!.must_change_password, true);
+  // Pressing Reset again finishes it.
+  const again = await handler(
+    post({ action: 'reset_pin', id: empId, temp_pin: '305127' }, 'admin-token'),
+    b,
+  );
+  assertEquals(again.status, 200);
+  assertEquals(b.revoked, [empId]);
+});

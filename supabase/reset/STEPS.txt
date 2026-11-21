@@ -73,7 +73,8 @@ D. FIRST SIGN-IN
 ----------------
 
 8. Install the new app build. The admin signs in with their email and their
-   current password.
+   current password. (Only this first admin, made in Supabase, uses an
+   email. Admins added later in the app sign in with their user ID.)
 
 9. Users tab: open each employee and tap "Reset password". Give them the new
    temporary PIN shown. They sign in with their user ID and that PIN, then
