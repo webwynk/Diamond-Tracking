@@ -69,7 +69,21 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   DutyHomeController get _controller => ref.read(dutyHomeProvider.notifier);
 
+  /// True from the first tap until duty on has finished, so a quick second
+  /// tap (before the button shows its spinner) does nothing.
+  bool _dutyOnRunning = false;
+
   Future<void> _dutyOn() async {
+    if (_dutyOnRunning) return;
+    _dutyOnRunning = true;
+    try {
+      await _dutyOnSteps();
+    } finally {
+      _dutyOnRunning = false;
+    }
+  }
+
+  Future<void> _dutyOnSteps() async {
     final List<TrackerRequirement> missing = await _controller
         .missingRequirements();
     if (!mounted) return;
