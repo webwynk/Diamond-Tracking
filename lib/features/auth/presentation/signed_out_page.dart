@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/design/ds_colors.dart';
+import '../../../core/design/ds_icons.dart';
 import '../../../core/design/ds_layout.dart';
 import '../../../core/design/ds_text.dart';
 import '../../../shared/ds/ds_button.dart';
@@ -16,119 +17,93 @@ class SignedOutPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final double top = MediaQuery.paddingOf(context).top;
+    final EdgeInsets inset = MediaQuery.paddingOf(context);
     return Scaffold(
       backgroundColor: DsColors.white,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Container(
-            height: top + 220,
-            padding: EdgeInsets.only(top: top),
-            decoration: const BoxDecoration(
-              color: DsColors.deep,
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-            ),
-            alignment: Alignment.center,
-            child: Image.asset(
-              'assets/image/white-logo.png',
-              width: 132,
-              semanticLabel: 'Diamond Agritech',
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(22, 26, 22, 16),
-                    child: Column(
-                      children: <Widget>[
-                        Semantics(
-                          header: true,
-                          child: Text.rich(
-                            const TextSpan(
-                              text: 'You were signed out.\n',
-                              children: <InlineSpan>[
-                                TextSpan(
-                                  text: 'Sign in to keep going.',
-                                  style: TextStyle(color: DsColors.primary),
-                                ),
-                              ],
-                            ),
-                            textAlign: TextAlign.center,
-                            style: DsText.title.copyWith(height: 1.15),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 320),
-                          child: Text(
-                            'Your admin reset your account or released this '
-                            'phone, or the account was used on another phone. '
-                            'One account works on one phone at a time.',
-                            textAlign: TextAlign.center,
-                            style: DsText.body.copyWith(color: DsColors.text2),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        Container(
-                          padding: const EdgeInsets.all(DsSpace.lg),
-                          decoration: const BoxDecoration(
-                            color: DsColors.surface,
-                            borderRadius: DsRadius.large,
-                          ),
-                          child: const Column(
-                            children: <Widget>[
-                              _Point(
-                                number: '1',
-                                lead: 'Was it you?',
-                                text: 'Sign in again to use this phone.',
-                              ),
-                              SizedBox(height: DsSpace.md),
-                              _Point(
-                                number: '2',
-                                lead: 'Not you?',
-                                text: 'Tell your admin right away.',
-                                danger: true,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        DsButton(
-                          label: 'Sign in again',
-                          arrow: true,
-                          onPressed: () => ref
-                              .read(authStatusProvider.notifier)
-                              .acknowledgeSignOut(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+          Padding(
+            padding: EdgeInsets.only(top: inset.top + 28),
+            child: Text(
+              'Diamond Agritech',
+              textAlign: TextAlign.center,
+              style: DsText.label.copyWith(
+                color: DsColors.primary,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              22,
-              DsSpace.md,
-              22,
-              26 + MediaQuery.paddingOf(context).bottom,
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Container(
+                      width: 88,
+                      height: 88,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: DsColors.primaryTint,
+                      ),
+                      child: const ExcludeSemantics(
+                        child: Icon(
+                          DsIcons.smartphone,
+                          size: 40,
+                          color: DsColors.deep,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        'You were signed out',
+                        textAlign: TextAlign.center,
+                        style: DsText.title.copyWith(height: 1.15),
+                      ),
+                    ),
+                    const SizedBox(height: DsSpace.sm),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 300),
+                      child: Text(
+                        'Your admin reset your account or released this '
+                        'phone, or you signed in on another phone. One '
+                        'account works on one phone at a time.',
+                        textAlign: TextAlign.center,
+                        style: DsText.body.copyWith(color: DsColors.text2),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            child: Text(
-              'Questions? Ask your admin.',
-              textAlign: TextAlign.center,
-              style: DsText.label.copyWith(fontWeight: FontWeight.w400),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 22),
+            child: _NotYouCard(),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(22, DsSpace.lg, 22, 22 + inset.bottom),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                DsButton(
+                  label: 'Sign in again',
+                  arrow: true,
+                  onPressed: () => ref
+                      .read(authStatusProvider.notifier)
+                      .acknowledgeSignOut(),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Use your user ID and password',
+                  textAlign: TextAlign.center,
+                  style: DsText.caption.copyWith(color: DsColors.text3),
+                ),
+              ],
             ),
           ),
         ],
@@ -137,55 +112,59 @@ class SignedOutPage extends ConsumerWidget {
   }
 }
 
-class _Point extends StatelessWidget {
-  const _Point({
-    required this.number,
-    required this.lead,
-    required this.text,
-    this.danger = false,
-  });
-
-  final String number;
-  final String lead;
-  final String text;
-  final bool danger;
+/// "Not you?": a signed-out phone can mean someone else signed in.
+class _NotYouCard extends StatelessWidget {
+  const _NotYouCard();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: danger ? DsColors.dangerTint : DsColors.primaryTint,
-          ),
-          child: Text(
-            number,
-            style: DsText.label.copyWith(
-              fontWeight: FontWeight.w700,
-              color: danger ? DsColors.dangerText : DsColors.primary,
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: const BoxDecoration(
+        color: DsColors.surface,
+        borderRadius: DsRadius.medium,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: DsColors.dangerTint,
+            ),
+            child: const ExcludeSemantics(
+              child: Icon(
+                DsIcons.shieldAlert,
+                size: 20,
+                color: DsColors.dangerText,
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: DsSpace.md),
-        Expanded(
-          child: Text.rich(
-            TextSpan(
-              children: <InlineSpan>[
-                TextSpan(
-                  text: '$lead ',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+          const SizedBox(width: DsSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Not you?',
+                  style: DsText.body.copyWith(fontWeight: FontWeight.w700),
                 ),
-                TextSpan(text: text),
+                const SizedBox(height: 2),
+                Text(
+                  'Tell your admin right away. They can reset your password '
+                  'and release this phone.',
+                  style: DsText.label.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: DsColors.text2,
+                  ),
+                ),
               ],
             ),
-            style: DsText.body,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

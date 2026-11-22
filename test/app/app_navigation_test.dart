@@ -143,7 +143,7 @@ void main() {
     // app says so before the sign-in screen.
     auth.add(const SignedOut());
     await tester.pumpAndSettle();
-    expect(find.textContaining('You were signed out.'), findsOneWidget);
+    expect(find.text('You were signed out'), findsOneWidget);
     expect(find.byType(DsNavBar), findsNothing);
     await tester.ensureVisible(find.text('Sign in again'));
     await tester.pumpAndSettle();
