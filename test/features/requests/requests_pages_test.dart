@@ -228,7 +228,7 @@ void main() {
     });
   }
 
-  testWidgets('leave request: type, days, reason, note photos', (
+  testWidgets('sick leave request: days from today, reason, note photos', (
     WidgetTester tester,
   ) async {
     tall(tester);
@@ -238,15 +238,22 @@ void main() {
       status: employee,
       overrides: overrides(),
     );
+    expect(find.text('Sick leave request'), findsOneWidget);
+    expect(find.text('Casual leave'), findsNothing);
+    expect(find.text('Type of leave'), findsNothing);
     expect(find.text('November 2026'), findsOneWidget);
-    expect(button('Pick the type of leave'), findsOneWidget);
-    await tester.tap(find.text('Sick leave'));
-    await tester.pump();
     expect(button('Pick the days'), findsOneWidget);
-    // 12 Nov is more than 7 days back: can't be picked.
-    await tester.tap(find.text('12'));
+    // Today is 20 Nov: yesterday and earlier can't be picked.
+    for (final String past in <String>['19', '12']) {
+      await tester.tap(find.text(past));
+      await tester.pump();
+      expect(find.text('0 days'), findsOneWidget);
+    }
+    await tester.tap(find.text('20'));
     await tester.pump();
-    expect(find.text('0 days'), findsOneWidget);
+    expect(find.text('1 day'), findsOneWidget, reason: 'today can be picked');
+    await tester.tap(find.text('20'));
+    await tester.pump();
     for (final String d in <String>['24', '25', '26']) {
       await tester.tap(find.text(d));
     }
@@ -282,15 +289,24 @@ void main() {
     WidgetTester tester,
   ) async {
     tall(tester);
-    repo.requests.add(attendance()); // waiting, for 19 Nov
+    repo.requests.add(
+      AppRequest(
+        id: 50,
+        userId: 'u',
+        kind: RequestKind.leave,
+        status: RequestStatus.pending,
+        createdAt: DateTime.utc(2026, 11, 19),
+        leaveType: LeaveType.sick,
+        dates: <DateTime>[DateTime.utc(2026, 11, 23)],
+      ),
+    );
     await pumpPushed(
       tester,
       const LeaveRequestPage(),
       status: employee,
       overrides: overrides(),
     );
-    await tester.tap(find.text('Casual leave'));
-    await tester.tap(find.text('19'));
+    await tester.tap(find.text('23'));
     await tester.pump();
     expect(find.text('0 days'), findsOneWidget);
     await tester.tap(find.text('20'));
@@ -314,7 +330,6 @@ void main() {
         status: employee,
         overrides: overrides(),
       );
-      await tester.tap(find.text('Casual leave'));
       await tester.tap(find.text('24'));
       await tester.pump();
       expect(tester.takeException(), isNull);
@@ -344,7 +359,7 @@ void main() {
           kind: RequestKind.leave,
           status: RequestStatus.approved,
           createdAt: DateTime.utc(2026, 11, 12, 5),
-          leaveType: LeaveType.casual,
+          leaveType: LeaveType.sick,
           dates: <DateTime>[
             DateTime.utc(2026, 11, 24),
             DateTime.utc(2026, 11, 26),
@@ -384,7 +399,7 @@ void main() {
     expect(find.text(cardTitle('Short duty · Fri, 20 Nov')), findsOneWidget);
     expect(find.text('7h 40m worked · sent by the app'), findsOneWidget);
     expect(find.text(cardTitle('Attendance · 19 Nov')), findsOneWidget);
-    expect(find.text(cardTitle('Casual leave · 24 – 26 Nov')), findsOneWidget);
+    expect(find.text(cardTitle('Sick leave · 24 – 26 Nov')), findsOneWidget);
     expect(find.text('2 days · sent 12 Nov'), findsOneWidget);
     expect(find.text(cardTitle('Attendance · 28 Oct')), findsOneWidget);
     expect(find.textContaining('No photo of work.'), findsOneWidget);

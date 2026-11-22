@@ -582,7 +582,7 @@ class _ShortDayCard extends StatelessWidget {
   }
 }
 
-/// On leave today, sick or casual.
+/// On sick leave today (the only kind of leave).
 class _LeaveCard extends StatelessWidget {
   const _LeaveCard({required this.type});
 
@@ -590,15 +590,13 @@ class _LeaveCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool sick = type == LeaveType.sick;
     return _PlainCard(
-      icon: sick ? DsIcons.sickLeave : DsIcons.casualLeave,
-      iconStatus: sick ? DsStatus.sick : DsStatus.leave,
-      tint: sick ? DsStatus.sick : DsStatus.leave,
+      icon: DsIcons.sickLeave,
+      iconStatus: DsStatus.sick,
+      tint: DsStatus.sick,
       title: 'On leave today',
       subtitle: switch (type) {
         LeaveType.sick => 'Sick leave · approved. Get well soon.',
-        LeaveType.casual => 'Casual leave · approved.',
         null => 'Your leave is approved.',
       },
     );

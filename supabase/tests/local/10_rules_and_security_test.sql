@@ -420,12 +420,29 @@ begin
   perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', null)$q$, v_today - 3), 'photo_required');
   perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', 'photo/abc')$q$, v_today - 3), 'photo_required');
   perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', '  ', 'req-11111111-2222-3333-4444-555555555555')$q$, v_today - 3), 'message_required');
-  -- Leave for a day with an attendance request waiting is refused (L18).
-  perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date, %L::date], 'x')$q$, v_today - 1, v_today), 'already_requested');
-  -- ... and attendance for a day with leave waiting (L18).
-  select id into v_leave from public.request_leave('casual', array[v_today - 4], 'Wedding');
+  -- Leave is from today on (owner, 2026-11-23): a past day is refused first.
+  perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date, %L::date], 'x')$q$, v_today - 1, v_today), 'leave_from_today');
+  -- Overlaps are refused both ways (L18). Leave is from today on and
+  -- attendance up to now, so the waiting rows are written directly here:
+  -- the checks must not depend on the time of day the tests run.
+  perform t.act_as_owner();
+  insert into public.requests (user_id, kind, day, duty_on_at, duty_off_at, message, photo_id)
+  values ('00000000-0000-0000-0000-000000000003', 'attendance', v_today + 5,
+          private.ist_at(v_today + 5, '09:00'), private.ist_at(v_today + 5, '18:00'), 'x',
+          'req-11111111-2222-3333-4444-555555555555')
+  returning id into v_leave;
+  perform t.act_as('00000000-0000-0000-0000-000000000003');
+  perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date], 'x')$q$, v_today + 5), 'already_requested');
+  perform t.act_as_owner();
+  delete from public.requests where id = v_leave;
+  insert into public.requests (user_id, kind, leave_type, dates, message)
+  values ('00000000-0000-0000-0000-000000000003', 'leave', 'sick', array[v_today - 4], 'Fever')
+  returning id into v_leave;
+  perform t.act_as('00000000-0000-0000-0000-000000000003');
   perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '18:00', 'x', 'req-11111111-2222-3333-4444-555555555555')$q$, v_today - 4), 'already_requested');
-  perform public.cancel_request(v_leave);
+  perform t.act_as_owner();
+  delete from public.requests where id = v_leave;
+  perform t.act_as('00000000-0000-0000-0000-000000000003');
   perform t.act_as('00000000-0000-0000-0000-000000000001');
   perform t.expect_error(format($q$select public.request_attendance(%L, '09:00', '19:30', 'x', 'req-11111111-2222-3333-4444-555555555555')$q$, v_today - 1), 'already_has_duty');
 
@@ -448,16 +465,19 @@ declare
   v_req public.requests;
 begin
   perform t.act_as('00000000-0000-0000-0000-000000000002');
-  v_req := public.request_leave('casual', array[v_today + 2, v_today + 1, v_today + 2], 'Family function');
+  v_req := public.request_leave('sick', array[v_today + 2, v_today + 1, v_today + 2], 'Fever');
   perform t.eq(v_req.dates, array[v_today + 1, v_today + 2], 'dates sorted and unique');
   perform public.cancel_request(v_req.id);
   perform t.expect_error(format('select public.cancel_request(%s)', v_req.id), 'request_not_cancellable');
   perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date], 'x', 'proof/1')$q$, v_today + 1), 'invalid_photo');
   perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date], 'x')$q$, v_today + 120), 'invalid_dates');
   perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date, null], 'x')$q$, v_today + 1), 'invalid_dates');
-  v_req := public.request_leave('sick', array[v_today - 1, v_today + 1], 'Fever', 'req-aaaaaaaa-2222-3333-4444-555555555555');
+  -- Sick leave only, from today on (owner, 2026-11-23).
+  perform t.expect_error(format($q$select public.request_leave('casual', array[%L::date], 'x')$q$, v_today + 1), 'sick_leave_only');
+  perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date], 'x')$q$, v_today - 1), 'leave_from_today');
+  v_req := public.request_leave('sick', array[v_today + 1, v_today + 3], 'Fever', 'req-aaaaaaaa-2222-3333-4444-555555555555');
 
-  perform t.expect_error(format($q$select public.request_leave('casual', array[%L::date], 'overlap')$q$, v_today + 1), 'already_requested');
+  perform t.expect_error(format($q$select public.request_leave('sick', array[%L::date], 'overlap')$q$, v_today + 1), 'already_requested');
   perform t.act_as('00000000-0000-0000-0000-00000000000a');
   perform public.decide_request(v_req.id, 'leave');
   perform t.act_as_owner();
@@ -467,10 +487,13 @@ begin
   perform t.eq((select leave_type from public.duty_days
                 where user_id = '00000000-0000-0000-0000-000000000002' and day = v_today + 1),
                'sick'::public.leave_type, 'leave type kept');
-  -- Yesterday was worked, so it keeps its duty.
-  perform t.eq((select status from public.duty_days
-                where user_id = '00000000-0000-0000-0000-000000000002' and day = v_today - 1),
-               'present'::public.day_status, 'a worked day is not overwritten by leave');
+  perform t.eq((select count(*)::int from public.duty_days
+                where user_id = '00000000-0000-0000-0000-000000000002' and status = 'leave'
+                  and day in (v_today + 1, v_today + 3)), 2, 'both leave days recorded');
+  -- No casual leave can be stored, whatever writes it.
+  perform t.expect_error($q$insert into public.requests (user_id, kind, leave_type, dates, message)
+    values ('00000000-0000-0000-0000-000000000002', 'leave', 'casual', array[current_date], 'x')$q$,
+    'requests_sick_leave_only');
 end;
 $$;
 
@@ -1428,7 +1451,9 @@ begin
 
   -- Leave counts no worked time, and going back brings it back.
   perform t.act_as(adm);
-  perform public.set_day_status(e8, d1, 'leave', 'casual');
+  perform t.expect_error(format($q$select public.set_day_status(%L, %L, 'leave', 'casual')$q$, e8, d1),
+                         'duty_days_sick_leave_only');
+  perform public.set_day_status(e8, d1, 'leave', 'sick');
   perform t.act_as_owner();
   perform t.eq((select worked_minutes from public.duty_days where user_id = e8 and day = d1), null::integer,
                'a leave day counts no worked time');
@@ -1548,12 +1573,12 @@ declare
   sa constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';  -- phone A's sign-in
   sb constant uuid := 'bbbbbbbb-0000-0000-0000-000000000002';  -- phone B's sign-in
   sc constant uuid := 'cccccccc-0000-0000-0000-000000000003';  -- phone C's sign-in
-  v_leave text := $q$select public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + %s], 'trip')$q$;
+  v_leave text := $q$select public.request_leave('sick', array[(now() at time zone 'Asia/Kolkata')::date + %s], 'trip')$q$;
 begin
   -- Phone A signs in and holds the account.
   perform t.act_as_session(e10, sa);
   perform public.claim_device('phone-a-0001');
-  perform public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + 1], 'trip');
+  perform public.request_leave('sick', array[(now() at time zone 'Asia/Kolkata')::date + 1], 'trip');
 
   -- Phone B is refused at sign-in, and for every action (before: only duty
   -- on and route uploads checked the phone).
@@ -1575,7 +1600,7 @@ begin
   perform t.expect_error(format(v_leave, 3), 'signed_in_elsewhere');
   perform t.act_as_session(e10, sb);
   perform public.claim_device('phone-b-0001');
-  perform public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + 4], 'trip');
+  perform public.request_leave('sick', array[(now() at time zone 'Asia/Kolkata')::date + 4], 'trip');
   perform t.act_as_session(e10, sa);
   perform t.expect_error(format(v_leave, 5), 'signed_in_elsewhere');
   perform t.expect_error($q$select public.claim_device('phone-a-0001')$q$, 'signed_in_elsewhere');
@@ -1606,14 +1631,14 @@ begin
   perform t.expect_error(format(v_leave, 6), 'signed_in_elsewhere');
   perform t.act_as_session(e10, sc);
   perform public.claim_device('phone-c-0001');
-  perform public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + 7], 'trip');
+  perform public.request_leave('sick', array[(now() at time zone 'Asia/Kolkata')::date + 7], 'trip');
 
   -- A phone signed in before this change (no sign-in remembered) keeps
   -- working, and is remembered at its next duty on or resume.
   perform t.act_as_owner();
   update public.profiles set active_session_id = null where id = e10;
   perform t.act_as_session(e10, sb);
-  perform public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + 8], 'trip');
+  perform public.request_leave('sick', array[(now() at time zone 'Asia/Kolkata')::date + 8], 'trip');
   perform t.act_as_owner();
   perform t.act_as_session(e10, sc);
   perform t.expect_error($q$select public.duty_resume('phone-c-0001')$q$, 'not_on_duty');
@@ -1683,13 +1708,13 @@ declare
 begin
   perform t.act_as_session(e11, s1);
   perform public.claim_device('phone-11-0001');
-  perform public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + 1], 'trip');
+  perform public.request_leave('sick', array[(now() at time zone 'Asia/Kolkata')::date + 1], 'trip');
   perform t.act_as_owner();
   perform set_config('role', 'service_role', false);
   perform public.svc_revoke_sessions(e11);  -- what a password reset does
   perform t.act_as_session(e11, s1);
   perform t.expect_error(
-    $q$select public.request_leave('casual', array[(now() at time zone 'Asia/Kolkata')::date + 2], 'trip')$q$,
+    $q$select public.request_leave('sick', array[(now() at time zone 'Asia/Kolkata')::date + 2], 'trip')$q$,
     'signed_in_elsewhere');
 end;
 $$;

@@ -566,7 +566,7 @@ void main() {
           kind: RequestKind.leave,
           status: RequestStatus.approved,
           createdAt: DateTime.utc(2026, 11, 10),
-          leaveType: LeaveType.casual,
+          leaveType: LeaveType.sick,
           dates: <DateTime>[DateTime.utc(2026, 11, 17)],
         ),
       );
@@ -644,6 +644,9 @@ void main() {
       await tester.tap(find.text('Change day status'));
       await tester.pumpAndSettle();
       expect(find.text('Fri, 20 Nov · now Half day'), findsOneWidget);
+      // Sick leave is the only kind of leave (owner, 2026-11-23).
+      expect(find.text('Sick leave'), findsOneWidget);
+      expect(find.text('Casual leave'), findsNothing);
       // The same status cannot be saved again.
       final Finder save = find.widgetWithText(DsButton, 'Save');
       expect(tester.widget<DsButton>(save).onPressed, isNull);

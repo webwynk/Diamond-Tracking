@@ -51,7 +51,7 @@ enum MyNotificationsFilter {
     dutyOnAllowedKind => (DsIcons.dutyOn, DsStatus.onDuty),
     // The admin's kinds.
     attendanceRequestKind => (DsIcons.attendance, DsStatus.onDuty),
-    leaveRequestKind => (DsIcons.casualLeave, DsStatus.leave),
+    leaveRequestKind => (DsIcons.sickLeave, DsStatus.sick),
     shortDutyKind => (DsIcons.waiting, DsStatus.waiting),
     _ => (DsIcons.bell, DsStatus.onDuty),
   };

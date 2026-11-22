@@ -524,7 +524,7 @@ class _Tiles extends StatelessWidget {
         onTap: () => context.go(Routes.adminUsers),
       ),
       _Tile(
-        icon: DsIcons.casualLeave,
+        icon: DsIcons.sickLeave,
         count: n(t?.onLeave),
         label: 'On leave',
         sub: 'Approved',

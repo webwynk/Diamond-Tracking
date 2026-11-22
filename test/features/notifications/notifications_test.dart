@@ -166,7 +166,7 @@ void main() {
           admin(
             5,
             'leave_request',
-            'Mohammad Hasanur Rahaman Chowdhury asked for 12 day(s) of casual '
+            'Mohammad Hasanur Rahaman Chowdhury asked for 12 day(s) of sick '
                 'leave from 24 Nov',
             at: now,
             request: 1,

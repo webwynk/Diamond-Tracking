@@ -69,7 +69,7 @@ void main() {
       tall(tester);
       routes.days[1] = day(1, 18, DayStatus.present, duty: true);
       routes.days[2] = day(2, 19, DayStatus.halfDay, duty: true);
-      routes.days[3] = day(3, 17, DayStatus.leave, leave: LeaveType.casual);
+      routes.days[3] = day(3, 17, DayStatus.leave, leave: LeaveType.sick);
       routes.days[4] = day(4, 16, DayStatus.absent);
       routes.days[5] = day(5, 20, DayStatus.onDuty, duty: true);
       await pumpPage(
@@ -105,7 +105,7 @@ void main() {
     WidgetTester tester,
   ) async {
     tall(tester);
-    routes.days[3] = day(3, 17, DayStatus.leave, leave: LeaveType.casual);
+    routes.days[3] = day(3, 17, DayStatus.leave, leave: LeaveType.sick);
     routes.days[4] = day(4, 16, DayStatus.absent);
     await pumpPage(
       tester,
@@ -113,10 +113,10 @@ void main() {
       users: people,
       overrides: overrides(),
     );
-    await tester.tap(find.bySemanticsLabel('17 November, Casual leave'));
+    await tester.tap(find.bySemanticsLabel('17 November, Sick leave'));
     await tester.pumpAndSettle();
     expect(
-      find.text('Casual leave, approved. Not counted as absent.'),
+      find.text('Sick leave, approved. Not counted as absent.'),
       findsOneWidget,
     );
 

@@ -19,17 +19,14 @@ import '../domain/app_request.dart';
 import '../domain/request_failure.dart';
 import 'request_form_parts.dart';
 
-/// The server's limits for one leave request.
+/// The server's limits for one leave request: up to 31 days, from today up
+/// to 90 days ahead (owner, 2026-11-23: was 7 days back).
 const int leaveMaxDays = 31;
-const int leaveDaysBack = 7;
 const int leaveDaysAhead = 90;
 
-/// The colours of a leave type: Sick rose, Casual purple.
-DsStatus leaveTone(LeaveType t) =>
-    t == LeaveType.sick ? DsStatus.sick : DsStatus.leave;
-
-/// "Leave request" (design v2): the type, the days on a calendar, the
-/// reason, and up to 3 optional photos such as a doctor's note.
+/// "Sick leave request" (design v2; owner, 2026-11-23: sick leave is the
+/// only kind): the days on a calendar from today, the reason, and up to 3
+/// optional photos such as a doctor's note.
 class LeaveRequestPage extends ConsumerStatefulWidget {
   const LeaveRequestPage({super.key});
 
@@ -39,7 +36,6 @@ class LeaveRequestPage extends ConsumerStatefulWidget {
 
 class _LeaveRequestPageState extends ConsumerState<LeaveRequestPage> {
   final TextEditingController _message = TextEditingController();
-  LeaveType? _type;
   final Set<DateTime> _dates = <DateTime>{};
   List<PickedPhoto> _photos = <PickedPhoto>[];
   bool _busy = false;
@@ -60,7 +56,6 @@ class _LeaveRequestPageState extends ConsumerState<LeaveRequestPage> {
   String _days(int n) => '$n ${n == 1 ? 'day' : 'days'}';
 
   String? _missing() {
-    if (_type == null) return 'Pick the type of leave';
     if (_dates.isEmpty) return 'Pick the days';
     if (_dates.length > leaveMaxDays) return 'At most $leaveMaxDays days';
     if (_message.text.trim().isEmpty) return 'Write the reason to send';
@@ -76,7 +71,7 @@ class _LeaveRequestPageState extends ConsumerState<LeaveRequestPage> {
       final RequestsRepository repo = ref.read(requestsRepositoryProvider);
       final List<String> ids = await uploadPhotos(repo, _photos);
       await repo.requestLeave(
-        type: _type!,
+        type: LeaveType.sick,
         dates: _dates.toList()..sort(),
         message: _message.text.trim(),
         proofId: ids.firstOrNull,
@@ -101,14 +96,14 @@ class _LeaveRequestPageState extends ConsumerState<LeaveRequestPage> {
     // A day that got a waiting request meanwhile is dropped.
     _dates.removeWhere(waiting.contains);
     final String? missing = _missing();
-    final DsStatus tone = leaveTone(_type ?? LeaveType.casual);
+    const DsStatus tone = DsStatus.sick;
     return Scaffold(
       backgroundColor: DsColors.surface,
       body: Column(
         children: <Widget>[
           DsScreenHeader(
-            title: 'Leave request',
-            subtitle: 'The admin approves or rejects it.',
+            title: 'Sick leave request',
+            subtitle: 'From today on. The admin approves or rejects it.',
             onBack: () => Navigator.of(context).maybePop(),
           ),
           Expanded(
@@ -122,31 +117,6 @@ class _LeaveRequestPageState extends ConsumerState<LeaveRequestPage> {
               children: <Widget>[
                 _StepCard(
                   step: 1,
-                  title: 'Type of leave',
-                  child: Row(
-                    children: <Widget>[
-                      for (final LeaveType t in LeaveType.values) ...<Widget>[
-                        if (t != LeaveType.values.first)
-                          const SizedBox(width: 10),
-                        Expanded(
-                          child: _TypeTile(
-                            type: t,
-                            selected: t == _type,
-                            onTap: _busy
-                                ? null
-                                : () => setState(() {
-                                    _type = t;
-                                    _error = null;
-                                  }),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _StepCard(
-                  step: 2,
                   title: 'Pick the days',
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(
@@ -176,7 +146,7 @@ class _LeaveRequestPageState extends ConsumerState<LeaveRequestPage> {
                 ),
                 const SizedBox(height: 14),
                 _StepCard(
-                  step: 3,
+                  step: 2,
                   title: 'Reason',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -228,7 +198,7 @@ class _LeaveRequestPageState extends ConsumerState<LeaveRequestPage> {
   }
 }
 
-/// A white card with a numbered title: "1  Type of leave".
+/// A white card with a numbered title: "1  Pick the days".
 class _StepCard extends StatelessWidget {
   const _StepCard({
     required this.step,
@@ -292,104 +262,8 @@ class _StepCard extends StatelessWidget {
   );
 }
 
-class _TypeTile extends StatelessWidget {
-  const _TypeTile({
-    required this.type,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final LeaveType type;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final DsStatus tone = leaveTone(type);
-    return Semantics(
-      inMutuallyExclusiveGroup: true,
-      checked: selected,
-      button: true,
-      label: type.label,
-      excludeSemantics: true,
-      child: Material(
-        color: selected ? tone.tint : DsColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: DsRadius.large,
-          side: selected
-              ? BorderSide(color: tone.text, width: 2)
-              : BorderSide.none,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            height: 96,
-            padding: const EdgeInsets.all(14),
-            child: Stack(
-              children: <Widget>[
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: const BoxDecoration(
-                        color: DsColors.white,
-                        borderRadius: DsRadius.medium,
-                      ),
-                      child: Icon(
-                        type == LeaveType.sick
-                            ? DsIcons.sickLeave
-                            : DsIcons.casualLeave,
-                        size: 20,
-                        color: tone.text,
-                      ),
-                    ),
-                    Text(
-                      type.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: DsText.body.copyWith(
-                        color: selected ? tone.text : DsColors.ink,
-                        fontWeight: FontWeight.w700,
-                        fontVariations: const <FontVariation>[
-                          FontVariation('wght', 700),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (selected)
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: tone.text,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        DsIcons.check,
-                        size: 14,
-                        color: DsColors.white,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A month calendar, Monday first. Tap days on or off. Days outside 7 back
-/// to 90 ahead, and days with a request waiting, can't be tapped.
+/// A month calendar, Monday first. Tap days on or off. Days before today or
+/// over 90 ahead, and days with a request waiting, can't be tapped.
 class LeaveCalendar extends StatefulWidget {
   const LeaveCalendar({
     required this.today,
@@ -406,7 +280,7 @@ class LeaveCalendar extends StatefulWidget {
   final Set<DateTime> selected;
   final Set<DateTime> waiting;
 
-  /// The picked days' colour (the leave type's).
+  /// The picked days' colour (sick leave's).
   final Color color;
   final ValueChanged<DateTime> onToggle;
   final bool enabled;
@@ -421,8 +295,7 @@ class _LeaveCalendarState extends State<LeaveCalendar> {
   static final DateFormat _monthName = DateFormat('MMMM yyyy');
   static final DateFormat _dayName = DateFormat('EEEE, d MMMM');
 
-  DateTime get _first =>
-      widget.today.subtract(const Duration(days: leaveDaysBack));
+  DateTime get _first => widget.today;
   DateTime get _last => widget.today.add(const Duration(days: leaveDaysAhead));
 
   bool _canGo(int months) {
