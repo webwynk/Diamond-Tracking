@@ -205,7 +205,10 @@ StatefulShellRoute _userShell(GlobalKey<NavigatorState> rootKey) =>
             GoRoute(
               path: Routes.userHistory,
               builder: (BuildContext context, GoRouterState state) =>
-                  const HistoryPage(dayRoute: Routes.userDay),
+                  const HistoryPage(
+                    dayRoute: Routes.userDay,
+                    requestRoute: Routes.userRequest,
+                  ),
               routes: <RouteBase>[
                 GoRoute(
                   path: 'day/:dayId',
