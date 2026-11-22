@@ -51,16 +51,10 @@ enum _Filter {
 }
 
 /// Duty days by month (design v2, History): a month summary with "Days
-/// counted", this week at a glance, filter chips and a card per day. The
-/// employee's History tab shows their own; the admin opens it for anyone.
+/// counted", this week at a glance, filter chips and a card per day: the
+/// employee's History tab. (The admin's is DutyHistoryPage.)
 class HistoryPage extends ConsumerStatefulWidget {
-  const HistoryPage({
-    required this.dayRoute,
-    super.key,
-    this.requestRoute,
-    this.userId,
-    this.title = 'History',
-  });
+  const HistoryPage({required this.dayRoute, super.key, this.requestRoute});
 
   /// The page to open for a day, given its id.
   final String Function(int dayId) dayRoute;
@@ -68,10 +62,6 @@ class HistoryPage extends ConsumerStatefulWidget {
   /// The page for a request, given its id. Set for the employee: a leave
   /// day then opens its leave request. Null: leave days do not open.
   final String Function(int requestId)? requestRoute;
-
-  /// Whose days. Null: the signed-in user.
-  final String? userId;
-  final String title;
 
   @override
   ConsumerState<HistoryPage> createState() => _HistoryPageState();
@@ -85,8 +75,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   @override
   Widget build(BuildContext context) {
     final AuthStatus status = ref.watch(authStatusProvider);
-    final String? who =
-        widget.userId ?? (status is SignedIn ? status.userId : null);
+    final String? who = status is SignedIn ? status.userId : null;
     if (who == null) return const SizedBox.shrink();
     final AsyncValue<List<DutyDay>> days = ref.watch(historyProvider(who));
     final List<AppRequest> myRequests = widget.requestRoute == null
@@ -114,7 +103,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
             ),
             children: <Widget>[
               _Header(
-                title: widget.title,
+                title: 'History',
                 onBack: canPop ? () => context.pop() : null,
                 month: months[index],
                 onPrevious: index < months.length - 1

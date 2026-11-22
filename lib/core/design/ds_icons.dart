@@ -71,4 +71,6 @@ abstract final class DsIcons {
   static const IconData admin = LucideIcons.shield;
   static const IconData idCard = LucideIcons.idCard;
   static const IconData copy = LucideIcons.copy;
+  static const IconData download = LucideIcons.download;
+  static const IconData expandMore = LucideIcons.chevronDown;
 }
