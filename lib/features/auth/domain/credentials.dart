@@ -97,23 +97,49 @@ String? emailProblem(String email) {
 /// text on the server (supabase/functions/_shared/rules.ts).
 const String passwordTooLong = 'Too long: use fewer non-English letters';
 
-/// The user's own password: 8 to 72 characters with a letter and a digit,
-/// not containing the user ID. Supabase Auth refuses more than 72 bytes
-/// (bcrypt's limit), and a Hindi or Bengali letter is 3 bytes, so a shorter
-/// password can still be too long.
+/// The example shown under every new-password field; never accepted. Same
+/// on the server (rules.ts).
+const String passwordExample = 'Mango@2025';
+
+/// Each password rule, met or not, for the live ticks under the field and
+/// for [passwordProblem], so the two never disagree.
+class PasswordChecks {
+  PasswordChecks(String password, {String userCode = ''})
+    : long = password.length >= 8 && password.length <= 72,
+      letter = RegExp('[A-Za-z]').hasMatch(password),
+      digit = RegExp('[0-9]').hasMatch(password),
+      symbol = _symbol.hasMatch(password),
+      notUserId =
+          password.isNotEmpty &&
+          (userCode.isEmpty ||
+              !password.toLowerCase().contains(userCode.toLowerCase())),
+      notExample = password.toLowerCase() != passwordExample.toLowerCase();
+
+  /// A symbol: any character that is not a letter, a letter's mark (as in
+  /// Hindi), a digit or a space. Same on the server (rules.ts).
+  static final RegExp _symbol = RegExp(r'[^\p{L}\p{M}\p{N}\s]', unicode: true);
+
+  final bool long;
+  final bool letter;
+  final bool digit;
+  final bool symbol;
+  final bool notUserId;
+  final bool notExample;
+}
+
+/// The user's own password: 8 to 72 characters with a letter, a digit and a
+/// symbol, not containing the user ID, and not the example (owner's rule,
+/// 2026-11-23; passwords set before it keep working). Supabase Auth refuses
+/// more than 72 bytes (bcrypt's limit), and a Hindi or Bengali letter is 3
+/// bytes, so a shorter password can still be too long.
 String? passwordProblem(String password, {String userCode = ''}) {
-  if (password.length < 8 || password.length > 72) {
-    return 'Use 8 to 72 characters';
-  }
+  final PasswordChecks c = PasswordChecks(password, userCode: userCode);
+  if (!c.long) return 'Use 8 to 72 characters';
   if (utf8.encode(password).length > 72) return passwordTooLong;
-  if (!RegExp('[A-Za-z]').hasMatch(password) ||
-      !RegExp('[0-9]').hasMatch(password)) {
-    return 'Use at least one letter and one digit';
-  }
-  if (userCode.isNotEmpty &&
-      password.toLowerCase().contains(userCode.toLowerCase())) {
-    return 'Do not use your user ID in the password';
-  }
+  if (!c.letter || !c.digit) return 'Use at least one letter and one digit';
+  if (!c.symbol) return r'Add a symbol, like @ # $ !';
+  if (!c.notUserId) return 'Do not use your user ID in the password';
+  if (!c.notExample) return 'Do not use the example password';
   return null;
 }
 

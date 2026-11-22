@@ -40,6 +40,9 @@ class FakeAuthRepository implements AuthRepository {
   final List<String> calls = <String>[];
   AuthFailure? failWith;
 
+  /// Fails only [signIn] (for example the sign-in after a reset).
+  AuthFailure? signInFailWith;
+
   /// Called after a successful sign-in, so a test can emit a status.
   void Function()? onSignIn;
 
@@ -61,6 +64,8 @@ class FakeAuthRepository implements AuthRepository {
   }) async {
     calls.add('signIn:$loginId');
     _maybeFail();
+    final AuthFailure? f = signInFailWith;
+    if (f != null) throw f;
     onSignIn?.call();
   }
 

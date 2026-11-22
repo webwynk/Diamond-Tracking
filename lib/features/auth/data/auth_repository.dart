@@ -22,6 +22,11 @@ abstract interface class AuthRepository {
   Future<void> signIn({required String loginId, required String password});
 
   /// First password after a temporary PIN. Throws [AuthFailure].
+  ///
+  /// The server's change ends every session of the account, this phone's
+  /// too (Supabase Auth admin update), so it then signs in again with the
+  /// new password. If only that fails, it throws
+  /// [AuthFailure.passwordSavedSignIn]: the password is set.
   Future<void> setFirstPassword(String newPassword);
 
   /// Changes the password, checking the current one. Throws [AuthFailure].
@@ -83,6 +88,9 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> setFirstPassword(String newPassword) async {
+    // The sign-in name, read before the server ends this session: the user
+    // ID, or the email for an account made with one (the first admin).
+    final String? loginId = currentUserCode ?? _client.auth.currentUser?.email;
     await _guard('setFirstPassword', () async {
       await _client.functions.invoke(
         'account',
@@ -91,10 +99,15 @@ class SupabaseAuthRepository implements AuthRepository {
           'new_password': newPassword,
         },
       );
-      // Picks up the cleared "must change password" claim, which moves the
-      // app on to the home screen.
-      await _client.auth.refreshSession();
     });
+    // A fresh session also carries the cleared "must change password"
+    // claim, which lets the app move on to the home screen.
+    try {
+      if (loginId == null) throw AuthFailure.unknown;
+      await signIn(loginId: loginId, password: newPassword);
+    } on AuthFailure {
+      throw AuthFailure.passwordSavedSignIn;
+    }
   }
 
   @override

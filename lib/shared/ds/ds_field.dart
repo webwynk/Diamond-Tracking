@@ -18,6 +18,8 @@ class DsTextField extends StatefulWidget {
     this.hint,
     this.error,
     this.helper,
+    this.valid = false,
+    this.validNote,
     this.locked = false,
     this.password = false,
     this.optional = false,
@@ -44,6 +46,13 @@ class DsTextField extends StatefulWidget {
 
   /// A grey line under the field when there is no error.
   final String? helper;
+
+  /// The value is good: a green border and tick (a new password that meets
+  /// every rule, a repeat that matches). An [error] wins over it.
+  final bool valid;
+
+  /// A green line under a [valid] field ("Passwords match").
+  final String? validNote;
 
   /// Read only, greyed.
   final bool locked;
@@ -116,9 +125,18 @@ class _DsTextFieldState extends State<DsTextField> {
   @override
   Widget build(BuildContext context) {
     final bool hasError = widget.error != null;
+    final bool isValid = widget.valid && !hasError && !widget.locked;
     final Color fill = widget.locked
         ? DsColors.disabled
-        : (hasError ? DsColors.dangerTint : DsColors.surface);
+        : (hasError
+              ? DsColors.dangerTint
+              : (isValid ? DsColors.white : DsColors.surface));
+    const Widget tick = Icon(
+      DsIcons.dayDone,
+      size: 20,
+      color: DsColors.successDot,
+      semanticLabel: 'Looks good',
+    );
     final int length = widget.controller?.text.length ?? 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -197,16 +215,27 @@ class _DsTextFieldState extends State<DsTextField> {
                 ? null
                 : Icon(widget.icon, size: 20, color: DsColors.text2),
             suffixIcon: widget.password
-                ? IconButton(
-                    tooltip: _hidden ? 'Show password' : 'Hide password',
-                    onPressed: () => setState(() => _hidden = !_hidden),
-                    icon: Icon(
-                      _hidden ? DsIcons.show : DsIcons.hide,
-                      size: 20,
-                      color: DsColors.text2,
-                    ),
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      if (isValid) tick,
+                      IconButton(
+                        tooltip: _hidden ? 'Show password' : 'Hide password',
+                        onPressed: () => setState(() => _hidden = !_hidden),
+                        icon: Icon(
+                          _hidden ? DsIcons.show : DsIcons.hide,
+                          size: 20,
+                          color: DsColors.text2,
+                        ),
+                      ),
+                    ],
                   )
-                : null,
+                : (isValid
+                      ? const Padding(
+                          padding: EdgeInsets.only(right: DsSpace.md),
+                          child: tick,
+                        )
+                      : null),
             contentPadding: EdgeInsets.symmetric(
               horizontal: DsSpace.lg,
               vertical: widget.maxLines > 1 ? DsSpace.lg : 18,
@@ -214,10 +243,14 @@ class _DsTextFieldState extends State<DsTextField> {
             border: _border(DsColors.line, 0),
             enabledBorder: hasError
                 ? _border(DsColors.dangerText, 2)
-                : _border(DsColors.line, 0),
+                : (isValid
+                      ? _border(DsColors.successDot, 2)
+                      : _border(DsColors.line, 0)),
             disabledBorder: _border(DsColors.line, 0),
             focusedBorder: _border(
-              hasError ? DsColors.dangerText : DsColors.primary,
+              hasError
+                  ? DsColors.dangerText
+                  : (isValid ? DsColors.successDot : DsColors.primary),
               2,
             ),
           ),
@@ -244,6 +277,32 @@ class _DsTextFieldState extends State<DsTextField> {
                   ),
                 ),
               ],
+            ),
+          )
+        else if (isValid && widget.validNote != null)
+          Padding(
+            padding: const EdgeInsets.only(left: DsSpace.xs, top: 6),
+            child: Semantics(
+              liveRegion: true,
+              child: Row(
+                children: <Widget>[
+                  const Icon(
+                    DsIcons.check,
+                    size: 14,
+                    color: DsColors.successText,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      widget.validNote!,
+                      style: DsText.caption.copyWith(
+                        color: DsColors.successText,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           )
         else if (widget.helper != null)
@@ -367,40 +426,45 @@ class _DsCodeBoxesState extends State<DsCodeBoxes> {
 }
 
 /// One password rule with a tick that turns green when it is met
-/// ("8+ characters", "Letter and digit", "Not your user ID").
+/// ("8+ characters", "A symbol like @ # \$ !"). [failed]: after a Save that
+/// did not meet it, it shows red with a cross until the next edit.
 class DsRuleTick extends StatelessWidget {
-  const DsRuleTick({required this.label, required this.met, super.key});
+  const DsRuleTick({
+    required this.label,
+    required this.met,
+    this.failed = false,
+    super.key,
+  });
 
   final String label;
   final bool met;
+  final bool failed;
 
   @override
   Widget build(BuildContext context) {
+    final bool bad = failed && !met;
+    final (Color bg, Color fg) = met
+        ? (DsColors.successTint, DsColors.successText)
+        : (bad
+              ? (DsColors.dangerTint, DsColors.dangerText)
+              : (DsColors.surface, DsColors.text2));
     return Semantics(
-      label: '$label, ${met ? 'done' : 'not yet'}',
+      label: '$label, ${met ? 'done' : 'still needed'}',
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.fromLTRB(DsSpace.sm, 6, DsSpace.md, 6),
-        decoration: BoxDecoration(
-          color: met ? DsColors.successTint : DsColors.surface,
-          borderRadius: DsRadius.pill,
-        ),
+        decoration: BoxDecoration(color: bg, borderRadius: DsRadius.pill),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Icon(
-              DsIcons.check,
+              bad ? DsIcons.close : DsIcons.check,
               size: 14,
-              color: met ? DsColors.successText : DsColors.text3,
+              color: met || bad ? fg : DsColors.text3,
             ),
             const SizedBox(width: DsSpace.xs),
             Flexible(
-              child: Text(
-                label,
-                style: DsText.caption.copyWith(
-                  color: met ? DsColors.successText : DsColors.text2,
-                ),
-              ),
+              child: Text(label, style: DsText.caption.copyWith(color: fg)),
             ),
           ],
         ),
