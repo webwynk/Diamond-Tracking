@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart' show DateFormat;
 
 import '../../../app/routes.dart';
 import '../../../core/design/ds_colors.dart';
@@ -13,7 +12,8 @@ import '../../../core/design/ds_layout.dart';
 import '../../../core/design/ds_text.dart';
 import '../../../core/logging/app_log.dart';
 import '../../../core/time/clock_providers.dart';
-import '../../../core/time/ist.dart';
+import '../../../core/time/ist_format.dart';
+import '../../../shared/ds/ds_brand_bar.dart';
 import '../../../shared/ds/ds_button.dart';
 import '../../../shared/ds/ds_feedback.dart';
 import '../../auth/domain/auth_status.dart';
@@ -174,66 +174,80 @@ class _AdminDashboardState extends ConsumerState<AdminDashboardPage> {
           )
         : null;
     final int? waitingCount = waiting.value?.length;
-    final MediaQueryData media = MediaQuery.of(context);
-
-    return Scaffold(
-      backgroundColor: DsColors.surface,
-      body: RefreshIndicator(
-        onRefresh: () async => _reload(),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            DsSpace.gutter,
-            media.padding.top + DsSpace.md,
-            DsSpace.gutter,
-            DsSpace.xl,
-          ),
-          children: <Widget>[
-            _Header(
-              date: DateFormat('EEE, d MMM').format(Ist.dateOf(now)),
-              name: me?.fullName,
-              unread: unread,
-            ),
-            const SizedBox(height: DsSpace.lg),
-            if (failed)
-              DsErrorState(
-                title: "Couldn't load today",
-                message: 'Check the internet and try again.',
-                onRetry: _reload,
-              )
-            else ...<Widget>[
-              _OnDutyCard(today: today, visits: visits),
-              const SizedBox(height: DsSpace.md),
-              _Tiles(
-                today: today,
-                waiting: waitingCount,
-                waitingCapped:
-                    waitingCount != null && waitingCount >= requestPageSize,
-              ),
-            ],
-            const SizedBox(height: DsSpace.xl),
-            _RecentNotifications(
-              value: notes,
-              unread: unread,
-              page: _page,
-              now: now,
-              onPage: (int p) => setState(() => _page = p),
-              onOpen: _open,
-              onRetry: () => ref.invalidate(notificationsProvider),
+    final Widget list = RefreshIndicator(
+      onRefresh: () async => _reload(),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          DsSpace.gutter,
+          DsSpace.lg,
+          DsSpace.gutter,
+          DsSpace.xl,
+        ),
+        children: <Widget>[
+          _Header(date: IstFormat.dayDate(now), name: me?.fullName),
+          const SizedBox(height: DsSpace.lg),
+          if (failed)
+            DsErrorState(
+              title: "Couldn't load today",
+              message: 'Check the internet and try again.',
+              onRetry: _reload,
+            )
+          else ...<Widget>[
+            _OnDutyCard(today: today, visits: visits),
+            const SizedBox(height: DsSpace.md),
+            _Tiles(
+              today: today,
+              waiting: waitingCount,
+              waitingCapped:
+                  waitingCount != null && waitingCount >= requestPageSize,
             ),
           ],
-        ),
+          const SizedBox(height: DsSpace.xl),
+          _RecentNotifications(
+            value: notes,
+            unread: unread,
+            page: _page,
+            now: now,
+            onPage: (int p) => setState(() => _page = p),
+            onOpen: _open,
+            onRetry: () => ref.invalidate(notificationsProvider),
+          ),
+        ],
+      ),
+    );
+    return Scaffold(
+      backgroundColor: DsColors.surface,
+      body: Column(
+        children: <Widget>[
+          DsBrandBar(
+            trailing: DsIconButton(
+              icon: DsIcons.bell,
+              label: 'Notifications',
+              kind: DsIconButtonKind.soft,
+              badge: unread,
+              onPressed: () => context.push(Routes.adminNotifications),
+            ),
+          ),
+          Expanded(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: list,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// "Sat, 21 Nov" / "Hi, Arjun", the bell and the account initials.
+/// The account initials, today's date and "Hello, Arjun", under the brand
+/// bar (the same as the employee Home).
 class _Header extends StatelessWidget {
-  const _Header({required this.date, required this.name, required this.unread});
+  const _Header({required this.date, required this.name});
 
   final String date;
   final String? name;
-  final int unread;
 
   @override
   Widget build(BuildContext context) {
@@ -241,43 +255,21 @@ class _Header extends StatelessWidget {
     final String first = n == null ? '' : n.trim().split(RegExp(r'\s+')).first;
     return Row(
       children: <Widget>[
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(date, style: DsText.label),
-              Semantics(
-                header: true,
-                child: Text(
-                  first.isEmpty ? 'Hi' : 'Hi, $first',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: DsText.title,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: DsSpace.sm),
-        DsIconButton(
-          icon: DsIcons.bell,
-          label: 'Notifications',
-          badge: unread,
-          onPressed: () => context.push(Routes.adminNotifications),
-        ),
-        const SizedBox(width: DsSpace.sm),
         Semantics(
+          container: true,
           button: true,
           label: 'My account',
           excludeSemantics: true,
           child: Material(
             color: DsColors.primary,
-            shape: const CircleBorder(),
+            shape: const CircleBorder(
+              side: BorderSide(color: DsColors.white, width: 3),
+            ),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () => context.push(Routes.adminAccount),
               child: SizedBox.square(
-                dimension: 46,
+                dimension: DsSize.tap,
                 child: Center(
                   child: n == null
                       ? const Icon(
@@ -287,14 +279,32 @@ class _Header extends StatelessWidget {
                         )
                       : Text(
                           initialsOf(n),
-                          style: DsText.label.copyWith(
-                            color: DsColors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: DsText.button.copyWith(color: DsColors.white),
                         ),
                 ),
               ),
             ),
+          ),
+        ),
+        const SizedBox(width: DsSpace.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                date,
+                style: DsText.label.copyWith(fontWeight: FontWeight.w500),
+              ),
+              Semantics(
+                header: true,
+                child: Text(
+                  first.isEmpty ? 'Hello' : 'Hello, $first',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DsText.title,
+                ),
+              ),
+            ],
           ),
         ),
       ],

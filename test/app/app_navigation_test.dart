@@ -124,7 +124,7 @@ void main() {
     ]) {
       expect(find.bySemanticsLabel(tab), findsOneWidget);
     }
-    expect(find.text('Hi, Boss'), findsOneWidget);
+    expect(find.text('Hello, Boss'), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('Live'));
     await tester.pumpAndSettle();
     expect(find.text('Nobody on duty yet'), findsOneWidget);

@@ -13,6 +13,7 @@ import '../../../core/design/ds_status.dart';
 import '../../../core/design/ds_text.dart';
 import '../../../core/time/clock_providers.dart';
 import '../../../core/time/ist_format.dart';
+import '../../../shared/ds/ds_brand_bar.dart';
 import '../../../shared/ds/ds_button.dart';
 import '../../../shared/ds/ds_chips.dart';
 import '../../../shared/ds/ds_feedback.dart';
@@ -242,52 +243,62 @@ class _HomePageState extends ConsumerState<HomePage> {
     final DateTime now = ref.read(serverClockProvider).now();
     return Scaffold(
       backgroundColor: DsColors.surface,
-      body: SafeArea(
-        bottom: false,
-        child: home.when(
-          skipLoadingOnRefresh: true,
-          data: (DutyHome value) => RefreshIndicator(
-            onRefresh: _controller.refresh,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                DsSpace.gutter,
-                DsSpace.lg,
-                DsSpace.gutter,
-                DsSpace.xl,
-              ),
-              children: _sections(value, now),
+      body: Column(
+        children: <Widget>[
+          const DsBrandBar(trailing: _Bell()),
+          Expanded(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: _body(home, now),
             ),
           ),
-          error: (Object e, _) => Column(
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  DsSpace.gutter,
-                  DsSpace.lg,
-                  DsSpace.gutter,
-                  0,
-                ),
-                child: _HomeHeader(now: now),
-              ),
-              Expanded(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(DsSpace.gutter),
-                    child: DsErrorState(
-                      title: 'Home could not be loaded',
-                      message: mapDutyError(e).message,
-                      onRetry: () => ref.invalidate(dutyHomeProvider),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-        ),
+        ],
       ),
     );
   }
+
+  Widget _body(AsyncValue<DutyHome> home, DateTime now) => home.when(
+    skipLoadingOnRefresh: true,
+    data: (DutyHome value) => RefreshIndicator(
+      onRefresh: _controller.refresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          DsSpace.gutter,
+          DsSpace.lg,
+          DsSpace.gutter,
+          DsSpace.xl,
+        ),
+        children: _sections(value, now),
+      ),
+    ),
+    error: (Object e, _) => Column(
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            DsSpace.gutter,
+            DsSpace.lg,
+            DsSpace.gutter,
+            0,
+          ),
+          child: _HomeHeader(now: now),
+        ),
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(DsSpace.gutter),
+              child: DsErrorState(
+                title: 'Home could not be loaded',
+                message: mapDutyError(e).message,
+                onRetry: () => ref.invalidate(dutyHomeProvider),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+    loading: () => const Center(child: CircularProgressIndicator()),
+  );
 
   /// Home, top to bottom (design v2): header, warnings, duty card, quick
   /// actions, today's visits.
@@ -385,7 +396,21 @@ String _stoppedMessage(TrackerStatus status) {
   };
 }
 
-/// Initials, today's date, "Hello, Rahul", and the bell.
+/// The bell in the brand bar, with the unread count.
+class _Bell extends ConsumerWidget {
+  const _Bell();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => DsIconButton(
+    icon: DsIcons.bell,
+    label: 'Notifications',
+    kind: DsIconButtonKind.soft,
+    badge: ref.watch(unreadCountProvider),
+    onPressed: () => context.push(Routes.userNotifications),
+  );
+}
+
+/// Initials, today's date and "Hello, Rahul", under the brand bar.
 class _HomeHeader extends ConsumerWidget {
   const _HomeHeader({required this.now});
 
@@ -394,10 +419,10 @@ class _HomeHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final String? name = ref.watch(myProfileProvider).value?.fullName;
-    final int unread = ref.watch(unreadCountProvider);
     return Row(
       children: <Widget>[
         Semantics(
+          container: true,
           button: true,
           label: 'My profile',
           excludeSemantics: true,
@@ -438,12 +463,6 @@ class _HomeHeader extends ConsumerWidget {
               ),
             ],
           ),
-        ),
-        DsIconButton(
-          icon: DsIcons.bell,
-          label: 'Notifications',
-          badge: unread,
-          onPressed: () => context.push(Routes.userNotifications),
         ),
       ],
     );
