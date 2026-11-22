@@ -11,6 +11,9 @@ import 'package:diamond_tracking/features/routes/presentation/history_page.dart'
 import 'package:diamond_tracking/features/routes/presentation/live_map_page.dart';
 import 'package:diamond_tracking/features/routes/presentation/my_map_page.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
+import 'package:diamond_tracking/features/visits/domain/visit.dart';
+import 'package:diamond_tracking/shared/ds/ds_chips.dart';
+import 'package:flutter/material.dart' show Size;
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -98,7 +101,7 @@ void main() {
     );
 
     expect(find.textContaining('Asha Roy ·'), findsOneWidget);
-    expect(find.text('Map: 1 lines, 3 pins'), findsOneWidget);
+    expect(find.text('Map: 1 lines, 0 gaps, 3 pins'), findsOneWidget);
     expect(find.text('12.4 km'), findsOneWidget);
     expect(find.text('Present'), findsOneWidget);
     expect(find.textContaining('Phone was off'), findsOneWidget);
@@ -123,32 +126,149 @@ void main() {
     expect(routes.addressRequests, 1);
   });
 
-  testWidgets('My map is empty before duty on', (WidgetTester tester) async {
-    await pumpPage(
-      tester,
-      const MyMapPage(),
-      status: employee,
-      overrides: overrides(duty: FakeDutyRepository()),
+  group('My map', () {
+    final Visit visit = Visit(
+      id: 'v1',
+      storeName: 'Maa Tara Traders',
+      fromGallery: false,
+      capturedAt: at(90),
+      location: const GeoPoint(22.56, 88.36),
     );
-    expect(find.text('No route today'), findsOneWidget);
-  });
 
-  testWidgets('My map shows today\'s route while on duty', (
-    WidgetTester tester,
-  ) async {
-    final DutyDay d = day(9, on: at(0), status: DayStatus.onDuty);
-    routes.days[9] = d;
-    routes.routes[9] = route(9, addresses: <String?>['Office, Sector V']);
+    testWidgets('before duty on: no route, nothing to open', (
+      WidgetTester tester,
+    ) async {
+      await pumpPage(
+        tester,
+        const MyMapPage(),
+        status: employee,
+        overrides: overrides(duty: FakeDutyRepository()),
+      );
+      expect(find.text('Not started'), findsOneWidget);
+      expect(find.textContaining('No route today'), findsOneWidget);
+      expect(find.bySemanticsLabel('Add visit, duty on first'), findsOneWidget);
+      await tester.tap(find.text('Stops & timeline'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('route /'), findsNothing);
+    });
 
-    await pumpPage(
-      tester,
-      const MyMapPage(),
-      status: employee,
-      overrides: overrides(duty: FakeDutyRepository(today: d)),
-    );
-    expect(find.text('Office, Sector V'), findsOneWidget);
-    expect(find.text('On duty'), findsOneWidget);
-    expect(routes.addressRequests, 0);
+    testWidgets('on duty: figures, pins, timeline and Add visit', (
+      WidgetTester tester,
+    ) async {
+      final DutyDay d = day(9, on: at(0), status: DayStatus.onDuty);
+      routes.days[9] = d;
+      routes.routes[9] = route(9, addresses: <String?>['Office, Sector V']);
+      final FakeVisitsRepository visits = FakeVisitsRepository()
+        ..byDay[9] = <Visit>[visit];
+
+      await pumpPage(
+        tester,
+        const MyMapPage(),
+        status: employee,
+        visits: visits,
+        overrides: overrides(duty: FakeDutyRepository(today: d)),
+      );
+      expect(find.text('Recording'), findsOneWidget);
+      expect(find.text('Today, 20 Nov'), findsOneWidget);
+      // Start, stop 1, the visit, and "You".
+      expect(find.text('Map: 1 lines, 0 gaps, 4 pins'), findsOneWidget);
+      expect(find.bySemanticsLabel('Distance 12.4 km'), findsOneWidget);
+      // 8:30 AM to 1:30 PM.
+      expect(find.bySemanticsLabel('On duty 5h 00m'), findsOneWidget);
+      expect(find.bySemanticsLabel('Visits 1'), findsOneWidget);
+      expect(find.text('Updated just now'), findsOneWidget);
+      expect(routes.addressRequests, 0);
+
+      await tester.tap(find.bySemanticsLabel('Add visit'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /home/visit/9'), findsOneWidget);
+    });
+
+    testWidgets('Stops & timeline opens the day', (WidgetTester tester) async {
+      final DutyDay d = day(9, on: at(0), status: DayStatus.onDuty);
+      routes.days[9] = d;
+      routes.routes[9] = route(9);
+      await pumpPage(
+        tester,
+        const MyMapPage(),
+        status: employee,
+        overrides: overrides(duty: FakeDutyRepository(today: d)),
+      );
+      await tester.tap(find.text('Stops & timeline'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /history/day/9'), findsOneWidget);
+    });
+
+    testWidgets('after duty off: worked time, no Add visit', (
+      WidgetTester tester,
+    ) async {
+      final DutyDay d = day(9, on: at(0));
+      routes.days[9] = d;
+      routes.routes[9] = const DayRoute(
+        dayId: 9,
+        segments: <List<GeoPoint>>[
+          <GeoPoint>[GeoPoint(22.5, 88.3), GeoPoint(22.6, 88.4)],
+          <GeoPoint>[GeoPoint(22.7, 88.5), GeoPoint(22.8, 88.6)],
+        ],
+        stops: <RouteStop>[],
+        notes: <RouteNote>[],
+        distanceM: 30000,
+        pointCount: 40,
+        mockedPoints: 0,
+      );
+      await pumpPage(
+        tester,
+        const MyMapPage(),
+        status: employee,
+        overrides: overrides(duty: FakeDutyRepository(today: d)),
+      );
+      expect(find.text('Duty off'), findsOneWidget);
+      // The two stretches are joined by one dotted gap; start and end pins.
+      expect(find.text('Map: 2 lines, 1 gaps, 2 pins'), findsOneWidget);
+      expect(find.bySemanticsLabel('On duty 8h 00m'), findsOneWidget);
+      expect(find.bySemanticsLabel('Add visit, duty on first'), findsOneWidget);
+    });
+
+    testWidgets('a failed load offers Retry', (WidgetTester tester) async {
+      final FakeDutyRepository duty = FakeDutyRepository()
+        ..forDayError = Exception('offline');
+      await pumpPage(
+        tester,
+        const MyMapPage(),
+        status: employee,
+        overrides: overrides(duty: duty),
+      );
+      expect(find.text("Couldn't load your route"), findsOneWidget);
+      duty.forDayError = null;
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(find.text('Not started'), findsOneWidget);
+    });
+
+    for (final Size phone in const <Size>[
+      Size(360, 740),
+      Size(390, 844),
+      Size(430, 932),
+    ]) {
+      testWidgets('fits ${phone.width.toInt()} wide', (
+        WidgetTester tester,
+      ) async {
+        tester.view.physicalSize = phone;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final DutyDay d = day(9, on: at(0), status: DayStatus.onDuty);
+        routes.days[9] = d;
+        routes.routes[9] = route(9, mocked: 3);
+        await pumpPage(
+          tester,
+          const MyMapPage(),
+          status: employee,
+          overrides: overrides(duty: FakeDutyRepository(today: d)),
+        );
+        expect(tester.takeException(), isNull);
+        expect(find.textContaining('Fake GPS'), findsOneWidget);
+      });
+    }
   });
 
   testWidgets('History lists days newest first and opens a day', (
@@ -173,12 +293,13 @@ void main() {
       status: employee,
       overrides: overrides(),
     );
-    expect(find.textContaining('Absent'), findsOneWidget);
+    final Finder absentCard = find.widgetWithText(DsStatusPill, 'Absent');
+    expect(absentCard, findsOneWidget);
     expect(find.textContaining('5.0 km'), findsOneWidget);
     expect(find.byType(HistoryPage), findsOneWidget);
 
     // The absent day has no route to open.
-    await tester.tap(find.textContaining('Absent'));
+    await tester.tap(absentCard);
     await tester.pumpAndSettle();
     expect(find.byType(HistoryPage), findsOneWidget);
 
@@ -259,7 +380,7 @@ void main() {
       ]),
       overrides: overrides(),
     );
-    expect(find.text('Map: 0 lines, 1 pins'), findsOneWidget);
+    expect(find.text('Map: 0 lines, 0 gaps, 1 pins'), findsOneWidget);
     expect(find.textContaining('Battery 64%'), findsOneWidget);
     expect(find.text('Bikash Das'), findsOneWidget);
 
