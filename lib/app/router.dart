@@ -89,10 +89,7 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
       GoRoute(
         path: Routes.adminAccount,
         builder: (BuildContext context, GoRouterState state) =>
-            const AccountPage(
-              title: 'My account',
-              changePasswordRoute: Routes.adminChangePassword,
-            ),
+            const AccountPage(),
         routes: <RouteBase>[
           GoRoute(
             path: 'password',
