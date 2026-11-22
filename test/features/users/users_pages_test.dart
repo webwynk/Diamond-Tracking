@@ -20,16 +20,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../support/fakes.dart';
 import '../../support/pump.dart';
 
-Finder field(String label) => find.widgetWithText(TextFormField, label);
-
-Future<void> tapButton(WidgetTester tester, String label) async {
-  final Finder button = find.widgetWithText(ElevatedButton, label);
-  await tester.ensureVisible(button);
-  await tester.pumpAndSettle();
-  await tester.tap(button);
-  await tester.pumpAndSettle();
-}
-
 void main() {
   // 13:30 IST on 20 Nov 2026.
   final DateTime now = DateTime.utc(2026, 11, 20, 8);
@@ -428,83 +418,173 @@ void main() {
   });
 
   group('add user', () {
+    Finder input(int i) => find.byType(TextField).at(i);
+
     testWidgets('creates the user and shows the PIN once', (
       WidgetTester tester,
     ) async {
-      final FakeUsersRepository users = FakeUsersRepository();
+      tester.view.physicalSize = const Size(1080, 3600);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      final FakeUsersRepository users = FakeUsersRepository(<Profile>[
+        profile('1', code: 'EMP001', name: 'Asha Roy'),
+      ]);
       await pumpPushed(tester, const UserFormPage(), users: users);
+      expect(find.text('Create user'), findsWidgets);
       final String pin = tester
-          .widget<TextFormField>(field('Temporary PIN'))
-          .controller!
-          .text;
+          .getSemantics(find.bySemanticsLabel(RegExp('^Temporary PIN')))
+          .label
+          .replaceAll(RegExp('[^0-9]'), '');
       expect(pin, matches(RegExp(r'^[0-9]{6}$')));
 
-      await tester.enterText(field('User ID'), 'emp9');
-      await tester.enterText(field('Full name'), 'Chitra Sen');
-      await tapButton(tester, 'Add user');
+      await tester.enterText(input(0), 'emp001');
+      await tester.pump();
+      expect(find.text('Taken'), findsOneWidget);
+      await tester.enterText(input(0), 'EMP025');
+      await tester.pump();
+      expect(find.text('Free'), findsOneWidget);
+      await tester.enterText(input(1), 'Bikash Halder');
+      await tester.enterText(input(2), '98300 00000');
+      await tester.tap(find.bySemanticsLabel(RegExp('^Admin')));
+      await tester.tap(find.text('Create user').last);
+      await tester.pumpAndSettle();
 
-      expect(users.calls, <String>['create:emp9:$pin']);
-      expect(find.text('User added'), findsOneWidget);
+      expect(users.calls, <String>['create:EMP025:$pin']);
+      expect(users.drafts.single.phone, '+919830000000');
+      expect(users.drafts.single.role, AppRole.admin);
+      expect(find.text('Bikash Halder added'), findsOneWidget);
       expect(
-        find.descendant(of: find.byType(AlertDialog), matching: find.text(pin)),
+        find.text(
+          'Give these to Bikash. On first sign-in they choose '
+          'their own password.',
+        ),
         findsOneWidget,
       );
+      expect(find.text('This PIN is shown only once. Copy it now.'), findsOne);
       await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();
       expect(find.text('below'), findsOneWidget);
     });
 
+    testWidgets('New PIN changes it', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 3600);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      await pumpPushed(tester, const UserFormPage());
+      String shown() => tester
+          .getSemantics(find.bySemanticsLabel(RegExp('^Temporary PIN')))
+          .label;
+      final Set<String> seen = <String>{shown()};
+      for (int i = 0; i < 5; i++) {
+        await tester.tap(find.bySemanticsLabel('New PIN'));
+        await tester.pump();
+        seen.add(shown());
+      }
+      expect(seen.length, greaterThan(1));
+    });
+
     testWidgets('server field errors and a taken ID show on the fields', (
       WidgetTester tester,
     ) async {
+      tester.view.physicalSize = const Size(1080, 3600);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
       final FakeUsersRepository users = FakeUsersRepository()
         ..failWith = const FieldErrors(<String, String>{
           'phone': 'Phone looks wrong',
         });
       await pumpPushed(tester, const UserFormPage(), users: users);
-      await tester.enterText(field('User ID'), 'emp9');
-      await tester.enterText(field('Full name'), 'Chitra Sen');
-      await tapButton(tester, 'Add user');
+      await tester.enterText(input(0), 'emp9');
+      await tester.enterText(input(1), 'Chitra Sen');
+      await tester.tap(find.text('Create user').last);
+      await tester.pumpAndSettle();
       expect(find.text('Phone looks wrong'), findsOneWidget);
 
       users.failWith = AuthFailure.userCodeTaken;
-      await tapButton(tester, 'Add user');
+      await tester.tap(find.text('Create user').last);
+      await tester.pumpAndSettle();
       expect(find.text(AuthFailure.userCodeTaken.message), findsOneWidget);
     });
 
     testWidgets('checks the form first', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 3600);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
       final FakeUsersRepository users = FakeUsersRepository();
       await pumpPushed(tester, const UserFormPage(), users: users);
-      await tester.enterText(field('User ID'), 'x');
-      await tester.enterText(field('Email (optional)'), 'not-an-email');
-      await tapButton(tester, 'Add user');
+      await tester.enterText(input(0), 'x');
+      await tester.enterText(input(3), 'not-an-email');
+      await tester.tap(find.text('Create user').last);
+      await tester.pumpAndSettle();
       expect(find.text('Use 2 to 20 letters, digits, - or _'), findsOneWidget);
       expect(find.text('Enter a name (up to 80)'), findsOneWidget);
       expect(find.text('Enter a valid email'), findsOneWidget);
       expect(users.calls, isEmpty);
     });
+
+    for (final double width in <double>[360, 390, 430]) {
+      testWidgets('create fits ${width.toInt()} wide', (
+        WidgetTester tester,
+      ) async {
+        tester.view.physicalSize = Size(width * 3, 800 * 3);
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        await pumpPushed(tester, const UserFormPage());
+        await tester.enterText(input(0), 'EMP01234567890123456');
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 
   group('edit user', () {
+    Finder input(int i) => find.byType(TextField).at(i);
+
     testWidgets('saves changes and can turn the account off', (
       WidgetTester tester,
     ) async {
+      tester.view.physicalSize = const Size(1080, 3600);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
       final FakeUsersRepository users = FakeUsersRepository(<Profile>[
-        profile('u1', code: 'emp1', name: 'Asha Roy'),
+        const Profile(
+          id: 'u1',
+          userCode: 'EMP001',
+          fullName: 'Asha Roy',
+          role: AppRole.employee,
+          isActive: true,
+          phone: '+919830000000',
+        ),
       ]);
       await pumpPushed(tester, const UserFormPage(userId: 'u1'), users: users);
-      expect(find.text('Edit user'), findsOneWidget);
-      await tester.enterText(field('Full name'), 'Asha R.');
+      expect(find.text('Edit details'), findsOneWidget);
+      expect(find.text("EMP001 · user ID can't change"), findsOneWidget);
+      expect(
+        find.text('Add it so Asha can reset a forgotten password.'),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<TextField>(input(1)).controller!.text,
+        '9830000000',
+        reason: '+91 is shown in front, not in the field',
+      );
+      await tester.enterText(input(0), 'Asha R.');
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
-      await tapButton(tester, 'Save');
+      expect(find.text("Can't sign in until turned back on"), findsOneWidget);
+      await tester.tap(find.text('Save changes'));
+      await tester.pumpAndSettle();
       expect(users.calls, <String>['update:u1:Asha R.:false']);
+      expect(users.drafts.single.phone, '+919830000000');
       expect(find.text('below'), findsOneWidget);
     });
 
     testWidgets('admins cannot turn off or demote themselves', (
       WidgetTester tester,
     ) async {
+      tester.view.physicalSize = const Size(1080, 3600);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
       await pumpPushed(
         tester,
         const UserFormPage(userId: 'admin1'),
@@ -513,14 +593,42 @@ void main() {
         ]),
       );
       expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull);
+      expect(find.text('You cannot change your own role.'), findsOneWidget);
       expect(
-        tester
-            .widget<SegmentedButton<AppRole>>(
-              find.byType(SegmentedButton<AppRole>),
-            )
-            .onSelectionChanged,
-        isNull,
+        find.text('You cannot turn off your own account.'),
+        findsOneWidget,
       );
     });
+
+    for (final double width in <double>[360, 390, 430]) {
+      testWidgets('edit fits ${width.toInt()} wide', (
+        WidgetTester tester,
+      ) async {
+        tester.view.physicalSize = Size(width * 3, 800 * 3);
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        await pumpPushed(
+          tester,
+          const UserFormPage(userId: 'u1'),
+          users: FakeUsersRepository(<Profile>[
+            profile(
+              'u1',
+              code: 'EMP0123456789',
+              name: 'Mohammad Hasanur Rahaman Chowdhury',
+            ),
+          ]),
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+  });
+
+  test('phone is saved with +91 unless it has a country code', () {
+    expect(phoneToSave(''), '');
+    expect(phoneToSave('98300 00000'), '+919830000000');
+    expect(phoneToSave('+447700900123'), '+447700900123');
+    expect(phoneToEdit('+919830000000'), '9830000000');
+    expect(phoneToEdit('+447700900123'), '+447700900123');
+    expect(phoneToEdit(null), '');
   });
 }

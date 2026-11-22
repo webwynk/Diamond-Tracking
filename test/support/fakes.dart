@@ -141,9 +141,13 @@ class FakeUsersRepository implements UsersRepository {
     return null;
   }
 
+  /// Every draft sent to create or update.
+  final List<ProfileDraft> drafts = <ProfileDraft>[];
+
   @override
   Future<Profile> create(ProfileDraft draft, {required String tempPin}) async {
     calls.add('create:${draft.userCode}:$tempPin');
+    drafts.add(draft);
     final Exception? f = failWith;
     if (f != null) throw f;
     final Profile p = Profile(
@@ -160,6 +164,7 @@ class FakeUsersRepository implements UsersRepository {
   @override
   Future<Profile> update(String id, ProfileDraft draft) async {
     calls.add('update:$id:${draft.fullName}:${draft.isActive}');
+    drafts.add(draft);
     final Exception? f = failWith;
     if (f != null) throw f;
     final Profile p = (await byId(id))!;

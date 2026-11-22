@@ -68,4 +68,7 @@ abstract final class DsIcons {
   static const IconData shrink = LucideIcons.minimize2;
   static const IconData store = LucideIcons.store;
   static const IconData edit = LucideIcons.pencil;
+  static const IconData admin = LucideIcons.shield;
+  static const IconData idCard = LucideIcons.idCard;
+  static const IconData copy = LucideIcons.copy;
 }
