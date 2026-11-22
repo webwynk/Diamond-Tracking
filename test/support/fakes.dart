@@ -421,8 +421,15 @@ class FakeRouteRepository implements RouteRepository {
   @override
   Future<DayRoute?> dayRoute(int dayId) async => routes[dayId];
 
+  /// Thrown by [day] while set.
+  Exception? dayError;
+
   @override
-  Future<DutyDay?> day(int dayId) async => days[dayId];
+  Future<DutyDay?> day(int dayId) async {
+    final Exception? e = dayError;
+    if (e != null) throw e;
+    return days[dayId];
+  }
 
   @override
   Future<List<DutyDay>> history(String userId, DateTime since) async =>

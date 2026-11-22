@@ -33,6 +33,12 @@ void main() {
     mustChangePassword: false,
   );
 
+  void tall(WidgetTester tester) {
+    tester.view.physicalSize = const Size(1080, 4000);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+  }
+
   late FakeRouteRepository routes;
   setUp(() => routes = FakeRouteRepository());
 
@@ -87,43 +93,274 @@ void main() {
     mockedPoints: mocked,
   );
 
-  testWidgets('a day\'s route lists stops and notes, then fills addresses', (
-    WidgetTester tester,
-  ) async {
-    routes.days[7] = day(7, on: at(0));
-    routes.routes[7] = route(7);
-    routes.addressesToFind = <int, String>{0: 'City Centre, Salt Lake'};
+  group('Day route', () {
+    final FakeUsersRepository people = FakeUsersRepository(<Profile>[
+      profile('u', code: 'EMP007', name: 'Asha Roy'),
+    ]);
 
-    await pumpPage(
-      tester,
-      const DayRoutePage(dayId: 7, personName: 'Asha Roy'),
-      overrides: overrides(),
-    );
+    testWidgets('admin: who, figures, hours strip, timeline, addresses', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      routes.days[7] = day(7, on: at(0));
+      routes.routes[7] = route(7);
+      routes.addressesToFind = <int, String>{0: 'City Centre, Salt Lake'};
 
-    expect(find.textContaining('Asha Roy ·'), findsOneWidget);
-    expect(find.text('Map: 1 lines, 0 gaps, 3 pins'), findsOneWidget);
-    expect(find.text('12.4 km'), findsOneWidget);
-    expect(find.text('Present'), findsOneWidget);
-    expect(find.textContaining('Phone was off'), findsOneWidget);
-    // The address was asked for once and the route reloaded with it.
-    expect(routes.addressRequests, 1);
-    expect(find.text('City Centre, Salt Lake'), findsOneWidget);
-    expect(find.text('Finding address…'), findsNothing);
-  });
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        users: people,
+        overrides: overrides(),
+      );
 
-  testWidgets('a route with no addresses yet says so, and asks only once', (
-    WidgetTester tester,
-  ) async {
-    routes.days[8] = day(8, on: at(0));
-    routes.routes[8] = route(8);
+      expect(find.text('Asha Roy'), findsOneWidget);
+      expect(find.text('EMP007'), findsOneWidget);
+      expect(find.text('AR'), findsOneWidget);
+      expect(find.text('Today · Fri, 20 Nov'), findsOneWidget);
+      expect(find.text('Map: 1 lines, 0 gaps, 3 pins'), findsOneWidget);
+      expect(find.text('12.4 km'), findsOneWidget);
+      expect(find.text('8h 00m'), findsOneWidget);
+      expect(find.text('1 · 0'), findsOneWidget);
+      expect(find.text('Present'), findsOneWidget);
+      // The hours strip (admin only).
+      expect(find.text('Recorded'), findsOneWidget);
+      expect(find.text('5 AM'), findsOneWidget);
+      // Timeline: duty on, the stop, the phone-off gap, duty off.
+      expect(find.text('Duty on'), findsOneWidget);
+      expect(find.text('Duty off'), findsOneWidget);
+      expect(find.textContaining('Phone was off · 30 min'), findsOneWidget);
+      // The address was asked for once and the route reloaded with it.
+      expect(routes.addressRequests, 1);
+      expect(find.text('City Centre, Salt Lake'), findsOneWidget);
+      expect(find.text('Finding address…'), findsNothing);
+    });
 
-    await pumpPage(
-      tester,
-      const DayRoutePage(dayId: 8, personName: 'Asha Roy'),
-      overrides: overrides(),
-    );
-    expect(find.text('Finding address…'), findsOneWidget);
-    expect(routes.addressRequests, 1);
+    testWidgets('a route with no addresses yet says so, and asks only once', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      routes.days[8] = day(8, on: at(0));
+      routes.routes[8] = route(8);
+
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 8),
+        overrides: overrides(),
+      );
+      expect(find.text('Finding address…'), findsOneWidget);
+      expect(routes.addressRequests, 1);
+    });
+
+    testWidgets('employee: date, duty bar, no hours strip', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      routes.days[7] = day(7, on: at(0));
+      routes.routes[7] = route(7, addresses: const <String?>['Shop']);
+
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        users: people,
+        status: employee,
+        overrides: overrides(),
+      );
+
+      expect(find.text('Friday'), findsOneWidget);
+      expect(find.text('20 November'), findsOneWidget);
+      expect(find.text('Asha Roy'), findsNothing);
+      expect(find.text('Recorded'), findsNothing);
+      // 8 hours of the 10 hour goal.
+      expect(find.text('8h 00m of 10 h'), findsOneWidget);
+      expect(find.text('8:30 AM on'), findsOneWidget);
+      expect(find.text('4:30 PM off'), findsOneWidget);
+    });
+
+    testWidgets('a full day says the goal is met', (WidgetTester tester) async {
+      tall(tester);
+      routes.days[7] = DutyDay(
+        id: 7,
+        userId: 'u',
+        day: today,
+        status: DayStatus.present,
+        dutyOnAt: at(0),
+        dutyOffAt: at(630),
+        workedMinutes: 630,
+      );
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        status: employee,
+        overrides: overrides(),
+      );
+      expect(find.text('10 h goal met'), findsOneWidget);
+    });
+
+    testWidgets('visits sit under their stop, and the Visits tab opens one', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      final FakeVisitsRepository visits = FakeVisitsRepository();
+      routes.days[7] = day(7, on: at(0));
+      routes.routes[7] = route(7, addresses: const <String?>['Shop Rd']);
+      visits.byDay[7] = <Visit>[
+        Visit(
+          id: 'v1',
+          storeName: 'Maa Tara Agro',
+          fromGallery: false,
+          capturedAt: at(70),
+          location: const GeoPoint(22.55, 88.35),
+        ),
+        Visit(
+          id: 'v2',
+          storeName: 'Roadside Seeds',
+          fromGallery: true,
+          capturedAt: at(300),
+        ),
+      ];
+
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        visits: visits,
+        status: employee,
+        overrides: overrides(),
+      );
+
+      expect(find.text('1 visit'), findsOneWidget);
+      expect(find.text('Maa Tara Agro'), findsOneWidget);
+      expect(find.text('Roadside Seeds'), findsOneWidget);
+
+      await tester.tap(find.text('Visits · 2'));
+      await tester.pumpAndSettle();
+      expect(find.text('Stop 1'), findsOneWidget);
+      expect(find.text('Away from a stop'), findsOneWidget);
+      await tester.tap(find.text('Maa Tara Agro'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Camera photo at'), findsOneWidget);
+    });
+
+    testWidgets('on duty: "Now" and a reload every 2 minutes', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      routes.days[9] = day(9, on: at(0), status: DayStatus.onDuty);
+      routes.routes[9] = route(9, addresses: const <String?>['Shop']);
+
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 9),
+        overrides: overrides(),
+      );
+      expect(find.text('Now · on duty'), findsOneWidget);
+      expect(find.text('Updated just now'), findsOneWidget);
+      expect(find.text('On duty now'), findsOneWidget);
+      // On duty for 5 h (8:30 AM to 1:30 PM).
+      expect(find.text('5h 00m'), findsOneWidget);
+      expect(find.text('Duty off'), findsNothing);
+
+      routes.routes[9] = route(9, addresses: const <String?>['New Market']);
+      await tester.pump(DayRoutePage.refreshEvery);
+      await tester.pumpAndSettle();
+      expect(find.text('New Market'), findsOneWidget);
+    });
+
+    testWidgets('full screen map hides the details and brings them back', (
+      WidgetTester tester,
+    ) async {
+      routes.days[7] = day(7, on: at(0));
+      routes.routes[7] = route(7, addresses: const <String?>['Shop']);
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        overrides: overrides(),
+      );
+
+      await tester.tap(find.bySemanticsLabel('Full screen map'));
+      await tester.pumpAndSettle();
+      expect(find.text('Duty on'), findsNothing);
+      await tester.tap(find.bySemanticsLabel('Show the details'));
+      await tester.pumpAndSettle();
+      expect(find.text('Duty on'), findsOneWidget);
+    });
+
+    testWidgets('a leave day has no route to show', (
+      WidgetTester tester,
+    ) async {
+      routes.days[7] = DutyDay(
+        id: 7,
+        userId: 'u',
+        day: today,
+        status: DayStatus.leave,
+      );
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        status: employee,
+        overrides: overrides(),
+      );
+      expect(find.text('No duty this day'), findsOneWidget);
+      expect(find.text('On leave'), findsOneWidget);
+    });
+
+    testWidgets('a failed load can be tried again', (
+      WidgetTester tester,
+    ) async {
+      routes.dayError = Exception('offline');
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        overrides: overrides(),
+      );
+      expect(find.text("Couldn't load this day"), findsOneWidget);
+      routes
+        ..dayError = null
+        ..days[7] = day(7, on: at(0))
+        ..routes[7] = route(7, addresses: const <String?>['Shop']);
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(find.text('Shop'), findsOneWidget);
+    });
+
+    for (final bool admin in <bool>[true, false]) {
+      for (final double width in <double>[360, 390, 430]) {
+        testWidgets('${admin ? 'admin' : 'employee'} day fits $width wide', (
+          WidgetTester tester,
+        ) async {
+          tester.view.physicalSize = Size(width * 3, 800 * 3);
+          tester.view.devicePixelRatio = 3;
+          addTearDown(tester.view.reset);
+          routes.days[7] = day(7, on: at(0), status: DayStatus.onDuty);
+          routes.routes[7] = route(
+            7,
+            addresses: const <String?>[
+              'Krishi Kendra Road near the old bus stand, Barasat',
+              null,
+            ],
+            mocked: 3,
+          );
+          await pumpPage(
+            tester,
+            const DayRoutePage(dayId: 7),
+            users: FakeUsersRepository(<Profile>[
+              profile('u', name: 'Mohammad Hasanur Rahaman Chowdhury'),
+            ]),
+            status: admin
+                ? const SignedIn(
+                    userId: 'a',
+                    role: AppRole.admin,
+                    mustChangePassword: false,
+                  )
+                : employee,
+            overrides: overrides(),
+          );
+          expect(tester.takeException(), isNull);
+          await tester.tap(find.text('Visits · 0'));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
   });
 
   group('My map', () {
@@ -315,7 +552,7 @@ void main() {
     routes.routes[8] = route(8, addresses: const <String?>['Shop'], mocked: 12);
     await pumpPage(
       tester,
-      const DayRoutePage(dayId: 8, personName: 'Asha Roy'),
+      const DayRoutePage(dayId: 8),
       overrides: overrides(),
     );
     expect(find.textContaining('Fake GPS: 12 points'), findsOneWidget);
@@ -328,7 +565,7 @@ void main() {
     routes.routes[8] = route(8, addresses: const <String?>['Shop']);
     await pumpPage(
       tester,
-      const DayRoutePage(dayId: 8, personName: 'Asha Roy'),
+      const DayRoutePage(dayId: 8),
       overrides: overrides(),
     );
     expect(find.textContaining('Fake GPS'), findsNothing);
