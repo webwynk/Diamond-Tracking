@@ -2,8 +2,9 @@
 //
 //   POST { action: "set_password", new_password }   Authorization: the user
 //        200 { ok }  Only while the account is on a temporary PIN (first
-//        sign-in or after an admin reset). Clears the flag; the app then
-//        refreshes its session to pick up the new claim.
+//        sign-in or after an admin reset). Clears the flag. Setting the
+//        password this way (Supabase Auth admin API) ends every session of
+//        the account, so the app then signs in again with the new password.
 //
 // Changing a password later is done in the app with the current password
 // (Supabase Auth updateUser), so it does not need this function.
