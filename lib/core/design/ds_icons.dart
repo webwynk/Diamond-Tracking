@@ -28,6 +28,8 @@ abstract final class DsIcons {
   static const IconData lock = LucideIcons.lock;
   static const IconData clock = LucideIcons.clock;
   static const IconData phone = LucideIcons.phone;
+  static const IconData mail = LucideIcons.mail;
+  static const IconData logOut = LucideIcons.logOut;
   static const IconData search = LucideIcons.search;
   static const IconData requests = LucideIcons.inbox;
 

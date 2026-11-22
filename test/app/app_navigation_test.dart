@@ -14,6 +14,7 @@ import 'package:diamond_tracking/features/tracking/application/tracker_providers
 import 'package:diamond_tracking/features/users/application/users_providers.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
+import 'package:diamond_tracking/shared/ds/ds_frame.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -86,17 +87,18 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(find.byType(DsNavBar), findsOneWidget);
     for (final String tab in <String>['Home', 'Map', 'History', 'Profile']) {
-      expect(find.widgetWithText(NavigationDestination, tab), findsOneWidget);
+      expect(find.bySemanticsLabel(tab), findsOneWidget);
     }
     expect(find.text('Dashboard'), findsNothing);
 
-    await tester.tap(find.widgetWithText(NavigationDestination, 'Map'));
+    await tester.tap(find.bySemanticsLabel('Map'));
     await tester.pumpAndSettle();
     expect(find.text('My map'), findsWidgets);
     expect(find.text('No route today'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(NavigationDestination, 'History'));
+    await tester.tap(find.bySemanticsLabel('History'));
     await tester.pumpAndSettle();
     expect(find.text('No days yet'), findsOneWidget);
   });
@@ -171,14 +173,14 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(NavigationDestination, 'Profile'));
+    await tester.tap(find.bySemanticsLabel('Profile'));
     await tester.pumpAndSettle();
     expect(find.text('Asha Roy'), findsOneWidget);
 
     await tester.tap(find.text('Change password'));
     await tester.pumpAndSettle();
     expect(find.text('Current password'), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(DsNavBar), findsNothing);
   });
 
   testWidgets('an admin opens Users and their own account', (
