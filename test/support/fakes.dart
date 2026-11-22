@@ -620,9 +620,19 @@ class FakeRequestsRepository implements RequestsRepository {
 class FakePhotoPicker implements PhotoPicker {
   final List<PhotoFrom> picks = <PhotoFrom>[];
 
+  /// The camera is closed without a photo.
+  bool cancelCamera = false;
+
+  /// The phone refuses the camera (permission denied).
+  bool cameraBlocked = false;
+
   @override
   Future<Uint8List?> pick(PhotoFrom from) async {
     picks.add(from);
+    if (from == PhotoFrom.camera) {
+      if (cameraBlocked) throw const CameraBlocked();
+      if (cancelCamera) return null;
+    }
     return Uint8List.fromList(<int>[1, 2, 3]);
   }
 }
