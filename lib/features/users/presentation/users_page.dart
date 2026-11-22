@@ -561,7 +561,10 @@ class _MemberCard extends ConsumerWidget {
             Expanded(
               child: Semantics(
                 button: true,
-                label: '${p.fullName}, ${p.userCode}, ${m.line}',
+                label:
+                    '${p.fullName}, ${p.userCode}, '
+                    '${p.designation == null ? '' : '${p.designation}, '}'
+                    '${m.line}',
                 excludeSemantics: true,
                 child: InkWell(
                   borderRadius: DsRadius.large,
@@ -599,6 +602,15 @@ class _MemberCard extends ConsumerWidget {
                                 ),
                               ],
                             ),
+                            if (p.designation case final String d)
+                              Text(
+                                d,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: DsText.micro.copyWith(
+                                  color: DsColors.text2,
+                                ),
+                              ),
                             const SizedBox(height: 3),
                             Container(
                               height: 22,

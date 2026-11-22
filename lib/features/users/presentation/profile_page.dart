@@ -227,7 +227,10 @@ class _Header extends StatelessWidget {
           ),
           if (p != null)
             Text(
-              'Employee · ${p.userCode}',
+              '${p.designation ?? 'Employee'} · ${p.userCode}',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: DsText.caption.copyWith(color: DsColors.skyText),
             ),
           const SizedBox(height: 10),

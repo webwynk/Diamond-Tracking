@@ -10,6 +10,7 @@ export interface Profile {
   full_name: string;
   phone: string | null;
   contact_email: string | null;
+  designation: string | null;
   role: Role;
   is_active: boolean;
 }
@@ -20,12 +21,13 @@ export interface NewProfile {
   full_name: string;
   phone: string | null;
   contact_email: string | null;
+  designation: string | null;
   role: Role;
   created_by: string;
 }
 
 export type ProfileChanges = Partial<
-  Pick<Profile, 'full_name' | 'phone' | 'contact_email' | 'role' | 'is_active'>
+  Pick<Profile, 'full_name' | 'phone' | 'contact_email' | 'designation' | 'role' | 'is_active'>
 >;
 
 /** A stop that still needs an address. */
@@ -108,7 +110,8 @@ export interface Backend {
   dropPushTokens(tokens: string[]): Promise<void>;
 }
 
-const PROFILE_COLUMNS = 'id, user_code, full_name, phone, contact_email, role, is_active';
+const PROFILE_COLUMNS =
+  'id, user_code, full_name, phone, contact_email, designation, role, is_active';
 
 /** The project's secret key: the new named keys first, the legacy one second. */
 export function secretKey(): string {

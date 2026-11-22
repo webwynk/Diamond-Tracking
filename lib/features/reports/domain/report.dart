@@ -127,6 +127,7 @@ class PersonReport {
     required this.userCode,
     required this.name,
     required List<ReportDay> days,
+    this.designation,
   }) : days = List<ReportDay>.unmodifiable(
          List<ReportDay>.of(days)
            ..sort((ReportDay a, ReportDay b) => a.day.compareTo(b.day)),
@@ -136,6 +137,9 @@ class PersonReport {
   final String userCode;
   final String name;
   final List<ReportDay> days;
+
+  /// The job title, or null while none is set.
+  final String? designation;
 
   int _count(bool Function(ReportDay d) test) => days.where(test).length;
 
@@ -170,9 +174,11 @@ String formatDays(double d) =>
 
 /// Builds one report per person from their days. People with no days in the
 /// range are left out unless [keepEmpty] (for example a new employee).
+/// [designations] holds the job title of each person that has one, by id.
 List<PersonReport> buildReports({
   required List<({String id, String code, String name})> people,
   required List<ReportDay> days,
+  Map<String, String> designations = const <String, String>{},
   bool keepEmpty = false,
 }) {
   final Map<String, List<ReportDay>> byUser = <String, List<ReportDay>>{};
@@ -187,6 +193,7 @@ List<PersonReport> buildReports({
           userCode: p.code,
           name: p.name,
           days: byUser[p.id] ?? const <ReportDay>[],
+          designation: designations[p.id],
         ),
   ];
 }

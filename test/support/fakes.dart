@@ -106,6 +106,7 @@ Profile profile(
   AppRole role = AppRole.employee,
   bool active = true,
   bool phone = false,
+  String? designation,
 }) => Profile(
   id: id,
   userCode: code ?? id,
@@ -113,6 +114,7 @@ Profile profile(
   role: role,
   isActive: active,
   hasPhoneSignedIn: phone,
+  designation: designation,
 );
 
 /// In-memory users.
@@ -154,6 +156,7 @@ class FakeUsersRepository implements UsersRepository {
       id: 'new-${users.length}',
       userCode: draft.userCode,
       fullName: draft.fullName,
+      designation: draft.designation.isEmpty ? null : draft.designation,
       role: draft.role,
       isActive: true,
     );
@@ -172,6 +175,7 @@ class FakeUsersRepository implements UsersRepository {
       id: id,
       userCode: p.userCode,
       fullName: draft.fullName,
+      designation: draft.designation.isEmpty ? null : draft.designation,
       role: draft.role,
       isActive: draft.isActive,
     );

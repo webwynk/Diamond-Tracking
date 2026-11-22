@@ -2167,4 +2167,17 @@ begin
 end;
 $$;
 
+\echo '--- designation'
+select t.act_as_owner();
+update public.profiles set designation = 'Sales Officer'
+where id = '00000000-0000-0000-0000-000000000002';
+update public.profiles set designation = null
+where id = '00000000-0000-0000-0000-000000000002';
+select t.expect_error($$update public.profiles set designation = 'A'
+  where id = '00000000-0000-0000-0000-000000000002'$$, 'profiles_designation_check');
+select t.expect_error($$update public.profiles set designation = ' Sales'
+  where id = '00000000-0000-0000-0000-000000000002'$$, 'profiles_designation_check');
+select t.expect_error($$update public.profiles set designation = repeat('x', 41)
+  where id = '00000000-0000-0000-0000-000000000002'$$, 'profiles_designation_check');
+
 \echo 'ALL TESTS PASSED'

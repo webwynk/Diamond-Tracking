@@ -90,5 +90,55 @@
       "DA-001abc",
       "रविरविरविरविरविरविरविरवि1a"
     ]
+  },
+  "designation": {
+    "ok": [
+      "",
+      "Field Assistant",
+      "Sales Officer",
+      "Digital Marketer",
+      "ab",
+      "R&D Lead",
+      "Asst. Manager (Sales)",
+      "Sr. Officer - East/West",
+      "Territory Manager 2",
+      "सेल्स अधिकारी",
+      "A234567890123456789012345678901234567890"
+    ],
+    "bad": [
+      "a",
+      "-Officer",
+      "&Sales",
+      "Sales<Officer>",
+      "Officer @home",
+      "Sales_Officer",
+      "A2345678901234567890123456789012345678901",
+      "Field\tAssistant"
+    ]
+  },
+  "designation_required": {
+    "ok": [
+      "Field Assistant",
+      "Sales Officer",
+      "Digital Marketer",
+      "ab",
+      "R&D Lead",
+      "Asst. Manager (Sales)",
+      "Sr. Officer - East/West",
+      "Territory Manager 2",
+      "सेल्स अधिकारी",
+      "A234567890123456789012345678901234567890"
+    ],
+    "bad": [
+      "",
+      "a",
+      "-Officer",
+      "&Sales",
+      "Sales<Officer>",
+      "Officer @home",
+      "Sales_Officer",
+      "A2345678901234567890123456789012345678901",
+      "Field\tAssistant"
+    ]
   }
 }

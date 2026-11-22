@@ -212,7 +212,7 @@ class _Top extends ConsumerWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            '${p.userCode} · ${m.isAdmin ? 'Admin' : 'Employee'}',
+            '${p.userCode} · ${p.designation ?? (m.isAdmin ? 'Admin' : 'Employee')}',
             style: DsText.label.copyWith(
               color: strong,
               fontWeight: FontWeight.w400,
@@ -728,6 +728,7 @@ class _AccountState extends ConsumerState<_Account> {
           fullName: p.fullName,
           phone: p.phone ?? '',
           contactEmail: p.contactEmail ?? '',
+          designation: p.designation ?? '',
           role: p.role,
           isActive: on,
         ),

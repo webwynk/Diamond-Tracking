@@ -96,12 +96,15 @@ void main() {
     await pumpPage(
       tester,
       const ProfilePage(),
-      users: FakeUsersRepository(<Profile>[profile('u', name: 'Rahul Das')]),
+      users: FakeUsersRepository(<Profile>[
+        profile('u', name: 'Rahul Das', designation: 'Sales Officer'),
+      ]),
       status: employee,
     );
     expect(find.text('RD'), findsOneWidget);
     expect(find.text('Rahul Das'), findsOneWidget);
-    expect(find.textContaining('Employee · '), findsOneWidget);
+    expect(find.textContaining('Sales Officer · '), findsOneWidget);
+    expect(find.textContaining('Employee · '), findsNothing);
     expect(find.text('Reset email'), findsOneWidget);
     await tester.tap(find.text('My requests'));
     await tester.pumpAndSettle();

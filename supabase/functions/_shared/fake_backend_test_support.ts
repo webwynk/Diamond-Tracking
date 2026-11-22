@@ -62,6 +62,7 @@ export class FakeBackend implements Backend {
       full_name: 'Someone',
       phone: null,
       contact_email: null,
+      designation: null,
       role: 'employee',
       is_active: true,
       ...p,

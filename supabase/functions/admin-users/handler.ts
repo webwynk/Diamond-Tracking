@@ -1,9 +1,10 @@
 // admin-users: the admin creates and edits users and resets temporary PINs.
 //
 //   POST { action: "create", user_code, full_name, phone?, contact_email?,
-//          role?: "employee" | "admin", temp_pin }                -> 201 { profile }
+//          designation (required for an employee), role?: "employee" | "admin",
+//          temp_pin }                                             -> 201 { profile }
 //   POST { action: "update", id, full_name?, phone?, contact_email?,
-//          role?, is_active? }                                    -> 200 { profile }
+//          designation? ("" clears it), role?, is_active? }       -> 200 { profile }
 //   POST { action: "reset_pin", id, temp_pin }                    -> 200 { ok }
 //
 // Authorization: an active admin's access token. Every action is logged with
@@ -18,6 +19,7 @@ import type { Backend, Profile, ProfileChanges, Role } from '../_shared/backend.
 import { callerProfile } from '../_shared/caller.ts';
 import { type Json, readBody, reply, str } from '../_shared/http.ts';
 import {
+  designationProblem,
   emailProblem,
   loginEmailFor,
   nameProblem,
@@ -58,6 +60,7 @@ async function create(body: Json, admin: Profile, b: Backend): Promise<Response>
   const name = str(body, 'full_name');
   const phone = str(body, 'phone');
   const email = str(body, 'contact_email').toLowerCase();
+  const designation = str(body, 'designation');
   const pin = typeof body.temp_pin === 'string' ? body.temp_pin : '';
   const newRole = body.role === undefined ? 'employee' : role(body.role);
 
@@ -67,6 +70,7 @@ async function create(body: Json, admin: Profile, b: Backend): Promise<Response>
     ['full_name', nameProblem(name)],
     ['phone', phoneProblem(phone)],
     ['contact_email', emailProblem(email)],
+    ['designation', designationProblem(designation, newRole === 'employee')],
     ['temp_pin', pinProblem(pin)],
     ['role', newRole ? null : 'Choose employee or admin'],
   ];
@@ -90,6 +94,7 @@ async function create(body: Json, admin: Profile, b: Backend): Promise<Response>
       full_name: name,
       phone: phone || null,
       contact_email: email || null,
+      designation: designation || null,
       role: newRole!,
       created_by: admin.id,
     });
@@ -131,6 +136,12 @@ async function update(body: Json, admin: Profile, b: Backend): Promise<Response>
     const p = emailProblem(v);
     if (p) fields.contact_email = p;
     else changes.contact_email = v || null;
+  }
+  if ('designation' in body) {
+    const v = str(body, 'designation');
+    const p = designationProblem(v, false);
+    if (p) fields.designation = p;
+    else changes.designation = v || null;
   }
   if ('role' in body) {
     const r = role(body.role);

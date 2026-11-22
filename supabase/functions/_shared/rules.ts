@@ -17,6 +17,20 @@ export function nameProblem(name: string): string | null {
   return name.length >= 1 && name.length <= 80 ? null : 'Enter a name up to 80 characters';
 }
 
+/**
+ * A designation (job title): 2 to 40 characters of letters (any script, with
+ * their marks), digits, spaces and & . , ' ( ) / -, starting with a letter or
+ * digit. The caller trims first. [required] is true for a new employee; an
+ * empty value is then refused. Same rule in the app
+ * (lib/features/auth/domain/credentials.dart).
+ */
+export function designationProblem(value: string, required: boolean): string | null {
+  if (value === '') return required ? 'Choose a designation' : null;
+  return /^[\p{L}\p{N}][\p{L}\p{M}\p{N} &.,'()/-]{1,39}$/u.test(value)
+    ? null
+    : 'Use 2 to 40 letters, digits or spaces';
+}
+
 export function phoneProblem(phone: string): string | null {
   return phone === '' || /^\+?[0-9]{7,15}$/.test(phone) ? null : 'Enter a valid phone number';
 }

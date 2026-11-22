@@ -3,6 +3,7 @@
 import { assertEquals } from '@std/assert';
 import cases from './rule_cases.json' with { type: 'json' };
 import {
+  designationProblem,
   emailProblem,
   nameProblem,
   passwordProblem,
@@ -16,6 +17,8 @@ const checks: Record<string, (v: string) => string | null> = {
   name: nameProblem,
   phone: phoneProblem,
   email: emailProblem,
+  designation: (v) => designationProblem(v, false),
+  designation_required: (v) => designationProblem(v, true),
   pin: pinProblem,
   password: (v) => passwordProblem(v, cases.password.user_code),
 };

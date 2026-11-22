@@ -83,6 +83,24 @@ void main() {
       expect(formatDays(r[1].attendance), '0');
     });
 
+    test('a person carries their designation, or none', () {
+      final List<PersonReport> r = buildReports(
+        people: const <({String id, String code, String name})>[
+          (id: 'a', code: 'DA-001', name: 'Asha Roy'),
+          (id: 'b', code: 'DA-002', name: 'Bikash Das'),
+        ],
+        days: <ReportDay>[
+          day(1, 'a', 1, DayStatus.present, minutes: 610),
+          day(2, 'b', 1, DayStatus.absent),
+        ],
+        designations: const <String, String>{'a': 'Sales Officer'},
+      );
+      expect(r.map((PersonReport p) => p.designation), <String?>[
+        'Sales Officer',
+        null,
+      ]);
+    });
+
     test('filters days by status', () {
       final PersonReport a = sample().first;
       expect(a.filtered(StatusFilter.all), hasLength(4));
@@ -164,6 +182,7 @@ void main() {
           (id: 'a', code: 'DA-001', name: 'José Núñez'),
           (id: 'b', code: 'DA-002', name: 'রাহুল দাস'),
         ],
+        designations: const <String, String>{'a': 'Field Assistant'},
         days: <ReportDay>[
           day(1, 'a', 1, DayStatus.present, minutes: 610),
           day(2, 'b', 1, DayStatus.absent),

@@ -69,7 +69,7 @@ class SupabaseReportsRepository implements ReportsRepository {
     final List<Object> got = await Future.wait(<Future<Object>>[
       _client
           .from('profiles')
-          .select('id, user_code, full_name')
+          .select('id, user_code, full_name, designation')
           .eq('role', 'employee')
           .order('full_name'),
       _all(
@@ -112,6 +112,10 @@ class SupabaseReportsRepository implements ReportsRepository {
             name: p['full_name'] as String,
           ),
       ],
+      designations: <String, String>{
+        for (final Map<String, dynamic> p in people)
+          if (p['designation'] case final String d) p['id'] as String: d,
+      },
       days: <ReportDay>[
         for (final Map<String, dynamic> r in dayRows)
           ReportDay.fromRow(r, visits: visits[(r['id'] as num).toInt()] ?? 0),

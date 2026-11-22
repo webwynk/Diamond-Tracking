@@ -17,8 +17,10 @@ import '../../auth/domain/auth_status.dart';
 import '../../auth/domain/credentials.dart';
 import '../application/users_providers.dart';
 import '../data/users_repository.dart';
+import '../domain/designations.dart';
 import '../domain/profile.dart';
 import '../domain/temp_pin.dart';
+import 'designation_field.dart';
 import 'pin_dialog.dart';
 
 /// The country code shown in front of the phone field.
@@ -86,14 +88,20 @@ class _UserFormState extends ConsumerState<_UserForm> {
   late final TextEditingController _name;
   late final TextEditingController _phone;
   late final TextEditingController _email;
+  late final TextEditingController _designationText;
+
+  /// The designation picked from the list (null: none yet), or the text box
+  /// below it when "Custom" is picked.
+  String? _designation;
+  bool _customDesignation = false;
   late String _pin;
   late AppRole _role;
   late bool _active;
   bool _busy = false;
   AuthFailure? _failure;
 
-  /// Problems by field: user_code, full_name, phone, contact_email,
-  /// temp_pin. Local checks first, then what the server said.
+  /// Problems by field: user_code, full_name, designation, phone,
+  /// contact_email, temp_pin. Local checks first, then what the server said.
   Map<String, String> _errors = const <String, String>{};
 
   bool get _isNew => widget.initial == null;
@@ -111,6 +119,8 @@ class _UserFormState extends ConsumerState<_UserForm> {
     _name = TextEditingController(text: p?.fullName ?? '');
     _phone = TextEditingController(text: phoneToEdit(p?.phone));
     _email = TextEditingController(text: p?.contactEmail ?? '');
+    _designationText = TextEditingController();
+    _designation = p?.designation;
     _pin = generateTempPin();
     _role = p?.role ?? AppRole.employee;
     _active = p?.isActive ?? true;
@@ -122,12 +132,42 @@ class _UserFormState extends ConsumerState<_UserForm> {
     _name.dispose();
     _phone.dispose();
     _email.dispose();
+    _designationText.dispose();
     super.dispose();
   }
+
+  /// Everything in the designation list: the presets, the ones already in use
+  /// and this person's own.
+  List<String> get _designationChoices => designationChoices(
+    (ref.read(usersListProvider).value ?? const <Profile>[]).map(
+      (Profile p) => p.designation,
+    ),
+    current: widget.initial?.designation,
+  );
+
+  /// The designation to save: the picked one, or the typed one written like
+  /// the list entry it matches. Empty when none.
+  String get _designationValue => _customDesignation
+      ? designationSpelling(_designationText.text, _designationChoices)
+      : (_designation ?? '');
+
+  /// An employee needs a designation; an admin may leave it out.
+  String? get _designationError {
+    final bool employee = _role == AppRole.employee;
+    if (_customDesignation && employee && _designationValue.isEmpty) {
+      return 'Write a designation';
+    }
+    return designationProblem(_designationValue, required: employee);
+  }
+
+  void _clearDesignationError() => setState(
+    () => _errors = Map<String, String>.of(_errors)..remove('designation'),
+  );
 
   ProfileDraft get _draft => ProfileDraft(
     userCode: _userCode.text.trim(),
     fullName: _name.text.trim(),
+    designation: _designationValue,
     phone: phoneToSave(_phone.text),
     contactEmail: _email.text.trim(),
     role: _role,
@@ -141,6 +181,7 @@ class _UserFormState extends ConsumerState<_UserForm> {
       if (_isNew && _codeTaken(_userCode.text))
         'user_code': AuthFailure.userCodeTaken.message,
       if (nameProblem(_name.text) case final String m) 'full_name': m,
+      if (_designationError case final String m) 'designation': m,
       if (phoneProblem(phoneToSave(_phone.text)) case final String m)
         'phone': m,
       if (emailProblem(_email.text) case final String m) 'contact_email': m,
@@ -233,8 +274,9 @@ class _UserFormState extends ConsumerState<_UserForm> {
   Widget build(BuildContext context) {
     final bool self = !_isNew && _isSelf;
     final Profile? p = widget.initial;
-    // Keeps the team list loaded for the "Free / Taken" check.
-    if (_isNew) ref.watch(usersListProvider);
+    // Keeps the team list loaded for the "Free / Taken" check and for the
+    // designations already in use.
+    ref.watch(usersListProvider);
     final String first = firstNameOf(_name.text) ?? 'they';
     return Scaffold(
       backgroundColor: DsColors.surface,
@@ -313,6 +355,24 @@ class _UserFormState extends ConsumerState<_UserForm> {
                         error: _errors['full_name'],
                         textInputAction: TextInputAction.next,
                         onChanged: (_) => setState(() {}),
+                      ),
+                      const SizedBox(height: 14),
+                      DesignationField(
+                        choices: _designationChoices,
+                        choice: _designation,
+                        custom: _customDesignation,
+                        customController: _designationText,
+                        optional: _role == AppRole.admin,
+                        enabled: !_busy,
+                        error: _errors['designation'],
+                        onPicked: (DesignationPick pick) {
+                          setState(() {
+                            _customDesignation = pick.custom;
+                            _designation = pick.choice;
+                          });
+                          _clearDesignationError();
+                        },
+                        onCustomChanged: (_) => _clearDesignationError(),
                       ),
                       const SizedBox(height: 14),
                       DsTextField(

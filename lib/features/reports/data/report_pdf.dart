@@ -175,6 +175,7 @@ Future<Uint8List> buildReportPdf({
             <String>[
               'Code',
               'Name',
+              'Designation',
               'Attendance',
               'Present',
               'Half day',
@@ -191,6 +192,7 @@ Future<Uint8List> buildReportPdf({
                 <String>[
                   fit(p.userCode),
                   fit(p.name),
+                  fit(p.designation ?? '-'),
                   formatDays(p.attendance),
                   '${p.present}',
                   '${p.halfDays}',
@@ -213,7 +215,10 @@ Future<Uint8List> buildReportPdf({
           for (final PersonReport p in people) ...<pw.Widget>[
             pw.SizedBox(height: 14),
             pw.Text(
-              fit('${p.name} (${p.userCode})'),
+              fit(
+                '${p.name} (${p.userCode})'
+                '${p.designation == null ? '' : ', ${p.designation}'}',
+              ),
               style: const pw.TextStyle(
                 fontSize: 11,
                 fontWeight: pw.FontWeight.bold,

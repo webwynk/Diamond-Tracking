@@ -430,6 +430,12 @@ void main() {
 
   group('add user', () {
     Finder input(int i) => find.byType(TextField).at(i);
+    Future<void> choose(WidgetTester tester, String designation) async {
+      await tester.tap(find.bySemanticsLabel(RegExp('^Designation')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(designation));
+      await tester.pumpAndSettle();
+    }
 
     testWidgets('creates the user and shows the PIN once', (
       WidgetTester tester,
@@ -507,6 +513,7 @@ void main() {
       await pumpPushed(tester, const UserFormPage(), users: users);
       await tester.enterText(input(0), 'emp9');
       await tester.enterText(input(1), 'Chitra Sen');
+      await choose(tester, 'Sales Officer');
       await tester.tap(find.text('Create user').last);
       await tester.pumpAndSettle();
       expect(find.text('Phone looks wrong'), findsOneWidget);
@@ -515,6 +522,42 @@ void main() {
       await tester.tap(find.text('Create user').last);
       await tester.pumpAndSettle();
       expect(find.text(AuthFailure.userCodeTaken.message), findsOneWidget);
+    });
+
+    testWidgets('an employee needs a designation; a custom one is typed', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 3600);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      final FakeUsersRepository users = FakeUsersRepository(<Profile>[
+        const Profile(
+          id: '1',
+          userCode: 'EMP001',
+          fullName: 'Asha Roy',
+          role: AppRole.employee,
+          isActive: true,
+          designation: 'Driver',
+        ),
+      ]);
+      await pumpPushed(tester, const UserFormPage(), users: users);
+      await tester.enterText(input(0), 'EMP030');
+      await tester.enterText(input(1), 'Dev Nath');
+      await tester.tap(find.text('Create user').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Choose a designation'), findsWidgets);
+      expect(users.calls, isEmpty);
+
+      // A title used before is offered again.
+      await tester.tap(find.bySemanticsLabel(RegExp('^Designation')));
+      await tester.pumpAndSettle();
+      expect(find.text('Driver'), findsOneWidget);
+      await tester.tap(find.text('Custom'));
+      await tester.pumpAndSettle();
+      await tester.enterText(input(2), '  driver ');
+      await tester.tap(find.text('Create user').last);
+      await tester.pumpAndSettle();
+      expect(users.drafts.single.designation, 'Driver');
     });
 
     testWidgets('checks the form first', (WidgetTester tester) async {
@@ -565,6 +608,7 @@ void main() {
           role: AppRole.employee,
           isActive: true,
           phone: '+919830000000',
+          designation: 'Sales Officer',
         ),
       ]);
       await pumpPushed(tester, const UserFormPage(userId: 'u1'), users: users);
@@ -587,6 +631,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(users.calls, <String>['update:u1:Asha R.:false']);
       expect(users.drafts.single.phone, '+919830000000');
+      expect(users.drafts.single.designation, 'Sales Officer');
       expect(find.text('below'), findsOneWidget);
     });
 
