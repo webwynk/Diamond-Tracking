@@ -8,6 +8,7 @@ import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
 import 'package:diamond_tracking/features/duty/presentation/home_page.dart';
 import 'package:diamond_tracking/features/requests/application/requests_providers.dart';
+import 'package:diamond_tracking/features/requests/data/photo_picker.dart';
 import 'package:diamond_tracking/features/routes/application/route_providers.dart';
 import 'package:diamond_tracking/features/routes/domain/geo_point.dart';
 import 'package:diamond_tracking/features/routes/presentation/day_route_page.dart';
@@ -81,16 +82,14 @@ void main() {
   ) async {
     await openAddVisit(tester);
 
-    await save(tester);
-    expect(find.text(VisitFailure.storeNameRequired.message), findsOneWidget);
+    // The camera opened by itself; the place is found for the photo.
+    expect(picker.picks, <PhotoFrom>[PhotoFrom.camera]);
+    expect(find.text('Location saved'), findsOneWidget);
+    expect(find.textContaining('22.50000, 88.30000'), findsOneWidget);
+    expect(find.text('Write the store name'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'Krishi Kendra');
-    await save(tester);
-    expect(find.text(VisitFailure.photoRequired.message), findsOneWidget);
-
-    await tester.tap(find.text('Camera'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Location found: 22.50000, 88.30000'), findsOne);
     await tester.enterText(find.byType(TextField).at(1), 'Order taken');
     await save(tester);
 
@@ -108,7 +107,6 @@ void main() {
     location.mocked = true;
     await openAddVisit(tester);
     await tester.enterText(find.byType(TextField).first, 'Krishi Kendra');
-    await tester.tap(find.text('Camera'));
     await tester.pumpAndSettle();
     await save(tester);
     expect(visits.lastMocked, isTrue);
@@ -123,7 +121,6 @@ void main() {
   ) async {
     await openAddVisit(tester);
     await tester.enterText(find.byType(TextField).first, 'Krishi Kendra');
-    await tester.tap(find.text('Camera'));
     await tester.pumpAndSettle();
     await save(tester);
     expect(visits.lastMocked, isFalse);
@@ -135,12 +132,8 @@ void main() {
     location.accuracyM = 300;
     await openAddVisit(tester);
     await tester.enterText(find.byType(TextField).first, 'Krishi Kendra');
-    await tester.tap(find.text('Camera'));
     await tester.pumpAndSettle();
-    expect(
-      find.textContaining('22.50000, 88.30000 (approximate, ±300 m)'),
-      findsOneWidget,
-    );
+    expect(find.text('Approximate ±300 m'), findsOneWidget);
     await save(tester);
     expect(visits.lastAccuracyM, 300);
     expect(
@@ -155,7 +148,6 @@ void main() {
     location.accuracyM = 12;
     await openAddVisit(tester);
     await tester.enterText(find.byType(TextField).first, 'Krishi Kendra');
-    await tester.tap(find.text('Camera'));
     await tester.pumpAndSettle();
     await save(tester);
     expect(visits.lastAccuracyM, 12);
@@ -182,11 +174,17 @@ void main() {
   });
 
   testWidgets('a gallery photo saves no place', (WidgetTester tester) async {
+    picker.cancelCamera = true;
     await openAddVisit(tester);
+    expect(find.text('Take the dealer photo'), findsOneWidget);
+    expect(find.text('Add a photo to save'), findsNothing); // store first
     await tester.enterText(find.byType(TextField).first, 'Agro Store');
+    await tester.pumpAndSettle();
+    expect(find.text('Add a photo to save'), findsOneWidget);
     await tester.tap(find.text('Gallery'));
     await tester.pumpAndSettle();
-    expect(find.text('Gallery photo: no location is saved.'), findsOneWidget);
+    expect(find.text('No place saved.'), findsOneWidget);
+    expect(find.text('No place'), findsOneWidget);
     await save(tester);
 
     expect(location.calls, 0);
@@ -200,11 +198,10 @@ void main() {
     location = FakeLocation(<GeoPoint?>[null, const GeoPoint(22.6, 88.4)]);
     await openAddVisit(tester);
     await tester.enterText(find.byType(TextField).first, 'Agro Store');
-    await tester.tap(find.text('Camera'));
     await tester.pumpAndSettle();
-    expect(find.text('Location not found.'), findsOneWidget);
-    await save(tester);
-    expect(find.text(VisitFailure.noLocation.message), findsOneWidget);
+    expect(find.text('Place not found'), findsNWidgets(2));
+    expect(find.text('Find the place to save'), findsOneWidget);
+    expect(find.text('Save visit'), findsNothing);
     expect(visits.uploads, 0);
 
     await tester.tap(find.text('Try again'));
@@ -214,6 +211,7 @@ void main() {
   });
 
   Future<void> fillGalleryVisit(WidgetTester tester) async {
+    picker.cancelCamera = true;
     await openAddVisit(tester);
     await tester.enterText(find.byType(TextField).first, 'Agro Store');
     await tester.tap(find.text('Gallery'));
