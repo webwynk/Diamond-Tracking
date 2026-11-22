@@ -1143,6 +1143,23 @@ begin
 end;
 $$;
 
+\echo '--- nightly cleanup trims the scheduled-job log to 30 days'
+-- pg_cron is not installed on the test database, so a stand-in table is made
+-- for this check and removed again. On a database with pg_cron it is skipped.
+do $$
+begin
+  perform t.act_as_owner();
+  if to_regclass('cron.job_run_details') is null then
+    create schema if not exists cron;
+    create table cron.job_run_details (runid bigserial primary key, start_time timestamptz, end_time timestamptz);
+    insert into cron.job_run_details (start_time) values (now() - interval '31 days'), (now() - interval '29 days');
+    perform private.cleanup();
+    perform t.eq((select count(*) from cron.job_run_details), 1::bigint, 'job log older than 30 days removed, newer kept');
+    drop schema cron cascade;
+  end if;
+end;
+$$;
+
 \echo '--- leftovers are gone: public.places and the signed-in upload_points'
 do $$
 begin
