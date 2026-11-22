@@ -509,12 +509,14 @@ class FakeRequestsRepository implements RequestsRepository {
   @override
   Future<List<AppRequest>> mine(
     String userId, {
-    int limit = requestPageSize,
+    required DateTime since,
   }) async {
     _maybeFail();
     return requests
-        .where((AppRequest r) => r.userId == userId)
-        .take(limit)
+        .where(
+          (AppRequest r) => r.userId == userId && !r.createdAt.isBefore(since),
+        )
+        .take(myRequestsCap)
         .toList();
   }
 
@@ -544,12 +546,14 @@ class FakeRequestsRepository implements RequestsRepository {
     required int dutyOffMinute,
     required String message,
     required String photoId,
+    List<String> extraPhotoIds = const <String>[],
   }) async {
     _maybeFail();
     final Exception? e = sendError;
     if (e != null) throw e;
     calls.add(
-      'attendance:${isoDate(day)}:$dutyOnMinute-$dutyOffMinute:$message:$photoId',
+      'attendance:${isoDate(day)}:$dutyOnMinute-$dutyOffMinute:$message:$photoId'
+      '${extraPhotoIds.map((String id) => '+$id').join()}',
     );
   }
 
@@ -559,10 +563,12 @@ class FakeRequestsRepository implements RequestsRepository {
     required List<DateTime> dates,
     required String message,
     String? proofId,
+    List<String> extraPhotoIds = const <String>[],
   }) async {
     _maybeFail();
     calls.add(
-      'leave:${type.wire}:${dates.map(isoDate).join(',')}:$message:$proofId',
+      'leave:${type.wire}:${dates.map(isoDate).join(',')}:$message:$proofId'
+      '${extraPhotoIds.map((String id) => '+$id').join()}',
     );
   }
 
@@ -598,8 +604,8 @@ class FakeRequestsRepository implements RequestsRepository {
   }
 
   @override
-  PhotoSource photo(int requestId) => PhotoSource(
-    url: 'https://photos.test/$requestId',
+  PhotoSource photo(int requestId, {int index = 0}) => PhotoSource(
+    url: 'https://photos.test/$requestId/$index',
     headers: const <String, String>{},
   );
 }
@@ -648,6 +654,7 @@ class FakeNotificationsRepository implements NotificationsRepository {
                 title: n.title,
                 body: n.body,
                 requestId: n.requestId,
+                dutyDayId: n.dutyDayId,
                 createdAt: n.createdAt,
                 readAt: DateTime.utc(2026, 11, 20, 9),
               )

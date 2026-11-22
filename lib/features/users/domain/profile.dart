@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart' show StringCharacters;
+
 import '../../auth/domain/auth_status.dart';
 
 /// A user as the admin manages it.
@@ -53,4 +55,17 @@ class ProfileDraft {
   final String contactEmail;
   final AppRole role;
   final bool isActive;
+}
+
+/// "RD" for "Rahul Das", "R" for "Rahul".
+String initialsOf(String name) {
+  final List<String> parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((String p) => p.isNotEmpty)
+      .toList();
+  if (parts.isEmpty) return '';
+  final String first = parts.first.characters.first;
+  if (parts.length == 1) return first.toUpperCase();
+  return (first + parts.last.characters.first).toUpperCase();
 }

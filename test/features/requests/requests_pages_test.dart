@@ -5,15 +5,19 @@ import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
 import 'package:diamond_tracking/features/requests/application/requests_providers.dart';
-import 'package:diamond_tracking/features/requests/data/requests_repository.dart';
+import 'package:diamond_tracking/features/requests/data/photo_picker.dart';
 import 'package:diamond_tracking/features/requests/domain/app_request.dart';
 import 'package:diamond_tracking/features/requests/domain/request_failure.dart';
 import 'package:diamond_tracking/features/requests/presentation/admin_requests_page.dart';
 import 'package:diamond_tracking/features/requests/presentation/attendance_request_page.dart';
 import 'package:diamond_tracking/features/requests/presentation/leave_request_page.dart';
+import 'package:diamond_tracking/features/requests/presentation/my_request_detail_page.dart';
 import 'package:diamond_tracking/features/requests/presentation/my_requests_page.dart';
 import 'package:diamond_tracking/features/requests/presentation/request_detail_page.dart';
+import 'package:diamond_tracking/features/routes/application/route_providers.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
+import 'package:diamond_tracking/shared/ds/ds_button.dart';
+import 'package:diamond_tracking/shared/ds/ds_chips.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -48,18 +52,25 @@ void main() {
   AppRequest attendance({
     int id = 5,
     RequestStatus status = RequestStatus.pending,
+    DateTime? createdAt,
   }) => AppRequest(
     id: id,
     userId: 'u',
     kind: RequestKind.attendance,
     status: status,
-    createdAt: DateTime.utc(2026, 11, 20, 5),
+    createdAt: createdAt ?? DateTime.utc(2026, 11, 20, 5),
     day: DateTime.utc(2026, 11, 19),
     dutyOnAt: DateTime.utc(2026, 11, 19, 3, 30),
     dutyOffAt: DateTime.utc(2026, 11, 19, 13, 30),
     message: 'Forgot to duty on',
     hasPhoto: true,
   );
+
+  /// A card title as shown: the date part never breaks.
+  String cardTitle(String t) {
+    final int i = t.indexOf('· ') + 2;
+    return t.substring(0, i) + t.substring(i).replaceAll(' ', '\u00A0');
+  }
 
   /// A tall screen, so whole forms are built and tappable.
   void tall(WidgetTester tester) {
@@ -75,7 +86,10 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('attendance request: checks, uploads the photo, sends', (
+  Finder button(String label) =>
+      find.widgetWithText(DsButton, label, skipOffstage: false);
+
+  testWidgets('attendance request: says what is missing, sends 2 photos', (
     WidgetTester tester,
   ) async {
     tall(tester);
@@ -85,40 +99,81 @@ void main() {
       status: employee,
       overrides: overrides(),
     );
-    expect(find.text('20 Nov 2026'), findsOneWidget);
+    expect(find.text('Friday, 20 Nov'), findsOneWidget);
+    expect(button('Pick the duty times'), findsOneWidget);
 
-    await tester.tap(find.text('Send request'));
-    await tester.pumpAndSettle();
-    expect(find.text('Pick the duty on and duty off times.'), findsOneWidget);
-
-    await pickTime(tester, 'Duty on'); // 9:00 AM
-    await pickTime(tester, 'Duty off'); // 7:00 PM
+    await pickTime(tester, 'DUTY ON'); // 9:00 AM
+    await pickTime(tester, 'DUTY OFF'); // 7:00 PM
     expect(find.text('9:00 AM'), findsOneWidget);
     expect(find.text('7:00 PM'), findsOneWidget);
-    await tester.tap(find.text('Send request'));
-    await tester.pumpAndSettle();
-    expect(find.text('Write a message.'), findsOneWidget);
+    expect(find.text('10h 00m'), findsOneWidget);
+    expect(find.text('Full day'), findsOneWidget);
+    expect(button('Write a message to send'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'Phone battery died');
-    await tester.tap(find.text('Send request'));
-    await tester.pumpAndSettle();
-    expect(find.text('Add a photo.'), findsOneWidget);
+    await tester.pump();
+    expect(button('Add a photo to send'), findsOneWidget);
     expect(repo.uploads, 0);
 
-    await tester.tap(find.text('Camera'));
+    await tester.tap(find.text('Take photo'));
     await tester.pumpAndSettle();
-    expect(picker.picks.single.name, 'camera');
-    await tester.ensureVisible(find.text('Send request'));
-    await tester.tap(find.text('Send request'));
+    await tester.tap(find.text('From gallery'));
+    await tester.pumpAndSettle();
+    expect(picker.picks.map((PhotoFrom f) => f.name), <String>[
+      'camera',
+      'gallery',
+    ]);
+    expect(find.text('Up to 3 photos · 2 added'), findsOneWidget);
+    await tester.tap(button('Send request'));
     await tester.pumpAndSettle();
 
-    expect(repo.uploads, 1);
+    expect(repo.uploads, 2);
     expect(
       repo.calls.single,
-      startsWith('attendance:2026-11-20:540-1140:Phone battery died:req-'),
+      matches(
+        RegExp(
+          r'^attendance:2026-11-20:540-1140:Phone battery died:req-\S+\+req-\S+$',
+        ),
+      ),
     );
     expect(find.text('below'), findsOneWidget);
     expect(find.text('Request sent. The admin will decide.'), findsOneWidget);
+  });
+
+  testWidgets('attendance: days with a duty or a request are faded', (
+    WidgetTester tester,
+  ) async {
+    tall(tester);
+    final FakeRouteRepository routes = FakeRouteRepository()
+      ..days[1] = DutyDay(
+        id: 1,
+        day: DateTime.utc(2026, 11, 20),
+        status: DayStatus.onDuty,
+        dutyOnAt: DateTime.utc(2026, 11, 20, 3),
+        userId: 'u',
+      );
+    repo.requests.add(attendance()); // waiting, for 19 Nov
+    await pumpPushed(
+      tester,
+      const AttendanceRequestPage(),
+      status: employee,
+      overrides: <Override>[
+        ...overrides(),
+        routeRepositoryProvider.overrideWithValue(routes),
+      ],
+    );
+    // Today and 19 Nov can't be asked for: 18 Nov is picked.
+    expect(find.text('Wednesday, 18 Nov'), findsOneWidget);
+    expect(
+      find.text('Faded days already have a duty or a request.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('19'));
+    await tester.pumpAndSettle();
+    expect(find.text('Wednesday, 18 Nov'), findsOneWidget);
+    await tester.tap(find.text('17'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tuesday, 17 Nov'), findsOneWidget);
   });
 
   testWidgets('a server refusal shows its reason and keeps the form', (
@@ -132,19 +187,47 @@ void main() {
       status: employee,
       overrides: overrides(),
     );
-    await pickTime(tester, 'Duty on');
-    await pickTime(tester, 'Duty off');
+    await pickTime(tester, 'DUTY ON');
+    await pickTime(tester, 'DUTY OFF');
     await tester.enterText(find.byType(TextField), 'x');
-    await tester.tap(find.text('Gallery'));
+    await tester.tap(find.text('From gallery'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Send request'));
-    await tester.tap(find.text('Send request'));
+    await tester.tap(button('Send request'));
     await tester.pumpAndSettle();
     expect(find.text(RequestFailure.alreadyHasDuty.message), findsOneWidget);
     expect(find.byType(AttendanceRequestPage), findsOneWidget);
   });
 
-  testWidgets('leave request needs dates and a message', (
+  for (final double width in <double>[360, 390, 430]) {
+    testWidgets('attendance request fits a $width wide phone', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = Size(width * 3, 2400);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await pumpPushed(
+        tester,
+        const AttendanceRequestPage(),
+        status: employee,
+        overrides: overrides(),
+      );
+      await pickTime(tester, 'DUTY ON');
+      await pickTime(tester, 'DUTY OFF');
+      for (int i = 0; i < 3; i++) {
+        await Scrollable.ensureVisible(
+          tester.element(find.text('From gallery')),
+          alignment: 0.5,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('From gallery'));
+        await tester.pumpAndSettle();
+      }
+      expect(find.text('3 photos added, the most allowed'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('leave request: type, days, reason, note photos', (
     WidgetTester tester,
   ) async {
     tall(tester);
@@ -154,65 +237,303 @@ void main() {
       status: employee,
       overrides: overrides(),
     );
-    expect(find.text('Casual leave'), findsOneWidget);
+    expect(find.text('November 2026'), findsOneWidget);
+    expect(button('Pick the type of leave'), findsOneWidget);
     await tester.tap(find.text('Sick leave'));
-    await tester.ensureVisible(find.text('Send request'));
-    await tester.tap(find.text('Send request'));
+    await tester.pump();
+    expect(button('Pick the days'), findsOneWidget);
+    // 12 Nov is more than 7 days back: can't be picked.
+    await tester.tap(find.text('12'));
+    await tester.pump();
+    expect(find.text('0 days'), findsOneWidget);
+    for (final String d in <String>['24', '25', '26']) {
+      await tester.tap(find.text(d));
+    }
+    await tester.tap(find.text('25'));
+    await tester.pump();
+    expect(find.text('2 days'), findsOneWidget);
+    expect(button('Write the reason to send'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Fever');
+    await tester.pump();
+
+    await tester.tap(find.text('Attach'));
     await tester.pumpAndSettle();
-    expect(find.text('Add the leave dates.'), findsOneWidget);
-    expect(repo.calls, isEmpty);
+    await tester.tap(find.text('From gallery'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add more'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Take photo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Up to 3 photos · 2 added'), findsOneWidget);
+
+    await tester.tap(button('Send request · 2 days'));
+    await tester.pumpAndSettle();
+    expect(
+      repo.calls.single,
+      matches(
+        RegExp(r'^leave:sick:2026-11-24,2026-11-26:Fever:req-\S+\+req-\S+$'),
+      ),
+    );
+    expect(find.text('Leave request sent.'), findsOneWidget);
   });
 
-  testWidgets('my requests list opens a request', (WidgetTester tester) async {
-    repo.requests.add(attendance());
-    repo.requests.add(
-      AppRequest(
-        id: 6,
-        userId: 'u',
-        kind: RequestKind.shortDuty,
-        status: RequestStatus.pending,
-        createdAt: DateTime.utc(2026, 11, 20, 5),
-        day: DateTime.utc(2026, 11, 18),
+  testWidgets('leave: days with a waiting request are faded', (
+    WidgetTester tester,
+  ) async {
+    tall(tester);
+    repo.requests.add(attendance()); // waiting, for 19 Nov
+    await pumpPushed(
+      tester,
+      const LeaveRequestPage(),
+      status: employee,
+      overrides: overrides(),
+    );
+    await tester.tap(find.text('Casual leave'));
+    await tester.tap(find.text('19'));
+    await tester.pump();
+    expect(find.text('0 days'), findsOneWidget);
+    await tester.tap(find.text('20'));
+    await tester.pump();
+    expect(find.text('1 day'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Next month'));
+    await tester.pumpAndSettle();
+    expect(find.text('December 2026'), findsOneWidget);
+  });
+
+  for (final double width in <double>[360, 390, 430]) {
+    testWidgets('leave request fits a $width wide phone', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = Size(width * 3, 2400);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await pumpPushed(
+        tester,
+        const LeaveRequestPage(),
+        status: employee,
+        overrides: overrides(),
+      );
+      await tester.tap(find.text('Casual leave'));
+      await tester.tap(find.text('24'));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('my requests: short duty with hours, filters with counts', (
+    WidgetTester tester,
+  ) async {
+    tall(tester);
+    repo.requests
+      ..add(attendance())
+      ..add(
+        AppRequest(
+          id: 6,
+          userId: 'u',
+          kind: RequestKind.shortDuty,
+          status: RequestStatus.pending,
+          createdAt: DateTime.utc(2026, 11, 20, 13),
+          day: DateTime.utc(2026, 11, 20),
+        ),
+      )
+      ..add(
+        AppRequest(
+          id: 7,
+          userId: 'u',
+          kind: RequestKind.leave,
+          status: RequestStatus.approved,
+          createdAt: DateTime.utc(2026, 11, 12, 5),
+          leaveType: LeaveType.casual,
+          dates: <DateTime>[
+            DateTime.utc(2026, 11, 24),
+            DateTime.utc(2026, 11, 26),
+          ],
+          decision: DayStatus.leave,
+        ),
+      )
+      ..add(
+        AppRequest(
+          id: 8,
+          userId: 'u',
+          kind: RequestKind.attendance,
+          status: RequestStatus.rejected,
+          createdAt: DateTime.utc(2026, 10, 28, 5),
+          day: DateTime.utc(2026, 10, 28),
+          decisionNote: 'No photo of work.',
+        ),
+      )
+      // Older than 90 days: not listed.
+      ..add(attendance(id: 9, createdAt: DateTime.utc(2026, 8, 1)));
+    final FakeDutyRepository duty = FakeDutyRepository(
+      today: DutyDay(
+        id: 40,
+        day: DateTime.utc(2026, 11, 20),
+        status: DayStatus.pending,
+        dutyOnAt: DateTime.utc(2026, 11, 20, 3, 30),
+        dutyOffAt: DateTime.utc(2026, 11, 20, 11, 10),
+        workedMinutes: 460,
       ),
     );
     await pumpPage(
       tester,
       const MyRequestsPage(),
       status: employee,
-      overrides: overrides(),
+      overrides: overrides(duty: duty),
     );
-    expect(find.text('Attendance · 19 Nov 2026'), findsOneWidget);
-    expect(find.text('Waiting'), findsOneWidget);
-    // Short-duty reviews are the admin's, not the employee's requests.
-    expect(find.textContaining('Short duty'), findsNothing);
-    await tester.tap(find.text('Attendance · 19 Nov 2026'));
+    expect(find.text(cardTitle('Short duty · Fri, 20 Nov')), findsOneWidget);
+    expect(find.text('7h 40m worked · sent by the app'), findsOneWidget);
+    expect(find.text(cardTitle('Attendance · 19 Nov')), findsOneWidget);
+    expect(find.text(cardTitle('Casual leave · 24 – 26 Nov')), findsOneWidget);
+    expect(find.text('2 days · sent 12 Nov'), findsOneWidget);
+    expect(find.text(cardTitle('Attendance · 28 Oct')), findsOneWidget);
+    expect(find.textContaining('No photo of work.'), findsOneWidget);
+    expect(find.text('Admin reviewing'), findsNWidgets(2));
+    expect(find.byType(MyRequestCard), findsNWidgets(4));
+
+    await tester.tap(find.widgetWithText(DsFilterChip, 'Waiting'));
     await tester.pumpAndSettle();
-    expect(find.text('route /home/requests/5'), findsOneWidget);
+    expect(find.byType(MyRequestCard), findsNWidgets(2));
+    // Test text is wider than real text, so the chips scroll.
+    await tester.ensureVisible(find.widgetWithText(DsFilterChip, 'Rejected'));
+    await tester.tap(find.widgetWithText(DsFilterChip, 'Rejected'));
+    await tester.pumpAndSettle();
+    expect(find.byType(MyRequestCard), findsOneWidget);
+
+    await tester.tap(find.text(cardTitle('Attendance · 28 Oct')));
+    await tester.pumpAndSettle();
+    expect(find.text('route /home/requests/8'), findsOneWidget);
   });
 
-  testWidgets('the employee cancels a waiting request', (
+  testWidgets('my requests tiles open the two forms', (
     WidgetTester tester,
   ) async {
-    repo.requests.add(attendance());
     await pumpPage(
       tester,
-      const RequestDetailPage(requestId: 5, admin: false),
+      const MyRequestsPage(),
       status: employee,
       overrides: overrides(),
     );
-    expect(find.text('Forgot to duty on'), findsOneWidget);
-    expect(find.textContaining('9:00 AM to 7:00 PM'), findsOneWidget);
-    expect(find.text('Present'), findsNothing);
-
-    await tester.ensureVisible(find.text('Cancel request'));
-    await tester.tap(find.text('Cancel request'));
+    expect(find.text('No requests yet'), findsOneWidget);
+    await tester.tap(find.text('Leave'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, 'Cancel request'));
+    expect(find.text('route /home/requests/leave'), findsOneWidget);
+  });
+
+  for (final double width in <double>[360, 390, 430]) {
+    testWidgets('my requests fits a $width wide phone', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = Size(width * 3, 2400);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      repo.requests
+        ..add(attendance())
+        ..add(
+          AppRequest(
+            id: 8,
+            userId: 'u',
+            kind: RequestKind.attendance,
+            status: RequestStatus.approved,
+            createdAt: DateTime.utc(2026, 11, 6, 5),
+            day: DateTime.utc(2026, 11, 6),
+            decision: DayStatus.halfDay,
+            decisionNote: 'Approved as half day because the photo was late.',
+          ),
+        );
+      await pumpPage(
+        tester,
+        const MyRequestsPage(),
+        status: employee,
+        overrides: overrides(),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('the employee sees progress and cancels a waiting request', (
+    WidgetTester tester,
+  ) async {
+    tall(tester);
+    repo.requests.add(attendance());
+    await pumpPage(
+      tester,
+      const MyRequestDetailPage(requestId: 5),
+      status: employee,
+      overrides: overrides(),
+    );
+    expect(find.text('Attendance'), findsOneWidget);
+    expect(find.text('Thu, 19 Nov'), findsOneWidget);
+    expect(find.text('Forgot to duty on'), findsOneWidget);
+    expect(find.text('9:00 AM – 7:00 PM'), findsOneWidget);
+    expect(find.text('With admin'), findsOneWidget);
+    expect(find.text("You'll get a notification"), findsOneWidget);
+
+    await tester.tap(button('Cancel request'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Yes, cancel it'));
     await tester.pumpAndSettle();
     expect(repo.calls, <String>['cancel:5']);
     expect(find.text('Cancelled'), findsWidgets);
-    expect(find.text('Cancel request'), findsNothing);
+    expect(button('Cancel request'), findsNothing);
   });
+
+  testWidgets('a decided leave shows the decision, note and every photo', (
+    WidgetTester tester,
+  ) async {
+    tall(tester);
+    repo.requests.add(
+      AppRequest(
+        id: 9,
+        userId: 'u',
+        kind: RequestKind.leave,
+        status: RequestStatus.rejected,
+        createdAt: DateTime.utc(2026, 11, 18, 5),
+        leaveType: LeaveType.sick,
+        dates: <DateTime>[
+          DateTime.utc(2026, 11, 24),
+          DateTime.utc(2026, 11, 25),
+          DateTime.utc(2026, 11, 26),
+        ],
+        message: 'Fever',
+        hasPhoto: true,
+        extraPhotos: 1,
+        decision: DayStatus.absent,
+        decisionNote: 'Too many days.',
+        decidedAt: DateTime.utc(2026, 11, 19, 6),
+      ),
+    );
+    await pumpPage(
+      tester,
+      const MyRequestDetailPage(requestId: 9),
+      status: employee,
+      overrides: overrides(),
+    );
+    expect(find.text('Sick leave'), findsOneWidget);
+    expect(find.text('Tue 24 – Thu 26 Nov · 3 days'), findsOneWidget);
+    expect(find.text('Rejected'), findsWidgets);
+    expect(find.textContaining('Too many days.'), findsOneWidget);
+    expect(find.text('Photo 1 of 2'), findsOneWidget);
+    expect(find.text('Photo 2 of 2'), findsOneWidget);
+    expect(button('Cancel request'), findsNothing);
+  });
+
+  for (final double width in <double>[360, 390, 430]) {
+    testWidgets('request detail fits a $width wide phone', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = Size(width * 3, 2400);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      repo.requests.add(attendance());
+      await pumpPage(
+        tester,
+        const MyRequestDetailPage(requestId: 5),
+        status: employee,
+        overrides: overrides(),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('the admin approves as half day with a note', (
     WidgetTester tester,
@@ -221,7 +542,7 @@ void main() {
     repo.requests.add(attendance());
     await pumpPage(
       tester,
-      const RequestDetailPage(requestId: 5, admin: true),
+      const RequestDetailPage(requestId: 5),
       users: FakeUsersRepository(<Profile>[profile('u', name: 'Asha Roy')]),
       overrides: overrides(),
     );
@@ -261,7 +582,7 @@ void main() {
     );
     await pumpPage(
       tester,
-      const RequestDetailPage(requestId: 7, admin: true),
+      const RequestDetailPage(requestId: 7),
       overrides: overrides(duty: duty),
     );
     expect(find.textContaining('6 h 30 min'), findsOneWidget);
@@ -305,19 +626,18 @@ void main() {
       status: employee,
       overrides: overrides(),
     );
-    await pickTime(tester, 'Duty on');
-    await pickTime(tester, 'Duty off');
+    await pickTime(tester, 'DUTY ON');
+    await pickTime(tester, 'DUTY OFF');
     await tester.enterText(find.byType(TextField), 'x');
-    await tester.tap(find.text('Gallery'));
+    await tester.tap(find.text('From gallery'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Send request'));
-    await tester.tap(find.text('Send request'));
+    await tester.tap(button('Send request'));
     await tester.pumpAndSettle();
     expect(repo.uploads, 1);
     expect(repo.calls, isEmpty);
 
     repo.sendError = null;
-    await tester.tap(find.text('Send request'));
+    await tester.tap(button('Send request'));
     await tester.pumpAndSettle();
     expect(repo.uploads, 1, reason: 'not uploaded again');
     expect(
@@ -344,33 +664,12 @@ void main() {
     );
     await pumpPage(
       tester,
-      const RequestDetailPage(requestId: 5, admin: false),
+      const MyRequestDetailPage(requestId: 5),
       status: employee,
       overrides: overrides(),
     );
     expect(find.text('Photo removed after 90 days.'), findsOneWidget);
     expect(find.text('The photo could not be loaded.'), findsNothing);
-  });
-
-  testWidgets('long lists show more on request (L70)', (
-    WidgetTester tester,
-  ) async {
-    tall(tester);
-    for (int i = 0; i < requestPageSize + 5; i++) {
-      repo.requests.add(attendance(id: 1000 + i));
-    }
-    await pumpPage(
-      tester,
-      const MyRequestsPage(),
-      status: employee,
-      overrides: overrides(),
-    );
-    final Finder more = find.text('Show more');
-    await tester.scrollUntilVisible(more, 500);
-    expect(find.text('Attendance · 19 Nov 2026'), findsWidgets);
-    await tester.tap(more);
-    await tester.pumpAndSettle();
-    expect(find.text('Show more'), findsNothing);
   });
 
   testWidgets('when names cannot load, the admin list says so (L71)', (

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/design/ds_icons.dart';
 import '../features/admin/presentation/admin_dashboard_page.dart';
 import '../features/auth/application/auth_providers.dart';
 import '../features/auth/domain/auth_status.dart';
@@ -12,11 +13,13 @@ import '../features/auth/presentation/set_password_page.dart';
 import '../features/auth/presentation/signed_out_page.dart';
 import '../features/auth/presentation/splash_page.dart';
 import '../features/duty/presentation/home_page.dart';
+import '../features/notifications/presentation/my_notifications_page.dart';
 import '../features/notifications/presentation/notifications_page.dart';
 import '../features/reports/presentation/reports_page.dart';
 import '../features/requests/presentation/admin_requests_page.dart';
 import '../features/requests/presentation/attendance_request_page.dart';
 import '../features/requests/presentation/leave_request_page.dart';
+import '../features/requests/presentation/my_request_detail_page.dart';
 import '../features/requests/presentation/my_requests_page.dart';
 import '../features/requests/presentation/request_detail_page.dart';
 import '../features/routes/presentation/day_route_page.dart';
@@ -24,9 +27,12 @@ import '../features/routes/presentation/history_page.dart';
 import '../features/routes/presentation/live_map_page.dart';
 import '../features/routes/presentation/my_map_page.dart';
 import '../features/users/presentation/account_page.dart';
+import '../features/users/presentation/profile_page.dart';
 import '../features/users/presentation/user_form_page.dart';
 import '../features/users/presentation/users_page.dart';
 import '../features/visits/presentation/add_visit_page.dart';
+import '../shared/ds/ds_frame.dart';
+import '../shared/ds/ds_nav_shell.dart';
 import '../shared/widgets/nav_shell.dart';
 import 'routes.dart';
 
@@ -114,123 +120,124 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
   return router;
 });
 
-StatefulShellRoute _userShell(
-  GlobalKey<NavigatorState> rootKey,
-) => StatefulShellRoute.indexedStack(
-  builder:
-      (BuildContext context, GoRouterState state, StatefulNavigationShell s) =>
-          NavShell(
+StatefulShellRoute _userShell(GlobalKey<NavigatorState> rootKey) =>
+    StatefulShellRoute.indexedStack(
+      builder:
+          (
+            BuildContext context,
+            GoRouterState state,
+            StatefulNavigationShell s,
+          ) => DsNavShell(
             shell: s,
-            tabs: const <NavTab>[
-              NavTab(label: 'Home', icon: Icons.home_rounded),
-              NavTab(label: 'Map', icon: Icons.map_rounded),
-              NavTab(label: 'History', icon: Icons.calendar_month_rounded),
-              NavTab(label: 'Profile', icon: Icons.person_rounded),
+            items: const <DsNavItem>[
+              DsNavItem(icon: DsIcons.home, label: 'Home'),
+              DsNavItem(icon: DsIcons.map, label: 'Map'),
+              DsNavItem(icon: DsIcons.history, label: 'History'),
+              DsNavItem(icon: DsIcons.profile, label: 'Profile'),
             ],
           ),
-  branches: <StatefulShellBranch>[
-    StatefulShellBranch(
-      routes: <RouteBase>[
-        GoRoute(
-          path: Routes.userHome,
-          builder: (BuildContext context, GoRouterState state) =>
-              const HomePage(),
+      branches: <StatefulShellBranch>[
+        StatefulShellBranch(
           routes: <RouteBase>[
             GoRoute(
-              path: 'notifications',
-              parentNavigatorKey: rootKey,
+              path: Routes.userHome,
               builder: (BuildContext context, GoRouterState state) =>
-                  const NotificationsPage(),
-            ),
-            GoRoute(
-              path: 'visit/:dayId',
-              parentNavigatorKey: rootKey,
-              builder: (BuildContext context, GoRouterState state) =>
-                  AddVisitPage(
-                    dayId: int.parse(state.pathParameters['dayId']!),
-                  ),
-            ),
-            GoRoute(
-              path: 'requests',
-              parentNavigatorKey: rootKey,
-              builder: (BuildContext context, GoRouterState state) =>
-                  const MyRequestsPage(),
+                  const HomePage(),
               routes: <RouteBase>[
-                // Fixed names before ':id', so they are not read as ids.
                 GoRoute(
-                  path: 'attendance',
+                  path: 'notifications',
                   parentNavigatorKey: rootKey,
                   builder: (BuildContext context, GoRouterState state) =>
-                      const AttendanceRequestPage(),
+                      const MyNotificationsPage(),
                 ),
                 GoRoute(
-                  path: 'leave',
+                  path: 'visit/:dayId',
                   parentNavigatorKey: rootKey,
                   builder: (BuildContext context, GoRouterState state) =>
-                      const LeaveRequestPage(),
+                      AddVisitPage(
+                        dayId: int.parse(state.pathParameters['dayId']!),
+                      ),
                 ),
                 GoRoute(
-                  path: ':id',
+                  path: 'requests',
                   parentNavigatorKey: rootKey,
                   builder: (BuildContext context, GoRouterState state) =>
-                      RequestDetailPage(
-                        requestId: int.parse(state.pathParameters['id']!),
-                        admin: false,
+                      const MyRequestsPage(),
+                  routes: <RouteBase>[
+                    // Fixed names before ':id', so they are not read as ids.
+                    GoRoute(
+                      path: 'attendance',
+                      parentNavigatorKey: rootKey,
+                      builder: (BuildContext context, GoRouterState state) =>
+                          const AttendanceRequestPage(),
+                    ),
+                    GoRoute(
+                      path: 'leave',
+                      parentNavigatorKey: rootKey,
+                      builder: (BuildContext context, GoRouterState state) =>
+                          const LeaveRequestPage(),
+                    ),
+                    GoRoute(
+                      path: ':id',
+                      parentNavigatorKey: rootKey,
+                      builder: (BuildContext context, GoRouterState state) =>
+                          MyRequestDetailPage(
+                            requestId: int.parse(state.pathParameters['id']!),
+                          ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: Routes.userMap,
+              builder: (BuildContext context, GoRouterState state) =>
+                  const MyMapPage(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: Routes.userHistory,
+              builder: (BuildContext context, GoRouterState state) =>
+                  const HistoryPage(dayRoute: Routes.userDay),
+              routes: <RouteBase>[
+                GoRoute(
+                  path: 'day/:dayId',
+                  parentNavigatorKey: rootKey,
+                  builder: (BuildContext context, GoRouterState state) =>
+                      DayRoutePage(
+                        dayId: int.parse(state.pathParameters['dayId']!),
                       ),
                 ),
               ],
             ),
           ],
         ),
-      ],
-    ),
-    StatefulShellBranch(
-      routes: <RouteBase>[
-        GoRoute(
-          path: Routes.userMap,
-          builder: (BuildContext context, GoRouterState state) =>
-              const MyMapPage(),
-        ),
-      ],
-    ),
-    StatefulShellBranch(
-      routes: <RouteBase>[
-        GoRoute(
-          path: Routes.userHistory,
-          builder: (BuildContext context, GoRouterState state) =>
-              const HistoryPage(dayRoute: Routes.userDay),
+        StatefulShellBranch(
           routes: <RouteBase>[
             GoRoute(
-              path: 'day/:dayId',
-              parentNavigatorKey: rootKey,
+              path: Routes.userProfile,
               builder: (BuildContext context, GoRouterState state) =>
-                  DayRoutePage(
-                    dayId: int.parse(state.pathParameters['dayId']!),
-                  ),
+                  const ProfilePage(),
+              routes: <RouteBase>[
+                GoRoute(
+                  path: 'password',
+                  parentNavigatorKey: rootKey,
+                  builder: (BuildContext context, GoRouterState state) =>
+                      const ChangePasswordPage(),
+                ),
+              ],
             ),
           ],
         ),
       ],
-    ),
-    StatefulShellBranch(
-      routes: <RouteBase>[
-        GoRoute(
-          path: Routes.userProfile,
-          builder: (BuildContext context, GoRouterState state) =>
-              const AccountPage(changePasswordRoute: Routes.userChangePassword),
-          routes: <RouteBase>[
-            GoRoute(
-              path: 'password',
-              parentNavigatorKey: rootKey,
-              builder: (BuildContext context, GoRouterState state) =>
-                  const ChangePasswordPage(),
-            ),
-          ],
-        ),
-      ],
-    ),
-  ],
-);
+    );
 
 StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
     StatefulShellRoute.indexedStack(
@@ -281,7 +288,6 @@ StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
                   builder: (BuildContext context, GoRouterState state) =>
                       RequestDetailPage(
                         requestId: int.parse(state.pathParameters['id']!),
-                        admin: true,
                       ),
                 ),
               ],

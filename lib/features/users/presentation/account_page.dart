@@ -6,18 +6,13 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_error_view.dart';
-import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/auth_status.dart';
-import '../../notifications/application/notifications_providers.dart';
-import '../../tracking/application/tracker_control.dart';
-import '../../tracking/application/tracker_providers.dart';
-import '../../visits/application/visits_providers.dart';
-import '../../visits/data/visit_outbox.dart';
 import '../application/users_providers.dart';
 import '../domain/profile.dart';
+import 'log_out.dart';
 
-/// The signed-in user's own details, change password and log out. The user
-/// app shows it as the Profile tab; admins open it from the top bar.
+/// The admin's own details, change password and log out, opened from the
+/// top bar. (The employee's is ProfilePage.)
 class AccountPage extends ConsumerWidget {
   const AccountPage({
     required this.changePasswordRoute,
@@ -27,83 +22,6 @@ class AccountPage extends ConsumerWidget {
 
   final String changePasswordRoute;
   final String title;
-
-  Future<void> _logOut(BuildContext context, WidgetRef ref) async {
-    final TrackerControl tracker = ref.read(trackerControlProvider);
-    if (await tracker.hasUnsentWork()) {
-      if (!context.mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (BuildContext context) => AlertDialog(
-          title: const Text('Not yet'),
-          content: const Text(
-            'Do duty off first. If you already did, your route is still being '
-            'sent: connect to the internet and try again in a minute.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-    // Visits kept on the phone without internet must reach the server first.
-    final AuthStatus status = ref.read(authStatusProvider);
-    final VisitOutbox outbox = ref.read(visitOutboxProvider);
-    if (status is SignedIn &&
-        (await outbox.pending(userId: status.userId)).isNotEmpty) {
-      if (!context.mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (BuildContext context) => AlertDialog(
-          title: const Text('Not yet'),
-          content: const Text(
-            'Some visits are still on this phone. Connect to the internet and '
-            'open Home to send them, then try again.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-    if (!context.mounted) return;
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Log out?'),
-        content: const Text(
-          'You will need your user ID and password to sign in again. Log out '
-          'here before you sign in on another phone.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Log out'),
-          ),
-        ],
-      ),
-    );
-    if (!(ok ?? false)) return;
-    await ref.read(authStatusProvider.notifier).signOutWith(() async {
-      // While still signed in: this phone stops getting the account's pushes.
-      await ref.read(pushRegistrarProvider).clear();
-      await ref.read(authRepositoryProvider).signOut();
-      await tracker.clear();
-      await outbox.clear();
-    });
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -130,7 +48,7 @@ class AccountPage extends ConsumerWidget {
                 'Log out',
                 style: AppTypography.bodyLarge.copyWith(color: AppColors.error),
               ),
-              onTap: () => _logOut(context, ref),
+              onTap: () => logOut(context, ref),
             ),
             const Divider(height: 1),
           ],

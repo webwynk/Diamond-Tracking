@@ -11,9 +11,9 @@ import 'photo_upload.dart';
 export 'photo_upload.dart' show PhotoSource;
 
 abstract interface class RequestsRepository {
-  /// The user's own requests, newest first.
-  /// The newest [limit] requests of [userId].
-  Future<List<AppRequest>> mine(String userId, {int limit = requestPageSize});
+  /// The requests [userId] sent since [since], newest first (at most
+  /// [myRequestsCap]).
+  Future<List<AppRequest>> mine(String userId, {required DateTime since});
 
   /// Everyone's requests for the admin: waiting ones oldest first, or the
   /// latest 100 of any status.
@@ -31,6 +31,7 @@ abstract interface class RequestsRepository {
     required int dutyOffMinute,
     required String message,
     required String photoId,
+    List<String> extraPhotoIds = const <String>[],
   });
 
   Future<void> requestLeave({
@@ -38,6 +39,7 @@ abstract interface class RequestsRepository {
     required List<DateTime> dates,
     required String message,
     String? proofId,
+    List<String> extraPhotoIds = const <String>[],
   });
 
   Future<void> cancel(int id);
@@ -47,11 +49,21 @@ abstract interface class RequestsRepository {
   /// Uploads a JPEG and returns its photo id for a request.
   Future<String> uploadPhoto(Uint8List jpeg);
 
-  PhotoSource photo(int requestId);
+  /// Photo [index] of a request: 0 is the first, 1 and 2 the extra ones.
+  PhotoSource photo(int requestId, {int index = 0});
 }
 
 /// Requests loaded per page; "Show more" adds this many (L70).
 const int requestPageSize = 100;
+
+/// Photos on one attendance or leave request (decided 2026-11-21).
+const int maxRequestPhotos = 3;
+
+/// "My requests" lists the last 90 days at once, so its counts are right.
+const Duration myRequestsWindow = Duration(days: 90);
+
+/// A safety cap on that list; nobody sends this many in 90 days.
+const int myRequestsCap = 500;
 
 String _hhmm(int minute) =>
     '${(minute ~/ 60).toString().padLeft(2, '0')}:'
@@ -66,7 +78,8 @@ class SupabaseRequestsRepository implements RequestsRepository {
 
   static const String _columns =
       'id, user_id, kind, status, day, duty_on_at, duty_off_at, leave_type, '
-      'dates, message, photo_id, photo_removed_at, decision, decision_note, '
+      'dates, message, photo_id, extra_photo_ids, photo_removed_at, decision, '
+      'decision_note, '
       'decided_at, created_at';
 
   List<AppRequest> _rows(List<Map<String, dynamic>> rows) =>
@@ -75,15 +88,16 @@ class SupabaseRequestsRepository implements RequestsRepository {
   @override
   Future<List<AppRequest>> mine(
     String userId, {
-    int limit = requestPageSize,
+    required DateTime since,
   }) async => _rows(
     await _client
         .from('requests')
         .select(_columns)
         .eq('user_id', userId)
+        .gte('created_at', since.toUtc().toIso8601String())
         .order('created_at', ascending: false)
         .order('id', ascending: false)
-        .limit(limit),
+        .limit(myRequestsCap),
   );
 
   @override
@@ -129,6 +143,7 @@ class SupabaseRequestsRepository implements RequestsRepository {
     required int dutyOffMinute,
     required String message,
     required String photoId,
+    List<String> extraPhotoIds = const <String>[],
   }) => _client.rpc<Object?>(
     'request_attendance',
     params: <String, Object?>{
@@ -137,6 +152,7 @@ class SupabaseRequestsRepository implements RequestsRepository {
       'p_duty_off': _hhmm(dutyOffMinute),
       'p_message': message,
       'p_photo_id': photoId,
+      if (extraPhotoIds.isNotEmpty) 'p_extra_photo_ids': extraPhotoIds,
     },
   );
 
@@ -146,6 +162,7 @@ class SupabaseRequestsRepository implements RequestsRepository {
     required List<DateTime> dates,
     required String message,
     String? proofId,
+    List<String> extraPhotoIds = const <String>[],
   }) => _client.rpc<Object?>(
     'request_leave',
     params: <String, Object?>{
@@ -153,6 +170,7 @@ class SupabaseRequestsRepository implements RequestsRepository {
       'p_dates': dates.map(isoDate).toList(),
       'p_message': message,
       'p_proof_id': proofId,
+      if (extraPhotoIds.isNotEmpty) 'p_extra_photo_ids': extraPhotoIds,
     },
   );
 
@@ -178,6 +196,8 @@ class SupabaseRequestsRepository implements RequestsRepository {
       uploadSignedPhoto(_client, _http, jpeg);
 
   @override
-  PhotoSource photo(int requestId) =>
-      PhotoSource.of(_client, 'request_id=$requestId');
+  PhotoSource photo(int requestId, {int index = 0}) => PhotoSource.of(
+    _client,
+    index == 0 ? 'request_id=$requestId' : 'request_id=$requestId&n=$index',
+  );
 }

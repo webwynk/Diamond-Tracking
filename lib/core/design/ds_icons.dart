@@ -19,11 +19,17 @@ abstract final class DsIcons {
 
   // Things
   static const IconData bell = LucideIcons.bell;
+  static const IconData markRead = LucideIcons.checkCheck;
   static const IconData camera = LucideIcons.camera;
+  static const IconData gallery = LucideIcons.image;
+  static const IconData attach = LucideIcons.paperclip;
+  static const IconData message = LucideIcons.messageSquareText;
   static const IconData pin = LucideIcons.mapPin;
   static const IconData lock = LucideIcons.lock;
   static const IconData clock = LucideIcons.clock;
   static const IconData phone = LucideIcons.phone;
+  static const IconData mail = LucideIcons.mail;
+  static const IconData logOut = LucideIcons.logOut;
   static const IconData search = LucideIcons.search;
   static const IconData requests = LucideIcons.inbox;
 
@@ -48,6 +54,7 @@ abstract final class DsIcons {
   static const IconData upload = LucideIcons.cloudUpload;
   static const IconData sickLeave = LucideIcons.heartPulse;
   static const IconData casualLeave = LucideIcons.palmtree;
+  static const IconData attendance = LucideIcons.clipboardCheck;
   static const IconData battery = LucideIcons.batteryLow;
 
   // Map
