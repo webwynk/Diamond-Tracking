@@ -12,6 +12,7 @@ import '../features/auth/presentation/set_password_page.dart';
 import '../features/auth/presentation/signed_out_page.dart';
 import '../features/auth/presentation/splash_page.dart';
 import '../features/duty/presentation/home_page.dart';
+import '../features/notifications/presentation/my_notifications_page.dart';
 import '../features/notifications/presentation/notifications_page.dart';
 import '../features/reports/presentation/reports_page.dart';
 import '../features/requests/presentation/admin_requests_page.dart';
@@ -141,7 +142,7 @@ StatefulShellRoute _userShell(
               path: 'notifications',
               parentNavigatorKey: rootKey,
               builder: (BuildContext context, GoRouterState state) =>
-                  const NotificationsPage(),
+                  const MyNotificationsPage(),
             ),
             GoRoute(
               path: 'visit/:dayId',

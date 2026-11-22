@@ -7,6 +7,7 @@ class AppNotification {
     required this.createdAt,
     this.body,
     this.requestId,
+    this.dutyDayId,
     this.readAt,
   });
 
@@ -19,6 +20,7 @@ class AppNotification {
       title: row['title'] as String,
       body: row['body'] as String?,
       requestId: (data['request_id'] as num?)?.toInt(),
+      dutyDayId: (data['duty_day_id'] as num?)?.toInt(),
       createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
       readAt: row['read_at'] == null
           ? null
@@ -33,6 +35,9 @@ class AppNotification {
 
   /// The request it is about, if any (a tap opens it).
   final int? requestId;
+
+  /// The duty day it is about (duty turned off at 11 PM): a tap opens it.
+  final int? dutyDayId;
   final DateTime createdAt;
   final DateTime? readAt;
 

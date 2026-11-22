@@ -61,6 +61,12 @@ String notificationTarget(AppRole role, int? requestId, {String? kind}) =>
 /// (L81): it opens Home, which reloads by itself.
 const String dutyOnAllowedKind = 'duty_on_allowed';
 
+/// An employee's request was decided.
+const String requestDecidedKind = 'request_decided';
+
+/// The server ended a forgotten duty at 11 PM; the data has the day.
+const String dutyAutoOffKind = 'duty_auto_off';
+
 /// Registers this phone for push after sign-in and opens tapped
 /// notifications. Lives as long as the app.
 final Provider<PushRegistrar> pushRegistrarProvider = Provider<PushRegistrar>((

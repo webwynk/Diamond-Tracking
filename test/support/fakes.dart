@@ -654,6 +654,7 @@ class FakeNotificationsRepository implements NotificationsRepository {
                 title: n.title,
                 body: n.body,
                 requestId: n.requestId,
+                dutyDayId: n.dutyDayId,
                 createdAt: n.createdAt,
                 readAt: DateTime.utc(2026, 11, 20, 9),
               )

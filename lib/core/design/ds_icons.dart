@@ -19,6 +19,7 @@ abstract final class DsIcons {
 
   // Things
   static const IconData bell = LucideIcons.bell;
+  static const IconData markRead = LucideIcons.checkCheck;
   static const IconData camera = LucideIcons.camera;
   static const IconData gallery = LucideIcons.image;
   static const IconData attach = LucideIcons.paperclip;

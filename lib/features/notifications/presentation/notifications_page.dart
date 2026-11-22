@@ -11,11 +11,10 @@ import '../../../core/time/ist.dart';
 import '../../../core/time/ist_format.dart';
 import '../../../shared/widgets/app_empty_state.dart';
 import '../../../shared/widgets/app_error_view.dart';
-import '../../auth/application/auth_providers.dart';
-import '../../auth/domain/auth_status.dart';
 import '../application/notifications_providers.dart';
 import '../domain/app_notification.dart';
 
+/// The admin's notifications. (The employee's are MyNotificationsPage.)
 class NotificationsPage extends ConsumerWidget {
   const NotificationsPage({super.key});
 
@@ -33,8 +32,6 @@ class NotificationsPage extends ConsumerWidget {
       notificationsProvider,
     );
     final int unread = ref.watch(unreadCountProvider);
-    final AuthStatus status = ref.watch(authStatusProvider);
-    final AppRole role = status is SignedIn ? status.role : AppRole.employee;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications'),
@@ -82,11 +79,8 @@ class NotificationsPage extends ConsumerWidget {
                     isThreeLine: n.body != null,
                     onTap: () {
                       if (n.unread) _markRead(ref, <int>[n.id]);
-                      if (role == AppRole.employee &&
-                          n.kind == dutyOnAllowedKind) {
-                        context.go(Routes.userHome);
-                      } else if (n.requestId case final int id) {
-                        context.push(notificationTarget(role, id));
+                      if (n.requestId case final int id) {
+                        context.push(Routes.adminRequest(id));
                       }
                     },
                   );
