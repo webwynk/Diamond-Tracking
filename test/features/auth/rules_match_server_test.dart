@@ -19,6 +19,9 @@ void main() {
         'name': nameProblem,
         'phone': phoneProblem,
         'email': emailProblem,
+        'designation': designationProblem,
+        'designation_required': (String v) =>
+            designationProblem(v, required: true),
         'pin': pinProblem,
         'password': (String v) => passwordProblem(v, userCode: passwordUser),
       };

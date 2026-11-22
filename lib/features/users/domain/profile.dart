@@ -12,6 +12,7 @@ class Profile {
     required this.isActive,
     this.phone,
     this.contactEmail,
+    this.designation,
     this.hasPhoneSignedIn = false,
   });
 
@@ -21,6 +22,7 @@ class Profile {
     fullName: row['full_name'] as String,
     phone: row['phone'] as String?,
     contactEmail: row['contact_email'] as String?,
+    designation: row['designation'] as String?,
     role: AppRole.fromClaim(row['role']),
     isActive: row['is_active'] as bool? ?? false,
     hasPhoneSignedIn: row['active_device_id'] != null,
@@ -31,6 +33,9 @@ class Profile {
   final String fullName;
   final String? phone;
   final String? contactEmail;
+
+  /// The job title the admin chose, or null while none is set.
+  final String? designation;
   final AppRole role;
   final bool isActive;
 
@@ -45,6 +50,7 @@ class ProfileDraft {
     required this.fullName,
     required this.phone,
     required this.contactEmail,
+    required this.designation,
     required this.role,
     this.isActive = true,
   });
@@ -53,6 +59,9 @@ class ProfileDraft {
   final String fullName;
   final String phone;
   final String contactEmail;
+
+  /// Empty when none is chosen.
+  final String designation;
   final AppRole role;
   final bool isActive;
 }

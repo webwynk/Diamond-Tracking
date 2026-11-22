@@ -72,6 +72,7 @@ abstract final class DsIcons {
   static const IconData shieldAlert = LucideIcons.shieldAlert;
   static const IconData smartphone = LucideIcons.smartphone;
   static const IconData idCard = LucideIcons.idCard;
+  static const IconData designation = LucideIcons.briefcaseBusiness;
   static const IconData copy = LucideIcons.copy;
   static const IconData download = LucideIcons.download;
   static const IconData expandMore = LucideIcons.chevronDown;

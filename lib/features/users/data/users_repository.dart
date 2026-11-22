@@ -40,7 +40,8 @@ class SupabaseUsersRepository implements UsersRepository {
   final SupabaseClient _client;
 
   static const String _columns =
-      'id, user_code, full_name, phone, contact_email, role, is_active, active_device_id';
+      'id, user_code, full_name, phone, contact_email, designation, role, '
+      'is_active, active_device_id';
 
   @override
   Future<List<Profile>> list() async {
@@ -69,6 +70,7 @@ class SupabaseUsersRepository implements UsersRepository {
       'full_name': draft.fullName.trim(),
       'phone': draft.phone.trim(),
       'contact_email': draft.contactEmail.trim(),
+      'designation': draft.designation.trim(),
       'role': draft.role.name,
       'temp_pin': tempPin,
     });
@@ -83,6 +85,7 @@ class SupabaseUsersRepository implements UsersRepository {
       'full_name': draft.fullName.trim(),
       'phone': draft.phone.trim(),
       'contact_email': draft.contactEmail.trim(),
+      'designation': draft.designation.trim(),
       'role': draft.role.name,
       'is_active': draft.isActive,
     });

@@ -56,6 +56,23 @@ String? nameProblem(String name) {
   return n < 1 || n > 80 ? 'Enter a name (up to 80)' : null;
 }
 
+final RegExp _designation = RegExp(
+  '^[\\p{L}\\p{N}][\\p{L}\\p{M}\\p{N} &.,\'()/-]{1,39}\$',
+  unicode: true,
+);
+
+/// A designation (job title): 2 to 40 characters of letters (any script, with
+/// their marks), digits, spaces and & . , ' ( ) / -, starting with a letter or
+/// digit. [required] is true for a new employee. Same rule on the server
+/// (supabase/functions/_shared/rules.ts).
+String? designationProblem(String value, {bool required = false}) {
+  final String s = value.trim();
+  if (s.isEmpty) return required ? 'Choose a designation' : null;
+  return _designation.hasMatch(s)
+      ? null
+      : 'Use 2 to 40 letters, digits or spaces';
+}
+
 final RegExp _phone = RegExp(r'^\+?[0-9]{7,15}$');
 
 /// An optional phone number: 7 to 15 digits, with + in front if needed.

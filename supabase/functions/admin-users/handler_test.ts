@@ -17,6 +17,7 @@ const create = {
   full_name: 'Kiran Das',
   phone: '9876543210',
   contact_email: 'Kiran@Example.com',
+  designation: '  Field Assistant ',
   temp_pin: '482915',
 };
 
@@ -42,6 +43,7 @@ Deno.test('creates a user on a temporary PIN', async () => {
   const { profile } = await res.json();
   assertEquals(profile.user_code, 'DA-050');
   assertEquals(profile.contact_email, 'kiran@example.com');
+  assertEquals(profile.designation, 'Field Assistant');
   assertEquals(b.passwords.get(profile.id), '482915');
   assertEquals(b.meta.get(profile.id), { role: 'employee', must_change_password: true });
   assertEquals(b.emails.get('da-050@staff.diamondagritech.internal'), profile.id);
@@ -65,6 +67,45 @@ Deno.test('rejects bad input with a message per field', async () => {
     'temp_pin',
     'user_code',
   ]);
+});
+
+Deno.test('a new employee needs a designation; an admin may leave it out', async () => {
+  const { b } = setup();
+  const none = { ...create, designation: '' };
+  const refused = await handler(post(none, 'admin-token'), b);
+  assertEquals(refused.status, 400);
+  assertEquals(Object.keys((await refused.json()).fields), ['designation']);
+
+  const bad = await handler(post({ ...create, designation: 'Sales <b>' }, 'admin-token'), b);
+  assertEquals(bad.status, 400);
+  assertEquals(Object.keys((await bad.json()).fields), ['designation']);
+
+  const admin = await handler(post({ ...none, role: 'admin' }, 'admin-token'), b);
+  assertEquals(admin.status, 201);
+  assertEquals((await admin.json()).profile.designation, null);
+});
+
+Deno.test('a designation can be set, changed and cleared, and the log shows it', async () => {
+  const { b, empId } = setup();
+  const set = (designation: string) =>
+    handler(post({ action: 'update', id: empId, designation }, 'admin-token'), b);
+
+  assertEquals((await set(' Sales Officer ')).status, 200);
+  assertEquals(b.profiles.get(empId)!.designation, 'Sales Officer');
+  assertEquals(b.logDetails.at(-1), {
+    changes: { designation: { from: null, to: 'Sales Officer' } },
+  });
+
+  const bad = await set('x');
+  assertEquals(bad.status, 400);
+  assertEquals(Object.keys((await bad.json()).fields), ['designation']);
+  assertEquals(b.profiles.get(empId)!.designation, 'Sales Officer');
+
+  assertEquals((await set('')).status, 200);
+  assertEquals(b.profiles.get(empId)!.designation, null);
+  assertEquals(b.logDetails.at(-1), {
+    changes: { designation: { from: 'Sales Officer', to: null } },
+  });
 });
 
 Deno.test('a user ID can only be used once, in any letter case', async () => {
