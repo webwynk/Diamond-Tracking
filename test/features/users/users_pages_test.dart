@@ -261,6 +261,17 @@ void main() {
       expect(find.text('route /admin/days/1'), findsOneWidget);
     });
 
+    testWidgets('Live map opens the live map once on duty today', (
+      WidgetTester tester,
+    ) async {
+      routes.days[1] = day(1, '1');
+      routes.initialLive = <LivePosition>[at(1, '1', 1, battery: 55)];
+      await open(tester);
+      await tester.tap(find.bySemanticsLabel('Live map'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /admin/live'), findsOneWidget);
+    });
+
     testWidgets('History, Full history and Edit open their pages', (
       WidgetTester tester,
     ) async {
