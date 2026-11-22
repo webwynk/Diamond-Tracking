@@ -7,6 +7,8 @@ import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
 import 'package:diamond_tracking/features/reports/application/reports_providers.dart';
 import 'package:diamond_tracking/features/reports/data/report_pdf.dart';
 import 'package:diamond_tracking/features/reports/domain/report.dart';
+import 'package:diamond_tracking/features/reports/presentation/export_pdf_sheet.dart';
+import 'package:diamond_tracking/features/reports/presentation/report_parts.dart';
 import 'package:diamond_tracking/features/reports/presentation/reports_page.dart';
 import 'package:diamond_tracking/features/requests/domain/app_request.dart';
 import 'package:flutter/material.dart';
@@ -211,52 +213,80 @@ void main() {
       addTearDown(tester.view.reset);
     }
 
-    testWidgets('lists everyone for this month, then one person\'s days', (
+    testWidgets('totals, waiting, by person; a person opens their history', (
       WidgetTester tester,
     ) async {
       tall(tester);
       await pumpPage(tester, const ReportsPage(), overrides: overrides());
 
       expect(repo.asked.single, ReportRange.month(d(20)));
-      expect(find.text('1 Nov 2026 to 30 Nov 2026'), findsOneWidget);
-      expect(find.text('Asha Roy (DA-001)'), findsOneWidget);
-      expect(find.text('Bikash Das (DA-002)'), findsOneWidget);
-      expect(find.text('1.5 days'), findsOneWidget);
-      expect(find.textContaining('17.5 km · 4 visits'), findsOneWidget);
+      expect(find.bySemanticsLabel('Dates, 1 – 30 Nov 2026'), findsOneWidget);
+      expect(find.bySemanticsLabel('Person, Everyone'), findsOneWidget);
+      expect(find.bySemanticsLabel('Present 1'), findsOneWidget);
+      expect(find.bySemanticsLabel('Half day 1'), findsOneWidget);
+      expect(find.bySemanticsLabel('Leave 2'), findsOneWidget);
+      expect(find.bySemanticsLabel('Absent 1'), findsOneWidget);
+      expect(find.bySemanticsLabel('Duty time 18 h'), findsOneWidget);
+      expect(find.bySemanticsLabel('Distance 18 km'), findsOneWidget);
+      expect(find.bySemanticsLabel('Dealer visits 4'), findsOneWidget);
+      expect(find.text('1 day still waiting'), findsOneWidget);
+      expect(find.text('Asha Roy'), findsOneWidget);
+      expect(find.text('1.5'), findsOneWidget);
+      expect(find.text('15 h · 18 km · 4 visits'), findsOneWidget);
+      expect(find.text('3 h · 1 km · 0 visits · 1 waiting'), findsOneWidget);
 
-      await tester.tap(find.text('Asha Roy (DA-001)'));
+      await tester.tap(find.text('Asha Roy'));
       await tester.pumpAndSettle();
-      expect(find.text('Bikash Das (DA-002)'), findsNothing);
-      expect(find.text('Days (4)'), findsOneWidget);
+      expect(find.text('route /admin/users/a/days'), findsOneWidget);
+    });
 
-      await tester.tap(find.widgetWithText(FilterChip, 'Absent'));
+    testWidgets('sort by name, pick one person, Review opens requests', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      await pumpPage(tester, const ReportsPage(), overrides: overrides());
+      // By attendance: Asha (1.5) before Bikash (0).
+      expect(
+        tester.getTopLeft(find.text('Asha Roy')).dy,
+        lessThan(tester.getTopLeft(find.text('Bikash Das')).dy),
+      );
+      await tester.tap(find.bySemanticsLabel('Sort by Name'));
       await tester.pumpAndSettle();
-      expect(find.text('Days (1)'), findsOneWidget);
-      expect(find.text('3 Nov 2026'), findsOneWidget);
 
-      // A day with duty opens its route.
-      await tester.tap(find.widgetWithText(FilterChip, 'All days'));
+      await tester.tap(find.bySemanticsLabel('Person, Everyone'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('1 Nov 2026'));
+      await tester.tap(find.text('Bikash Das').last);
       await tester.pumpAndSettle();
-      expect(find.text('route /admin/days/1'), findsOneWidget);
+      expect(find.bySemanticsLabel('Person, Bikash Das'), findsOneWidget);
+      expect(find.text('Asha Roy'), findsNothing);
+      expect(find.bySemanticsLabel('Leave 1'), findsOneWidget);
+
+      await tester.tap(find.text('Review'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /admin/requests'), findsOneWidget);
     });
 
     testWidgets('last month asks for October', (WidgetTester tester) async {
       tall(tester);
       await pumpPage(tester, const ReportsPage(), overrides: overrides());
-      await tester.tap(find.text('Last month'));
+      await tester.tap(find.bySemanticsLabel('Last month'));
       await tester.pumpAndSettle();
       expect(repo.asked.last, ReportRange.month(d(1, 10)));
-      expect(find.text('1 Oct 2026 to 31 Oct 2026'), findsOneWidget);
+      expect(find.bySemanticsLabel('Dates, 1 – 31 Oct 2026'), findsOneWidget);
     });
 
     testWidgets('the PDF goes to the share sheet', (WidgetTester tester) async {
       tall(tester);
       await pumpPage(tester, const ReportsPage(), overrides: overrides());
-      await tester.tap(find.byTooltip('Download PDF'));
+      await tester.tap(find.text('Download PDF'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Summary and every day'));
+      expect(find.text('Download report'), findsOneWidget);
+      expect(find.bySemanticsLabel('1 – 30 Nov 2026'), findsOneWidget);
+      expect(find.text('Create PDF · about 1 page'), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel(RegExp('^Every day')));
+      await tester.pumpAndSettle();
+      expect(find.text('Create PDF · about 3 pages'), findsOneWidget);
+      await tester.tap(find.text('Create PDF · about 3 pages'));
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(seconds: 2)),
       );
@@ -268,6 +298,22 @@ void main() {
       expect(sharer.shared.single.$1, greaterThan(1000));
       // Written into the admin log (L84).
       expect(repo.exports.single, (ReportRange.month(d(20)), true, 2));
+      expect(find.text('Download report'), findsNothing);
+    });
+
+    testWidgets('which days can be picked for the PDF', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      await pumpPage(tester, const ReportsPage(), overrides: overrides());
+      await tester.tap(find.bySemanticsLabel('Download PDF').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('All days'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, 'Absent'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('All days'), findsNothing);
+      expect(find.text('Download report'), findsOneWidget);
     });
 
     testWidgets('a failed log entry does not stop the PDF (L84)', (
@@ -276,9 +322,9 @@ void main() {
       tall(tester);
       repo.failLog = true;
       await pumpPage(tester, const ReportsPage(), overrides: overrides());
-      await tester.tap(find.byTooltip('Download PDF'));
+      await tester.tap(find.text('Download PDF'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Summary'));
+      await tester.tap(find.text('Create PDF · about 1 page'));
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(seconds: 2)),
       );
@@ -290,7 +336,36 @@ void main() {
     testWidgets('no records says so', (WidgetTester tester) async {
       repo.people = <PersonReport>[];
       await pumpPage(tester, const ReportsPage(), overrides: overrides());
-      expect(find.text('No records in these dates.'), findsOneWidget);
+      expect(find.text('No records in these dates'), findsOneWidget);
+    });
+
+    for (final double width in <double>[360, 390, 430]) {
+      testWidgets('reports fit ${width.toInt()} wide', (
+        WidgetTester tester,
+      ) async {
+        tester.view.physicalSize = Size(width * 3, 800 * 3);
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        await pumpPage(tester, const ReportsPage(), overrides: overrides());
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.text('Download PDF'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    test('page estimate', () {
+      expect(reportPages(sample(), detail: false), 1);
+      expect(reportPages(sample(), detail: true), 3);
+    });
+
+    test('range labels', () {
+      expect(rangeLabel(ReportRange(d(1), d(21))), '1 – 21 Nov');
+      expect(rangeLabel(ReportRange(d(28, 10), d(3))), '28 Oct – 3 Nov');
+      expect(
+        rangeLabel(ReportRange(d(1), d(21)), withYear: true),
+        '1 – 21 Nov 2026',
+      );
     });
   });
 }

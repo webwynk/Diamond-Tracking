@@ -24,6 +24,7 @@ import '../features/requests/presentation/my_request_detail_page.dart';
 import '../features/requests/presentation/my_requests_page.dart';
 import '../features/requests/presentation/request_detail_page.dart';
 import '../features/routes/presentation/day_route_page.dart';
+import '../features/routes/presentation/duty_history_page.dart';
 import '../features/routes/presentation/history_page.dart';
 import '../features/routes/presentation/live_map_page.dart';
 import '../features/routes/presentation/my_map_page.dart';
@@ -322,11 +323,7 @@ StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
                       path: 'days',
                       parentNavigatorKey: rootKey,
                       builder: (BuildContext context, GoRouterState state) =>
-                          HistoryPage(
-                            userId: state.pathParameters['id'],
-                            title: 'Duty history',
-                            dayRoute: Routes.adminDay,
-                          ),
+                          DutyHistoryPage(userId: state.pathParameters['id']!),
                     ),
                   ],
                 ),
