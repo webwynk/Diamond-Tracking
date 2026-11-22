@@ -3,8 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/routes.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -18,7 +16,6 @@ import '../application/users_providers.dart';
 import '../data/users_repository.dart';
 import '../domain/profile.dart';
 import '../domain/temp_pin.dart';
-import 'duty_on_permission_card.dart';
 import 'pin_dialog.dart';
 
 /// Add a user (with a temporary PIN), or edit one when [userId] is set.
@@ -190,107 +187,11 @@ class _UserFormState extends ConsumerState<_UserForm> {
     }
   }
 
-  Future<void> _resetPassword() async {
-    final Profile user = widget.initial!;
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: Text('Reset password for ${user.fullName}?'),
-        content: const Text(
-          'Their phone is signed out, and they sign in again with a new '
-          'temporary PIN. Use this when they forgot their password or changed '
-          'phones.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Reset'),
-          ),
-        ],
-      ),
-    );
-    if (!(ok ?? false)) return;
-    final String pin = generateTempPin();
-    final bool done = await _run(
-      (UsersRepository repo) => repo.resetPin(user.id, tempPin: pin),
-    );
-    if (!done || !mounted) return;
-    await showPinDialog(
-      context,
-      title: 'Password reset',
-      userCode: user.userCode,
-      pin: pin,
-    );
-    // Refreshes "signed in on a phone" after the dialog closes.
-    ref
-      ..invalidate(usersListProvider)
-      ..invalidate(userByIdProvider(user.id));
-  }
-
-  Future<void> _releasePhone() async {
-    final Profile user = widget.initial!;
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: Text('Release ${user.fullName}\'s phone?'),
-        content: const Text(
-          'Use this when their phone is lost, broken or the app was '
-          'reinstalled. That phone is logged out, and they can log in on '
-          'another phone with the same password. A running duty carries on '
-          'there.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Release'),
-          ),
-        ],
-      ),
-    );
-    if (!(ok ?? false)) return;
-    bool held = false;
-    final bool done = await _run((UsersRepository repo) async {
-      held = await repo.releasePhone(user.id);
-    });
-    if (!done || !mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          held
-              ? 'Phone released. ${user.fullName} can log in on another phone.'
-              : 'No phone was logged in.',
-        ),
-      ),
-    );
-    ref
-      ..invalidate(usersListProvider)
-      ..invalidate(userByIdProvider(user.id));
-  }
-
   @override
   Widget build(BuildContext context) {
     final bool self = !_isNew && _isSelf;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isNew ? 'Add user' : 'Edit user'),
-        actions: <Widget>[
-          if (widget.initial case final Profile p
-              when p.role == AppRole.employee)
-            IconButton(
-              tooltip: 'Duty history',
-              icon: const Icon(Icons.calendar_month_rounded),
-              onPressed: () => context.push(Routes.adminUserDays(p.id)),
-            ),
-        ],
-      ),
+      appBar: AppBar(title: Text(_isNew ? 'Add user' : 'Edit user')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.x4),
@@ -428,45 +329,6 @@ class _UserFormState extends ConsumerState<_UserForm> {
                   isFullWidth: true,
                   onPressed: _save,
                 ),
-                if (!_isNew && !self) ...<Widget>[
-                  const SizedBox(height: AppSpacing.x8),
-                  const Divider(height: 1),
-                  const SizedBox(height: AppSpacing.x4),
-                  Text(
-                    widget.initial!.hasPhoneSignedIn
-                        ? 'Signed in on a phone now.'
-                        : 'Not signed in on any phone.',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.x4),
-                  if (widget.initial!.role == AppRole.employee &&
-                      widget.initial!.isActive) ...<Widget>[
-                    DutyOnPermissionCard(user: widget.initial!),
-                    const SizedBox(height: AppSpacing.x4),
-                    const Divider(height: 1),
-                    const SizedBox(height: AppSpacing.x4),
-                  ],
-                  if (widget.initial!.role == AppRole.employee &&
-                      widget.initial!.hasPhoneSignedIn) ...<Widget>[
-                    AppButton(
-                      label: 'Release phone',
-                      variant: AppButtonVariant.secondary,
-                      icon: const Icon(Icons.phonelink_erase_rounded, size: 18),
-                      isFullWidth: true,
-                      onPressed: _busy ? null : _releasePhone,
-                    ),
-                    const SizedBox(height: AppSpacing.x4),
-                  ],
-                  AppButton(
-                    label: 'Reset password',
-                    variant: AppButtonVariant.secondary,
-                    icon: const Icon(Icons.lock_reset_rounded, size: 18),
-                    isFullWidth: true,
-                    onPressed: _busy ? null : _resetPassword,
-                  ),
-                ],
               ],
             ),
           ),

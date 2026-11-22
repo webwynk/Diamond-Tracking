@@ -29,7 +29,8 @@ abstract final class Routes {
   static const String adminUsers = '/admin/users';
   static const String adminReports = '/admin/reports';
   static const String adminUserNew = '/admin/users/new';
-  static String adminUserEdit(String id) => '/admin/users/$id';
+  static String adminUserProfile(String id) => '/admin/users/$id';
+  static String adminUserEdit(String id) => '/admin/users/$id/edit';
   static const String adminAccount = '/admin/account';
   static const String adminChangePassword = '/admin/account/password';
   static String adminDay(int dayId) => '/admin/days/$dayId';

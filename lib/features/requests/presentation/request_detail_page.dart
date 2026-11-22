@@ -20,6 +20,7 @@ import '../../../shared/ds/ds_field.dart';
 import '../../duty/domain/duty_day.dart';
 import '../../routes/application/route_providers.dart';
 import '../../routes/domain/history_month.dart' show fullDay;
+import '../../routes/presentation/recent_days.dart';
 import '../../users/application/users_providers.dart';
 import '../../users/domain/profile.dart';
 import '../application/requests_providers.dart';
@@ -852,21 +853,6 @@ class _Last30Days extends ConsumerWidget {
 
   final AppRequest request;
 
-  static const Color _present = DsColors.primary;
-  static const Color _half = Color(0xFF7DD3FC);
-  static const Color _absent = Color(0xFFF87171);
-  static const Color _none = Color(0xFFE2E8F0);
-  static const Color _this = Color(0xFFF59E0B);
-
-  static Color _colour(DayStatus? s) => switch (s) {
-    DayStatus.present || DayStatus.onDuty => _present,
-    DayStatus.halfDay => _half,
-    DayStatus.absent => _absent,
-    DayStatus.leave => DsStatus.leave.dot,
-    DayStatus.pending => _this,
-    null => _none,
-  };
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AppRequest r = request;
@@ -925,53 +911,18 @@ class _Last30Days extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 10),
-          ExcludeSemantics(
-            child: Column(
-              children: <Widget>[
-                for (int row = 0; row < 2; row++) ...<Widget>[
-                  if (row > 0) const SizedBox(height: 4),
-                  Row(
-                    children: <Widget>[
-                      for (int i = 0; i < 15; i++) ...<Widget>[
-                        if (i > 0) const SizedBox(width: 4),
-                        Expanded(
-                          child: Container(
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: days[row * 15 + i] == r.day
-                                  ? _this
-                                  : _colour(byDay[days[row * 15 + i]]),
-                              borderRadius: BorderRadius.circular(4),
-                              boxShadow: days[row * 15 + i] == r.day
-                                  ? const <BoxShadow>[
-                                      BoxShadow(
-                                        color: DsColors.white,
-                                        spreadRadius: 2,
-                                      ),
-                                      BoxShadow(color: _this, spreadRadius: 3),
-                                    ]
-                                  : null,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
+          RecentDaysGrid(days: days, byDay: byDay, ring: r.day, fillRing: true),
           const SizedBox(height: 10),
           Wrap(
             spacing: 12,
             runSpacing: 4,
             children: <Widget>[
-              key(_present, 'Present'),
-              key(_half, 'Half'),
-              key(_absent, 'Absent'),
-              key(DsStatus.leave.dot, 'Leave'),
-              key(_none, 'No duty'),
-              key(_this, 'This request'),
+              key(RecentDayColours.present, 'Present'),
+              key(RecentDayColours.half, 'Half'),
+              key(RecentDayColours.absent, 'Absent'),
+              key(RecentDayColours.leave, 'Leave'),
+              key(RecentDayColours.none, 'No duty'),
+              key(RecentDayColours.highlight, 'This request'),
             ],
           ),
         ],
