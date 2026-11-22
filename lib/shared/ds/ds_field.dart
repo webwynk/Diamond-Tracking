@@ -408,3 +408,82 @@ class DsRuleTick extends StatelessWidget {
     );
   }
 }
+
+/// A round search box (design v2): a search icon, a hint, and a clear
+/// button once something is typed. [floating] is white with a shadow (over
+/// a map); otherwise it is grey (in a list).
+class DsSearchField extends StatefulWidget {
+  const DsSearchField({
+    required this.hint,
+    required this.onChanged,
+    this.floating = false,
+    this.height = 44,
+    super.key,
+  });
+
+  final String hint;
+  final ValueChanged<String> onChanged;
+  final bool floating;
+  final double height;
+
+  @override
+  State<DsSearchField> createState() => _DsSearchFieldState();
+}
+
+class _DsSearchFieldState extends State<DsSearchField> {
+  final TextEditingController _text = TextEditingController();
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: widget.height,
+    padding: const EdgeInsets.only(left: 14, right: 4),
+    decoration: BoxDecoration(
+      color: widget.floating ? DsColors.white : DsColors.disabled,
+      borderRadius: DsRadius.pill,
+      boxShadow: widget.floating ? DsShadow.card : null,
+    ),
+    child: Row(
+      children: <Widget>[
+        const Icon(DsIcons.search, size: 18, color: DsColors.text2),
+        const SizedBox(width: DsSpace.sm),
+        Expanded(
+          child: TextField(
+            controller: _text,
+            onChanged: (String v) {
+              setState(() {});
+              widget.onChanged(v);
+            },
+            textInputAction: TextInputAction.search,
+            style: DsText.body.copyWith(color: DsColors.ink),
+            decoration: InputDecoration(
+              hintText: widget.hint,
+              hintStyle: DsText.body.copyWith(color: DsColors.text2),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              filled: false,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        ),
+        if (_text.text.isNotEmpty)
+          IconButton(
+            tooltip: 'Clear search',
+            icon: const Icon(DsIcons.close, size: 18, color: DsColors.text2),
+            onPressed: () {
+              _text.clear();
+              setState(() {});
+              widget.onChanged('');
+            },
+          ),
+      ],
+    ),
+  );
+}

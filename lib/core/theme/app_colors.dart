@@ -108,26 +108,6 @@ abstract final class AppColors {
   static const Color infoBg = Color(0xFFE0F2FE);
 
   // ---------------------------------------------------------------------------
-  // Duty status
-  //
-  // Must match the PRD status table exactly. Used by map, lists and reports.
-  //
-  // RULE: always render the label alongside the colour. Never colour alone.
-  // ---------------------------------------------------------------------------
-
-  /// On duty, position fresh.
-  static const Color statusActive = success;
-
-  /// On duty but no update for over 5 minutes.
-  static const Color statusStale = warning;
-
-  /// Mock location flagged, or location services off.
-  static const Color statusSuspect = error;
-
-  /// No open duty session.
-  static const Color statusOff = neutral400;
-
-  // ---------------------------------------------------------------------------
   // Surfaces
   // ---------------------------------------------------------------------------
 
