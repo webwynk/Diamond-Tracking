@@ -19,6 +19,8 @@ import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/auth_status.dart';
 import '../../duty/domain/duty_day.dart';
 import '../../duty/presentation/day_status_look.dart';
+import '../../requests/application/requests_providers.dart';
+import '../../requests/domain/app_request.dart';
 import '../application/route_providers.dart';
 import '../domain/history_month.dart';
 import 'route_parts.dart' show formatKm;
@@ -55,12 +57,17 @@ class HistoryPage extends ConsumerStatefulWidget {
   const HistoryPage({
     required this.dayRoute,
     super.key,
+    this.requestRoute,
     this.userId,
     this.title = 'History',
   });
 
   /// The page to open for a day, given its id.
   final String Function(int dayId) dayRoute;
+
+  /// The page for a request, given its id. Set for the employee: a leave
+  /// day then opens its leave request. Null: leave days do not open.
+  final String Function(int requestId)? requestRoute;
 
   /// Whose days. Null: the signed-in user.
   final String? userId;
@@ -82,6 +89,9 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
         widget.userId ?? (status is SignedIn ? status.userId : null);
     if (who == null) return const SizedBox.shrink();
     final AsyncValue<List<DutyDay>> days = ref.watch(historyProvider(who));
+    final List<AppRequest> myRequests = widget.requestRoute == null
+        ? const <AppRequest>[]
+        : (ref.watch(myRequestsProvider).value ?? const <AppRequest>[]);
     final DateTime now = ref.watch(serverClockProvider).now();
     final DateTime today = Ist.dateOf(now);
     final DateTime earliest = today.subtract(const Duration(days: historyDays));
@@ -125,6 +135,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                     earliest: earliest,
                   ),
                   all,
+                  myRequests,
                   today: today,
                   now: now,
                   showWeek: index == 0,
@@ -152,7 +163,8 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
 
   List<Widget> _content(
     HistoryMonth month,
-    List<DutyDay> all, {
+    List<DutyDay> all,
+    List<AppRequest> myRequests, {
     required DateTime today,
     required DateTime now,
     required bool showWeek,
@@ -209,14 +221,31 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
         _DayCard(
           day: d,
           now: now,
-          onTap: d.dutyOnAt == null
+          onTap: d.dutyOnAt != null
+              ? () => context.push(widget.dayRoute(d.id))
+              : _leaveRequest(d, myRequests) == null
               ? null
-              : () => context.push(widget.dayRoute(d.id)),
+              : () => context.push(
+                  widget.requestRoute!(_leaveRequest(d, myRequests)!.id),
+                ),
         ),
         const SizedBox(height: 10),
       ],
     ];
   }
+}
+
+/// The approved leave request that covers a leave day, if known.
+AppRequest? _leaveRequest(DutyDay d, List<AppRequest> requests) {
+  if (d.status != DayStatus.leave) return null;
+  for (final AppRequest r in requests) {
+    if (r.kind == RequestKind.leave &&
+        r.status == RequestStatus.approved &&
+        r.dates.contains(d.day)) {
+      return r;
+    }
+  }
+  return null;
 }
 
 class _Header extends StatelessWidget {

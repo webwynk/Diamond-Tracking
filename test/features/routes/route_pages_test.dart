@@ -2,6 +2,8 @@ import 'package:diamond_tracking/core/time/clock_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
+import 'package:diamond_tracking/features/requests/application/requests_providers.dart';
+import 'package:diamond_tracking/features/requests/domain/app_request.dart';
 import 'package:diamond_tracking/features/routes/application/route_providers.dart';
 import 'package:diamond_tracking/features/routes/domain/day_route.dart';
 import 'package:diamond_tracking/features/routes/domain/geo_point.dart';
@@ -544,6 +546,43 @@ void main() {
     await tester.tap(find.textContaining('5.0 km'));
     await tester.pumpAndSettle();
     expect(find.text('route /history/day/1'), findsOneWidget);
+  });
+
+  testWidgets('a leave day in History opens its leave request', (
+    WidgetTester tester,
+  ) async {
+    routes.days[4] = day(
+      4,
+      date: DateTime.utc(2026, 11, 17),
+      status: DayStatus.leave,
+    );
+    final FakeRequestsRepository requests = FakeRequestsRepository()
+      ..requests.add(
+        AppRequest(
+          id: 77,
+          userId: 'u',
+          kind: RequestKind.leave,
+          status: RequestStatus.approved,
+          createdAt: DateTime.utc(2026, 11, 10),
+          leaveType: LeaveType.casual,
+          dates: <DateTime>[DateTime.utc(2026, 11, 17)],
+        ),
+      );
+    await pumpPage(
+      tester,
+      HistoryPage(
+        dayRoute: (int id) => '/history/day/$id',
+        requestRoute: (int id) => '/home/requests/$id',
+      ),
+      status: employee,
+      overrides: <Override>[
+        ...overrides(),
+        requestsRepositoryProvider.overrideWithValue(requests),
+      ],
+    );
+    await tester.tap(find.widgetWithText(DsStatusPill, 'On leave'));
+    await tester.pumpAndSettle();
+    expect(find.text('route /home/requests/77'), findsOneWidget);
   });
 
   testWidgets('a route with fake GPS points warns', (
