@@ -39,6 +39,7 @@ abstract final class DsIcons {
   // Actions and states
   static const IconData check = LucideIcons.check;
   static const IconData add = LucideIcons.plus;
+  static const IconData minus = LucideIcons.minus;
   static const IconData show = LucideIcons.eye;
   static const IconData hide = LucideIcons.eyeOff;
   static const IconData retry = LucideIcons.refreshCw;

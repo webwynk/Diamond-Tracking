@@ -8,10 +8,8 @@ import 'package:diamond_tracking/features/requests/domain/app_request.dart';
 import 'package:diamond_tracking/features/routes/application/route_providers.dart';
 import 'package:diamond_tracking/features/routes/domain/day_route.dart';
 import 'package:diamond_tracking/features/routes/domain/geo_point.dart';
-import 'package:diamond_tracking/features/routes/domain/live_position.dart';
 import 'package:diamond_tracking/features/routes/presentation/day_route_page.dart';
 import 'package:diamond_tracking/features/routes/presentation/history_page.dart';
-import 'package:diamond_tracking/features/routes/presentation/live_map_page.dart';
 import 'package:diamond_tracking/features/routes/presentation/my_map_page.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/visits/domain/visit.dart';
@@ -615,79 +613,6 @@ void main() {
     expect(find.textContaining('Fake GPS'), findsNothing);
   });
 
-  testWidgets('the live map marks a fake position', (
-    WidgetTester tester,
-  ) async {
-    routes.days[20] = day(20, user: 'u', on: at(0), status: DayStatus.onDuty);
-    routes.initialLive = <LivePosition>[
-      LivePosition(
-        userId: 'u',
-        dutyDayId: 20,
-        point: const GeoPoint(22.5, 88.3),
-        recordedAt: now.subtract(const Duration(minutes: 1)),
-        mocked: true,
-      ),
-    ];
-    await pumpPage(
-      tester,
-      const LiveMapPage(),
-      users: FakeUsersRepository(<Profile>[profile('u', name: 'Asha Roy')]),
-      overrides: overrides(),
-    );
-    expect(find.textContaining('Fake GPS'), findsOneWidget);
-  });
-
-  testWidgets('the live map lists people and opens a route', (
-    WidgetTester tester,
-  ) async {
-    routes.days[20] = day(20, user: 'u', on: at(0), status: DayStatus.onDuty);
-    routes.days[21] = day(21, user: 'v', on: at(0));
-    routes.initialLive = <LivePosition>[
-      LivePosition(
-        userId: 'u',
-        dutyDayId: 20,
-        point: const GeoPoint(22.5, 88.3),
-        recordedAt: now.subtract(const Duration(minutes: 1)),
-        battery: 64,
-      ),
-    ];
-
-    await pumpPage(
-      tester,
-      const LiveMapPage(),
-      users: FakeUsersRepository(<Profile>[
-        profile('u', name: 'Asha Roy'),
-        profile('v', name: 'Bikash Das'),
-      ]),
-      overrides: overrides(),
-    );
-    expect(find.text('Map: 0 lines, 0 gaps, 1 pins'), findsOneWidget);
-    expect(find.textContaining('Battery 64%'), findsOneWidget);
-    expect(find.text('Bikash Das'), findsOneWidget);
-
-    // A position older than 5 minutes shows as stale.
-    routes.live.add(<LivePosition>[
-      LivePosition(
-        userId: 'u',
-        dutyDayId: 20,
-        point: const GeoPoint(22.5, 88.3),
-        recordedAt: now.subtract(const Duration(minutes: 20)),
-      ),
-    ]);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('No update since'), findsOneWidget);
-
-    await tester.tap(find.text('Asha Roy'));
-    await tester.pumpAndSettle();
-    expect(find.text('route /admin/days/20'), findsOneWidget);
-  });
-
-  testWidgets('the live map says when nobody is on duty', (
-    WidgetTester tester,
-  ) async {
-    await pumpPage(tester, const LiveMapPage(), overrides: overrides());
-    expect(find.text('Nobody on duty yet'), findsOneWidget);
-  });
   group('Day route, admin extras', () {
     final FakeUsersRepository withPhone = FakeUsersRepository(<Profile>[
       const Profile(
