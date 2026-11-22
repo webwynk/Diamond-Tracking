@@ -11,7 +11,20 @@ import '../domain/geo_point.dart';
 import 'map_pin_icons.dart';
 
 /// What a pin on the map stands for (decides its look).
-enum PinKind { start, end, stop, visit, person, personStale }
+enum PinKind {
+  start,
+  end,
+  stop,
+  visit,
+  person,
+
+  /// Live map people: live, no update, fake GPS, finished. Their label is
+  /// the person's initials.
+  teamLive,
+  teamStale,
+  teamFake,
+  teamDone,
+}
 
 class MapPin {
   const MapPin({
@@ -105,7 +118,10 @@ class AppMapState extends ConsumerState<AppMap> {
     PinKind.stop => PinStyle.stop,
     PinKind.visit => PinStyle.visit,
     PinKind.person => PinStyle.person,
-    PinKind.personStale => PinStyle.personStale,
+    PinKind.teamLive => PinStyle.teamLive,
+    PinKind.teamStale => PinStyle.teamStale,
+    PinKind.teamFake => PinStyle.teamFake,
+    PinKind.teamDone => PinStyle.teamDone,
   };
 
   static String _iconKey(MapPin p) => '${p.kind.name}:${p.label}';

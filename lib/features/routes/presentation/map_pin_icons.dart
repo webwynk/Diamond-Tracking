@@ -24,8 +24,18 @@ enum PinStyle {
   /// Blue dot with a halo: where the person is now.
   person,
 
-  /// Amber dot with a halo: last seen more than 5 minutes ago.
-  personStale,
+  /// Live map: a round pin with the person's initials, white with a green
+  /// ring (sending live).
+  teamLive,
+
+  /// Live map: amber pin with a halo (no update for over 5 minutes).
+  teamStale,
+
+  /// Live map: red pin with a halo (the latest point was fake GPS).
+  teamFake,
+
+  /// Live map: white pin with a blue ring (duty finished, last position).
+  teamDone,
 }
 
 /// Drawn pin images, made once per look and label, then reused.
@@ -46,7 +56,13 @@ class MapPinIcons {
 
   /// Where on the picture the map point is, as a fraction (0..1).
   static Offset anchorOf(PinStyle style) => switch (style) {
-    PinStyle.stop || PinStyle.visit || PinStyle.end => const Offset(0.5, 1),
+    PinStyle.stop ||
+    PinStyle.visit ||
+    PinStyle.end ||
+    PinStyle.teamLive ||
+    PinStyle.teamStale ||
+    PinStyle.teamFake ||
+    PinStyle.teamDone => const Offset(0.5, 1),
     _ => const Offset(0.5, 0.5),
   };
 
@@ -57,7 +73,11 @@ class MapPinIcons {
     final Size size = switch (style) {
       PinStyle.stop || PinStyle.visit || PinStyle.end => const Size(32, 42),
       PinStyle.start => const Size(26, 26),
-      PinStyle.person || PinStyle.personStale => const Size(44, 44),
+      PinStyle.person => const Size(44, 44),
+      PinStyle.teamLive ||
+      PinStyle.teamStale ||
+      PinStyle.teamFake ||
+      PinStyle.teamDone => const Size(64, 68),
     };
     final ui.PictureRecorder recorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(recorder)..scale(_scale);
@@ -83,11 +103,31 @@ class MapPinIcons {
       case PinStyle.end:
         _teardrop(canvas, size, DsColors.ink);
         _label(canvas, size, '■');
+      case PinStyle.teamLive:
+        _personPin(canvas, ring: DsColors.successDot, label: label);
+      case PinStyle.teamDone:
+        _personPin(
+          canvas,
+          ring: const Color(0xFF0EA5E9),
+          text: DsColors.primary,
+          label: label,
+        );
+      case PinStyle.teamStale:
+        _personPin(
+          canvas,
+          ring: DsColors.warningDot,
+          label: label,
+          alert: true,
+        );
+      case PinStyle.teamFake:
+        _personPin(
+          canvas,
+          ring: DsColors.dangerText,
+          label: label,
+          alert: true,
+        );
       case PinStyle.person:
-      case PinStyle.personStale:
-        final Color color = style == PinStyle.person
-            ? DsColors.primary
-            : const Color(0xFFD97706);
+        const Color color = DsColors.primary;
         final Offset c = size.center(Offset.zero);
         canvas
           ..drawCircle(c, 21, Paint()..color = color.withValues(alpha: 0.14))
@@ -130,6 +170,49 @@ class MapPinIcons {
           ..strokeWidth = 2.5
           ..color = DsColors.white,
       );
+  }
+
+  /// A round pin with initials and a point at the bottom (live map). An
+  /// [alert] pin is filled with the [ring] colour, has a white edge and a
+  /// soft halo; the others are white with a coloured ring.
+  static void _personPin(
+    Canvas canvas, {
+    required Color ring,
+    required String label,
+    Color? text,
+    bool alert = false,
+  }) {
+    const Offset c = Offset(32, 30);
+    const double r = 21;
+    if (alert) {
+      canvas.drawCircle(c, 30, Paint()..color = ring.withValues(alpha: 0.22));
+    }
+    final Path tip = Path()
+      ..moveTo(c.dx - 9, c.dy + r - 4)
+      ..lineTo(c.dx, c.dy + r + 15)
+      ..lineTo(c.dx + 9, c.dy + r - 4)
+      ..close();
+    final Path body = Path()
+      ..addOval(Rect.fromCircle(center: c, radius: r))
+      ..addPath(tip, Offset.zero);
+    canvas
+      ..drawShadow(body, const Color(0x660F172A), 3, false)
+      ..drawPath(tip, Paint()..color = ring)
+      ..drawCircle(c, r, Paint()..color = alert ? DsColors.white : ring)
+      ..drawCircle(c, r - 3, Paint()..color = alert ? ring : DsColors.white);
+    final TextPainter tp = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: DsText.label.copyWith(
+          color: alert ? DsColors.white : (text ?? DsColors.successText),
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, c - Offset(tp.width / 2, tp.height / 2));
+    tp.dispose();
   }
 
   static void _label(Canvas canvas, Size size, String text) {
