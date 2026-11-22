@@ -135,7 +135,7 @@ void main() {
     // A tapped push opens the request it is about.
     push.openedController.add(const PushOpen(requestId: 5));
     await tester.pumpAndSettle();
-    expect(find.text('This request was not found.'), findsOneWidget);
+    expect(find.text('Request not found'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
 

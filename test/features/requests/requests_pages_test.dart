@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:diamond_tracking/core/links/open_link.dart';
 import 'package:diamond_tracking/core/time/clock_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
@@ -535,86 +536,6 @@ void main() {
     });
   }
 
-  testWidgets('the admin approves as half day with a note', (
-    WidgetTester tester,
-  ) async {
-    tall(tester);
-    repo.requests.add(attendance());
-    await pumpPage(
-      tester,
-      const RequestDetailPage(requestId: 5),
-      users: FakeUsersRepository(<Profile>[profile('u', name: 'Asha Roy')]),
-      overrides: overrides(),
-    );
-    expect(find.text('Asha Roy'), findsOneWidget);
-    expect(find.text('Cancel request'), findsNothing);
-    await tester.enterText(find.byType(TextField), 'Next time do duty on');
-    await tester.ensureVisible(find.text('Half day'));
-    await tester.tap(find.text('Half day'));
-    await tester.pumpAndSettle();
-    expect(repo.calls, <String>['decide:5:half_day:Next time do duty on']);
-    expect(find.text('Approved: Half day'), findsOneWidget);
-    expect(find.text('Next time do duty on'), findsOneWidget);
-  });
-
-  testWidgets('a short duty shows the worked time and links the route', (
-    WidgetTester tester,
-  ) async {
-    repo.requests.add(
-      AppRequest(
-        id: 7,
-        userId: 'u',
-        kind: RequestKind.shortDuty,
-        status: RequestStatus.pending,
-        createdAt: DateTime.utc(2026, 11, 20, 5),
-        day: DateTime.utc(2026, 11, 20),
-      ),
-    );
-    final FakeDutyRepository duty = FakeDutyRepository(
-      today: DutyDay(
-        id: 42,
-        day: DateTime.utc(2026, 11, 20),
-        status: DayStatus.pending,
-        dutyOnAt: DateTime.utc(2026, 11, 20, 1, 30),
-        dutyOffAt: DateTime.utc(2026, 11, 20, 8),
-        workedMinutes: 390,
-      ),
-    );
-    await pumpPage(
-      tester,
-      const RequestDetailPage(requestId: 7),
-      overrides: overrides(duty: duty),
-    );
-    expect(find.textContaining('6 h 30 min'), findsOneWidget);
-    for (final String b in <String>['Present', 'Half day', 'Absent']) {
-      expect(find.text(b), findsOneWidget);
-    }
-    await tester.tap(find.text('View route'));
-    await tester.pumpAndSettle();
-    expect(find.text('route /admin/days/42'), findsOneWidget);
-  });
-
-  testWidgets('the admin list shows names, waiting and all', (
-    WidgetTester tester,
-  ) async {
-    repo.requests
-      ..add(attendance())
-      ..add(attendance(id: 8, status: RequestStatus.approved));
-    await pumpPage(
-      tester,
-      const AdminRequestsPage(),
-      users: FakeUsersRepository(<Profile>[profile('u', name: 'Asha Roy')]),
-      overrides: overrides(),
-    );
-    expect(find.text('Asha Roy'), findsOneWidget);
-    await tester.tap(find.text('All'));
-    await tester.pumpAndSettle();
-    expect(find.text('Asha Roy'), findsNWidgets(2));
-    await tester.tap(find.text('Approved'));
-    await tester.pumpAndSettle();
-    expect(find.text('route /admin/requests/8'), findsOneWidget);
-  });
-
   testWidgets('a retry sends the photo already uploaded (L68)', (
     WidgetTester tester,
   ) async {
@@ -672,26 +593,310 @@ void main() {
     expect(find.text('The photo could not be loaded.'), findsNothing);
   });
 
-  testWidgets('when names cannot load, the admin list says so (L71)', (
-    WidgetTester tester,
-  ) async {
-    repo.requests.add(attendance());
-    final FakeUsersRepository users = FakeUsersRepository(<Profile>[
-      profile('u', name: 'Asha Roy'),
-    ])..listError = const SocketException('offline');
-    await pumpPage(
-      tester,
-      const AdminRequestsPage(),
-      users: users,
-      overrides: overrides(),
+  group('admin', () {
+    late FakeRouteRepository routes;
+    setUp(() => routes = FakeRouteRepository());
+    List<Override> admin({FakeDutyRepository? duty}) => <Override>[
+      ...overrides(duty: duty),
+      routeRepositoryProvider.overrideWithValue(routes),
+    ];
+    FakeUsersRepository asha() => FakeUsersRepository(<Profile>[
+      const Profile(
+        id: 'u',
+        userCode: 'EMP011',
+        fullName: 'Asha Roy',
+        role: AppRole.employee,
+        isActive: true,
+        phone: '9876543210',
+      ),
+    ]);
+    AppRequest leave({int id = 9, RequestStatus s = RequestStatus.pending}) =>
+        AppRequest(
+          id: id,
+          userId: 'u',
+          kind: RequestKind.leave,
+          status: s,
+          createdAt: DateTime.utc(2026, 11, 20, 2),
+          leaveType: LeaveType.sick,
+          dates: <DateTime>[
+            DateTime.utc(2026, 11, 24),
+            DateTime.utc(2026, 11, 25),
+            DateTime.utc(2026, 11, 26),
+          ],
+          message: 'Fever',
+          hasPhoto: true,
+          extraPhotos: 1,
+        );
+    AppRequest short() => AppRequest(
+      id: 7,
+      userId: 'u',
+      kind: RequestKind.shortDuty,
+      status: RequestStatus.pending,
+      createdAt: DateTime.utc(2026, 11, 20, 13),
+      day: DateTime.utc(2026, 11, 20),
     );
-    expect(find.text('Names could not load'), findsOneWidget);
-    expect(find.text('Unknown'), findsNothing);
-    users.listError = null;
-    await tester.tap(find.text('Retry'));
-    await tester.pumpAndSettle();
-    expect(find.text('Names could not load'), findsNothing);
-    expect(find.text('Asha Roy'), findsOneWidget);
+    FakeDutyRepository shortDay() => FakeDutyRepository(
+      today: DutyDay(
+        id: 42,
+        day: DateTime.utc(2026, 11, 20),
+        status: DayStatus.pending,
+        dutyOnAt: DateTime.utc(2026, 11, 20, 1, 30),
+        dutyOffAt: DateTime.utc(2026, 11, 20, 8),
+        workedMinutes: 390,
+      ),
+    );
+
+    testWidgets('list: waiting count, kinds, cards, Decided', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      repo.requests
+        ..add(attendance())
+        ..add(short())
+        ..add(leave())
+        ..add(attendance(id: 8, status: RequestStatus.approved));
+      await pumpPage(
+        tester,
+        const AdminRequestsPage(),
+        users: asha(),
+        overrides: admin(duty: shortDay()),
+      );
+      expect(find.text('3 waiting for you'), findsOneWidget);
+      expect(find.bySemanticsLabel('All, 3'), findsOneWidget);
+      expect(find.bySemanticsLabel('Short, 1'), findsOneWidget);
+      expect(find.text('Asha Roy'), findsNothing, reason: 'name · time');
+      expect(find.textContaining('Asha Roy'), findsNWidgets(3));
+      expect(find.text('Attendance request'), findsOneWidget);
+      expect(find.text('Sick leave'), findsOneWidget);
+      expect(find.text('"Forgot to duty on"'), findsOneWidget);
+      expect(find.textContaining('6h 30m'), findsOneWidget);
+      expect(find.text('24 – 26 Nov · 3 days'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Leave, 1'));
+      await tester.pumpAndSettle();
+      expect(find.text('Attendance request'), findsNothing);
+      expect(find.text('Sick leave'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Decided'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sick leave'), findsNothing);
+      await tester.tap(find.bySemanticsLabel('All, 1'));
+      await tester.pumpAndSettle();
+      expect(find.text('Approved'), findsOneWidget);
+      await tester.tap(find.text('Attendance request'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /admin/requests/8'), findsOneWidget);
+    });
+
+    testWidgets('list: quick Present, and Absent asks first', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      repo.requests
+        ..add(short())
+        ..add(leave());
+      await pumpPage(
+        tester,
+        const AdminRequestsPage(),
+        users: asha(),
+        overrides: admin(duty: shortDay()),
+      );
+      await tester.tap(find.bySemanticsLabel('Absent'));
+      await tester.pumpAndSettle();
+      expect(find.text('Mark Asha Roy absent?'), findsOneWidget);
+      await tester.tap(find.text('Go back'));
+      await tester.pumpAndSettle();
+      expect(repo.calls, isEmpty);
+
+      await tester.tap(find.bySemanticsLabel('Present'));
+      await tester.pumpAndSettle();
+      expect(repo.calls, <String>['decide:7:present:']);
+      expect(find.text('Saved: Present.'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Approve'));
+      await tester.pumpAndSettle();
+      expect(repo.calls.last, 'decide:9:leave:');
+    });
+
+    testWidgets('when names cannot load, the list says so (L71)', (
+      WidgetTester tester,
+    ) async {
+      repo.requests.add(attendance());
+      final FakeUsersRepository users = asha()
+        ..listError = const SocketException('offline');
+      await pumpPage(
+        tester,
+        const AdminRequestsPage(),
+        users: users,
+        overrides: admin(),
+      );
+      expect(find.text('Names could not load'), findsOneWidget);
+      expect(find.textContaining('Unknown'), findsNothing);
+      users.listError = null;
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+      expect(find.text('Names could not load'), findsNothing);
+      expect(find.textContaining('Asha Roy'), findsOneWidget);
+    });
+
+    testWidgets('detail: facts, last 30 days, half day with a note', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      repo.requests.add(attendance());
+      routes.days[1] = DutyDay(
+        id: 1,
+        userId: 'u',
+        day: DateTime.utc(2026, 11, 18),
+        status: DayStatus.present,
+      );
+      final List<Uri> opened = <Uri>[];
+      await pumpPage(
+        tester,
+        const RequestDetailPage(requestId: 5),
+        users: asha(),
+        overrides: <Override>[
+          ...admin(),
+          openLinkProvider.overrideWithValue((Uri uri) async {
+            opened.add(uri);
+            return true;
+          }),
+        ],
+      );
+      expect(find.text('Asha Roy'), findsOneWidget);
+      expect(find.text('AR'), findsOneWidget);
+      expect(find.text('Attendance request · EMP011'), findsOneWidget);
+      expect(find.text('Thu, 19 Nov 2026'), findsOneWidget);
+      expect(find.text('9:00 AM → 7:00 PM'), findsOneWidget);
+      expect(find.text('10h 00m'), findsOneWidget);
+      expect(find.text('✓ 10h met'), findsOneWidget);
+      expect(find.text('Today, 10:30 AM'), findsOneWidget);
+      expect(find.text('Forgot to duty on'), findsOneWidget);
+      expect(find.text('1 / 1'), findsOneWidget);
+      expect(find.text('1 present · 0 half · 0 absent'), findsOneWidget);
+      expect(find.text('Confirm · Present'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Call Asha Roy'));
+      await tester.pumpAndSettle();
+      expect(opened.single.toString(), 'tel:9876543210');
+
+      await tester.tap(find.bySemanticsLabel('Half day'));
+      await tester.tap(find.bySemanticsLabel('Add note'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Next time do duty on');
+      await tester.tap(find.text('Confirm · Half day'));
+      await tester.pumpAndSettle();
+      expect(repo.calls, <String>['decide:5:half_day:Next time do duty on']);
+      expect(find.text('Approved: Half day'), findsOneWidget);
+      expect(find.text('Note: Next time do duty on'), findsOneWidget);
+      expect(find.text('Your decision'), findsNothing);
+    });
+
+    testWidgets('detail: a short duty shows the day and links the route', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      repo.requests.add(short());
+      await pumpPage(
+        tester,
+        const RequestDetailPage(requestId: 7),
+        users: asha(),
+        overrides: admin(duty: shortDay()),
+      );
+      expect(find.text('7:00 AM → 1:30 PM'), findsOneWidget);
+      expect(find.text('6h 30m'), findsOneWidget);
+      expect(find.text('Under 10h'), findsOneWidget);
+      for (final String b in <String>['Present', 'Half day', 'Absent']) {
+        expect(find.bySemanticsLabel(b), findsOneWidget);
+      }
+      await tester.tap(find.text('View route'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /admin/days/42'), findsOneWidget);
+    });
+
+    testWidgets('detail: leave days, two photos, approve', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      repo.requests.add(leave());
+      await pumpPage(
+        tester,
+        const RequestDetailPage(requestId: 9),
+        users: asha(),
+        overrides: admin(),
+      );
+      expect(find.text('Sick leave · EMP011'), findsOneWidget);
+      expect(find.text('24 – 26 Nov'), findsOneWidget);
+      expect(find.text('3 days'), findsOneWidget);
+      expect(
+        find.text('Sent today, 7:30 AM · starts in 4 days'),
+        findsOneWidget,
+      );
+      expect(find.text('1 / 2'), findsOneWidget);
+      expect(find.text('Last 30 days'), findsNothing);
+      expect(find.text('Approve 3 days sick leave'), findsOneWidget);
+      expect(
+        find.text(
+          'The 3 days are marked as sick leave. Asha gets a notification.',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.bySemanticsLabel('Next photo'));
+      await tester.pumpAndSettle();
+      expect(find.text('2 / 2'), findsOneWidget);
+
+      await tester.tap(find.text('Approve 3 days sick leave'));
+      await tester.pumpAndSettle();
+      expect(repo.calls, <String>['decide:9:leave:']);
+    });
+
+    testWidgets('detail: going to the duty history', (
+      WidgetTester tester,
+    ) async {
+      repo.requests.add(attendance());
+      await pumpPage(
+        tester,
+        const RequestDetailPage(requestId: 5),
+        users: asha(),
+        overrides: admin(),
+      );
+      await tester.tap(find.bySemanticsLabel('Duty history'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /admin/users/u/days'), findsOneWidget);
+    });
+
+    for (final double width in <double>[360, 390, 430]) {
+      testWidgets('list and detail fit ${width.toInt()} wide', (
+        WidgetTester tester,
+      ) async {
+        tester.view.physicalSize = Size(width * 3, 800 * 3);
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        repo.requests
+          ..add(attendance())
+          ..add(short())
+          ..add(leave());
+        final FakeUsersRepository users = FakeUsersRepository(<Profile>[
+          profile('u', name: 'Mohammad Hasanur Rahaman Chowdhury'),
+        ]);
+        await pumpPage(
+          tester,
+          const AdminRequestsPage(),
+          users: users,
+          overrides: admin(duty: shortDay()),
+        );
+        expect(tester.takeException(), isNull);
+        for (final int id in <int>[5, 7, 9]) {
+          await pumpPage(
+            tester,
+            RequestDetailPage(requestId: id),
+            users: users,
+            overrides: admin(duty: shortDay()),
+          );
+          expect(tester.takeException(), isNull, reason: 'request $id');
+        }
+      });
+    }
   });
 
   test('request rows and error mapping', () {
