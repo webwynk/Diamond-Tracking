@@ -1,3 +1,5 @@
+import 'package:diamond_tracking/core/design/ds_icons.dart';
+import 'package:diamond_tracking/core/links/open_link.dart';
 import 'package:diamond_tracking/core/time/clock_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
@@ -9,6 +11,7 @@ import 'package:diamond_tracking/features/routes/domain/live_position.dart';
 import 'package:diamond_tracking/features/routes/presentation/day_route_page.dart';
 import 'package:diamond_tracking/features/routes/presentation/history_page.dart';
 import 'package:diamond_tracking/features/routes/presentation/live_map_page.dart';
+import 'package:diamond_tracking/features/routes/presentation/live_person_page.dart';
 import 'package:diamond_tracking/features/routes/presentation/my_map_page.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/visits/domain/visit.dart';
@@ -636,7 +639,7 @@ void main() {
 
     await tester.tap(find.text('Asha Roy'));
     await tester.pumpAndSettle();
-    expect(find.text('route /admin/days/20'), findsOneWidget);
+    expect(find.text('route /admin/live/20'), findsOneWidget);
   });
 
   testWidgets('the live map says when nobody is on duty', (
@@ -644,5 +647,149 @@ void main() {
   ) async {
     await pumpPage(tester, const LiveMapPage(), overrides: overrides());
     expect(find.text('Nobody on duty yet'), findsOneWidget);
+  });
+  group('Live map, one person', () {
+    final FakeUsersRepository people = FakeUsersRepository(<Profile>[
+      const Profile(
+        id: 'u',
+        userCode: 'EMP007',
+        fullName: 'Rahul Das',
+        role: AppRole.employee,
+        isActive: true,
+        phone: '9876543210',
+      ),
+    ]);
+
+    LivePosition position(
+      int minutesAgo, {
+      int? battery,
+      bool mocked = false,
+    }) => LivePosition(
+      userId: 'u',
+      dutyDayId: 30,
+      point: const GeoPoint(22.7, 88.5),
+      recordedAt: now.subtract(Duration(minutes: minutesAgo)),
+      battery: battery,
+      mocked: mocked,
+    );
+
+    testWidgets('live: name, status, battery, figures, pins and actions', (
+      WidgetTester tester,
+    ) async {
+      routes.days[30] = day(30, on: at(0), status: DayStatus.onDuty);
+      routes.routes[30] = route(30, addresses: const <String?>['Station Rd']);
+      routes.initialLive = <LivePosition>[position(1, battery: 64)];
+      final List<Uri> opened = <Uri>[];
+      await pumpPage(
+        tester,
+        const LivePersonPage(dayId: 30),
+        users: people,
+        overrides: <Override>[
+          ...overrides(),
+          openLinkProvider.overrideWithValue((Uri uri) async {
+            opened.add(uri);
+            return true;
+          }),
+        ],
+      );
+      expect(find.text('Rahul Das'), findsOneWidget);
+      expect(find.text('RD'), findsOneWidget);
+      expect(find.textContaining('Live'), findsWidgets);
+      expect(find.textContaining('1 min ago · since 8:30 AM'), findsOneWidget);
+      expect(find.text('64%'), findsOneWidget);
+      // Start, one stop and where he is now.
+      expect(find.text('Map: 1 lines, 0 gaps, 3 pins'), findsOneWidget);
+      expect(find.bySemanticsLabel('12.4 km'), findsOneWidget);
+      expect(find.bySemanticsLabel('5h 00m duty'), findsOneWidget);
+      expect(find.bySemanticsLabel('Stops, 1'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Call Rahul Das'));
+      await tester.pumpAndSettle();
+      expect(opened.single.toString(), 'tel:9876543210');
+
+      await tester.tap(find.text('Full route'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /admin/days/30'), findsOneWidget);
+    });
+
+    testWidgets('Stops opens the timeline and then the full route', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      routes.days[30] = day(30, on: at(0), status: DayStatus.onDuty);
+      routes.routes[30] = route(30, addresses: const <String?>['Station Rd']);
+      routes.initialLive = <LivePosition>[position(1)];
+      await pumpPage(
+        tester,
+        const LivePersonPage(dayId: 30),
+        users: people,
+        overrides: overrides(),
+      );
+      await tester.tap(find.bySemanticsLabel('Stops, 1'));
+      await tester.pumpAndSettle();
+      expect(find.text("Rahul's stops today"), findsOneWidget);
+      expect(find.text('1 stop · 0 visits · 12.4 km'), findsOneWidget);
+      expect(find.text('Station Rd'), findsOneWidget);
+      expect(find.textContaining('Phone was off'), findsOneWidget);
+
+      await tester.tap(find.text('See full day route'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /admin/days/30'), findsOneWidget);
+    });
+
+    testWidgets('an old position says no update, a fake one says so', (
+      WidgetTester tester,
+    ) async {
+      routes.days[30] = day(30, on: at(0), status: DayStatus.onDuty);
+      routes.routes[30] = route(30);
+      routes.initialLive = <LivePosition>[position(20)];
+      await pumpPage(
+        tester,
+        const LivePersonPage(dayId: 30),
+        users: people,
+        overrides: overrides(),
+      );
+      expect(find.textContaining('for 20 min · since 8:30 AM'), findsOneWidget);
+      expect(find.textContaining('No update'), findsOneWidget);
+
+      routes.live.add(<LivePosition>[position(2, mocked: true)]);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Fake GPS'), findsOneWidget);
+    });
+
+    testWidgets('after duty off: the end time, no battery', (
+      WidgetTester tester,
+    ) async {
+      routes.days[30] = day(30, on: at(0));
+      routes.routes[30] = route(30);
+      await pumpPage(
+        tester,
+        const LivePersonPage(dayId: 30),
+        users: people,
+        overrides: overrides(),
+      );
+      expect(find.textContaining('Duty off'), findsOneWidget);
+      expect(find.textContaining('at 4:30 PM'), findsOneWidget);
+      expect(find.byIcon(DsIcons.battery), findsNothing);
+      expect(find.bySemanticsLabel('8h 00m duty'), findsOneWidget);
+    });
+
+    for (final double width in <double>[360, 390, 430]) {
+      testWidgets('fits ${width.toInt()} wide', (WidgetTester tester) async {
+        tester.view.physicalSize = Size(width * 3, 800 * 3);
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        routes.days[30] = day(30, on: at(0), status: DayStatus.onDuty);
+        routes.routes[30] = route(30);
+        routes.initialLive = <LivePosition>[position(1, battery: 9)];
+        await pumpPage(
+          tester,
+          const LivePersonPage(dayId: 30),
+          users: people,
+          overrides: overrides(),
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 }

@@ -26,6 +26,7 @@ import '../features/requests/presentation/request_detail_page.dart';
 import '../features/routes/presentation/day_route_page.dart';
 import '../features/routes/presentation/history_page.dart';
 import '../features/routes/presentation/live_map_page.dart';
+import '../features/routes/presentation/live_person_page.dart';
 import '../features/routes/presentation/my_map_page.dart';
 import '../features/users/presentation/account_page.dart';
 import '../features/users/presentation/profile_page.dart';
@@ -103,6 +104,11 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         path: Routes.adminNotifications,
         builder: (BuildContext context, GoRouterState state) =>
             const NotificationsPage(),
+      ),
+      GoRoute(
+        path: '/admin/live/:dayId',
+        builder: (BuildContext context, GoRouterState state) =>
+            LivePersonPage(dayId: int.parse(state.pathParameters['dayId']!)),
       ),
       GoRoute(
         path: '/admin/days/:dayId',

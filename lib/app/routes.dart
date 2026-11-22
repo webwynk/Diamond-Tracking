@@ -33,6 +33,7 @@ abstract final class Routes {
   static const String adminAccount = '/admin/account';
   static const String adminChangePassword = '/admin/account/password';
   static String adminDay(int dayId) => '/admin/days/$dayId';
+  static String adminLivePerson(int dayId) => '/admin/live/$dayId';
   static String adminUserDays(String userId) => '/admin/users/$userId/days';
   static String adminRequest(int id) => '/admin/requests/$id';
   static const String adminNotifications = '/admin/notifications';

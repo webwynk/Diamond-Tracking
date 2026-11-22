@@ -189,7 +189,7 @@ class _LiveBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    void open(LiveRow r) => context.push(Routes.adminDay(r.day.id));
+    void open(LiveRow r) => context.push(Routes.adminLivePerson(r.day.id));
     return Column(
       children: <Widget>[
         Expanded(
@@ -206,8 +206,8 @@ class _LiveBody extends StatelessWidget {
                     title: r.name,
                     snippet: p.mocked
                         ? 'FAKE GPS at ${IstFormat.time(p.recordedAt)}. '
-                              'Tap for route.'
-                        : 'At ${IstFormat.time(p.recordedAt)}. Tap for route.',
+                              'Tap for details.'
+                        : 'At ${IstFormat.time(p.recordedAt)}. Tap for details.',
                     onTap: () => open(r),
                   ),
             ],
