@@ -499,7 +499,7 @@ void main() {
       ];
       await pumpPage(
         tester,
-        const DayRoutePage(dayId: 7, personName: 'Asha Roy'),
+        const DayRoutePage(dayId: 7),
         visits: visits,
         overrides: <Override>[
           routeRepositoryProvider.overrideWithValue(routes),
@@ -508,8 +508,11 @@ void main() {
         ],
       );
 
-      expect(find.text('Visits (2)'), findsOneWidget);
-      expect(find.textContaining('no location'), findsOneWidget);
+      // No route: the visits sit on the timeline away from a stop.
+      expect(find.textContaining('· gallery'), findsOneWidget);
+      await tester.tap(find.text('Visits · 2'));
+      await tester.pumpAndSettle();
+      expect(find.text('Away from a stop'), findsNWidgets(2));
       // The list asks for small photos only (L57).
       expect(visits.photosAsked.toSet(), <String>{'v1:small', 'v2:small'});
       await tester.tap(find.text('Krishi Kendra'));

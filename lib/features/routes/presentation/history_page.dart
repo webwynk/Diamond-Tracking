@@ -18,10 +18,10 @@ import '../../../shared/ds/ds_feedback.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/auth_status.dart';
 import '../../duty/domain/duty_day.dart';
-import '../../requests/domain/app_request.dart';
+import '../../duty/presentation/day_status_look.dart';
 import '../application/route_providers.dart';
 import '../domain/history_month.dart';
-import 'day_route_view.dart' show formatKm;
+import 'route_parts.dart' show formatKm;
 
 /// Which days the list shows.
 enum _Filter {
@@ -510,7 +510,7 @@ class _WeekDay extends StatelessWidget {
     return Semantics(
       label:
           '${DateFormat('EEEE d').format(date)}'
-          '${d == null ? '' : ', ${_statusText(d)}'}',
+          '${d == null ? '' : ', ${dayStatusText(d)}'}',
       excludeSemantics: true,
       child: Column(
         children: <Widget>[
@@ -549,7 +549,7 @@ class _WeekDay extends StatelessWidget {
             height: 6,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: d == null ? Colors.transparent : _status(d).dot,
+              color: d == null ? Colors.transparent : dayStatusTone(d).dot,
             ),
           ),
         ],
@@ -569,7 +569,7 @@ class _DayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DsStatus s = _status(day);
+    final DsStatus s = dayStatusTone(day);
     final bool leave = day.status == DayStatus.leave;
     final Duration? length = dutyLength(day, now);
     final DateTime? on = day.dutyOnAt;
@@ -638,7 +638,7 @@ class _DayCard extends StatelessWidget {
                         Flexible(
                           child: DsStatusPill(
                             status: s,
-                            label: _statusText(day),
+                            label: dayStatusText(day),
                           ),
                         ),
                         const Spacer(),
@@ -681,19 +681,3 @@ class _DayCard extends StatelessWidget {
     );
   }
 }
-
-DsStatus _status(DutyDay d) => switch (d.status) {
-  DayStatus.onDuty => DsStatus.onDuty,
-  DayStatus.present => DsStatus.present,
-  DayStatus.halfDay => DsStatus.halfDay,
-  DayStatus.absent => DsStatus.absent,
-  DayStatus.pending => DsStatus.waiting,
-  DayStatus.leave =>
-    d.leaveType == LeaveType.sick ? DsStatus.sick : DsStatus.leave,
-};
-
-String _statusText(DutyDay d) => switch (d.status) {
-  DayStatus.onDuty => 'On duty now',
-  DayStatus.leave => d.leaveType?.label ?? 'On leave',
-  _ => d.status.label,
-};

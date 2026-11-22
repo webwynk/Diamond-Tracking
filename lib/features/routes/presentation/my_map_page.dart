@@ -23,7 +23,7 @@ import '../domain/day_route.dart';
 import '../domain/geo_point.dart';
 import 'app_map.dart';
 import 'day_pins.dart';
-import 'day_route_view.dart' show FakeGpsWarning, formatKm;
+import 'route_parts.dart';
 
 /// The employee's Map tab (design v2, My map): today's route on a full
 /// screen map, with a floating title, zoom buttons and a card with the
