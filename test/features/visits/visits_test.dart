@@ -517,7 +517,8 @@ void main() {
       expect(visits.photosAsked.toSet(), <String>{'v1:small', 'v2:small'});
       await tester.tap(find.text('Krishi Kendra'));
       await tester.pumpAndSettle();
-      expect(find.text('Camera photo at 22.50000, 88.30000'), findsOneWidget);
+      expect(find.text('Place saved'), findsOneWidget);
+      expect(find.text('22.50000, 88.30000'), findsOneWidget);
       // The visit page shows the full photo.
       expect(visits.photosAsked, contains('v1'));
     });

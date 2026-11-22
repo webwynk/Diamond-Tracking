@@ -7,6 +7,7 @@ import '../../../core/design/ds_text.dart';
 import '../../../core/time/ist_format.dart';
 import '../data/visit_outbox.dart';
 import '../domain/visit.dart';
+import 'visit_detail_page.dart';
 import 'visit_widgets.dart';
 
 /// The line under a visit's store name (design v2): "8:12 AM · camera
@@ -45,13 +46,7 @@ class VisitTimelineRow extends StatelessWidget {
     thumbnail: visit.showsPhoto
         ? VisitPhoto(visitId: visit.id, small: true)
         : const _ThumbIcon(icon: _storeIcon),
-    onTap:
-        onTap ??
-        () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => VisitDetailPage(visit: visit),
-          ),
-        ),
+    onTap: onTap ?? () => openVisit(context, visit),
   );
 }
 

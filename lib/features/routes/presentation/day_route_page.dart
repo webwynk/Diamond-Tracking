@@ -26,6 +26,7 @@ import '../../users/application/users_providers.dart';
 import '../../users/domain/profile.dart';
 import '../../visits/application/visits_providers.dart';
 import '../../visits/domain/visit.dart';
+import '../../visits/presentation/visit_detail_page.dart';
 import '../../visits/presentation/visit_widgets.dart';
 import '../application/route_providers.dart';
 import '../domain/day_route.dart';
@@ -770,9 +771,6 @@ int? stopOfVisit(Visit v, List<RouteStop> stops) {
   return null;
 }
 
-void _openVisit(BuildContext context, Visit v) => Navigator.of(context)
-    .push(MaterialPageRoute<void>(builder: (_) => VisitDetailPage(visit: v)));
-
 /// The day in time order: duty on, stops (with their visits), visits away
 /// from a stop, holes in the route, and duty off or "Now".
 class DayTimeline extends StatelessWidget {
@@ -1180,7 +1178,7 @@ class _VisitRow extends StatelessWidget {
     borderRadius: DsRadius.medium,
     clipBehavior: Clip.antiAlias,
     child: InkWell(
-      onTap: () => _openVisit(context, visit),
+      onTap: () => openVisit(context, visit),
       child: Padding(
         padding: const EdgeInsets.all(DsSpace.sm),
         child: Row(
@@ -1316,7 +1314,7 @@ class _VisitCard extends StatelessWidget {
         borderRadius: DsRadius.large,
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => _openVisit(context, visit),
+          onTap: () => openVisit(context, visit),
           child: Padding(
             padding: const EdgeInsets.all(DsSpace.sm),
             child: Column(

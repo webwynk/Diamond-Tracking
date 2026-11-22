@@ -76,6 +76,10 @@ dependencies:
   # round ends. Decided 2026-11-21.
   lucide_icons_flutter: ^4.0.3
 
+  # Opens Google Maps at a visit's place (Visit detail, design v2). Free:
+  # it only opens the Maps app with a link, no paid Google web service.
+  url_launcher: ^6.3.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
