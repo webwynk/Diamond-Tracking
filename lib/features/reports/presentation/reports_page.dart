@@ -718,7 +718,7 @@ class _PersonRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final PersonReport p = person;
     final DsStatus t = _tints[index % _tints.length];
-    final int leave = p.sickLeave + p.casualLeave;
+    final int leave = p.sickLeave;
     final String line = <String>[
       '${p.workedMinutes ~/ 60} h',
       '${(p.distanceM / 1000).round()} km',

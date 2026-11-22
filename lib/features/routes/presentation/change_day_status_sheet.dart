@@ -20,8 +20,7 @@ enum DayChoice {
   present('Present', DayStatus.present, null),
   halfDay('Half day', DayStatus.halfDay, null),
   absent('Absent', DayStatus.absent, null),
-  sick('Sick leave', DayStatus.leave, LeaveType.sick),
-  casual('Casual leave', DayStatus.leave, LeaveType.casual);
+  sick('Sick leave', DayStatus.leave, LeaveType.sick);
 
   const DayChoice(this.label, this.status, this.leave);
 
@@ -34,7 +33,7 @@ enum DayChoice {
     DayStatus.present => present,
     DayStatus.halfDay => halfDay,
     DayStatus.absent => absent,
-    DayStatus.leave => day.leaveType == LeaveType.sick ? sick : casual,
+    DayStatus.leave => sick,
     DayStatus.onDuty || DayStatus.pending => null,
   };
 }

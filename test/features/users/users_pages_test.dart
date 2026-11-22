@@ -79,7 +79,7 @@ void main() {
         3,
         '3',
         status: DayStatus.leave,
-        leave: LeaveType.casual,
+        leave: LeaveType.sick,
         duty: false,
       );
       routes.days[4] = day(4, '4', status: DayStatus.present);
@@ -116,7 +116,7 @@ void main() {
       }
       expect(find.text('Live · since 7:00 AM'), findsOneWidget);
       expect(find.text('No update · 12 min'), findsOneWidget);
-      expect(find.text('Casual leave today'), findsOneWidget);
+      expect(find.text('Sick leave today'), findsOneWidget);
       expect(find.text('Duty off 12:30 PM'), findsOneWidget);
       expect(find.text('No duty on yet'), findsOneWidget);
       expect(find.text('You'), findsOneWidget);

@@ -139,7 +139,7 @@ Widget gallery() {
                   onTap: () {},
                 ),
                 const DsListRow(
-                  title: 'Casual leave · 17 Nov',
+                  title: 'Sick leave · 17 Nov',
                   subtitle: '1 day · sent 12 Nov',
                   icon: DsIcons.history,
                   status: DsStatus.leave,

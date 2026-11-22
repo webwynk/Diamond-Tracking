@@ -29,9 +29,11 @@ enum RequestStatus {
       values.firstWhere((RequestStatus s) => s.wire == v);
 }
 
+/// Sick leave is the only kind (owner, 2026-11-23: casual leave removed).
+/// The database refuses any other (requests_sick_leave_only and
+/// duty_days_sick_leave_only).
 enum LeaveType {
-  sick('sick', 'Sick leave'),
-  casual('casual', 'Casual leave');
+  sick('sick', 'Sick leave');
 
   const LeaveType(this.wire, this.label);
 

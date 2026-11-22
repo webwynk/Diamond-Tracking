@@ -55,7 +55,7 @@ List<PersonReport> sample() => buildReports(
     day(1, 'a', 1, DayStatus.present, minutes: 610, metres: 12400, visits: 3),
     day(2, 'a', 2, DayStatus.halfDay, minutes: 300, metres: 5100, visits: 1),
     day(4, 'a', 4, DayStatus.leave, leave: LeaveType.sick),
-    day(5, 'b', 1, DayStatus.leave, leave: LeaveType.casual),
+    day(5, 'b', 1, DayStatus.leave, leave: LeaveType.sick),
     day(6, 'b', 2, DayStatus.pending, minutes: 200, metres: 900),
   ],
 );
@@ -70,16 +70,13 @@ void main() {
       ]);
       final PersonReport a = r.first;
       expect(a.days.map((ReportDay x) => x.day.day), <int>[1, 2, 3, 4]);
-      expect(
-        (a.present, a.halfDays, a.absent, a.sickLeave, a.casualLeave),
-        (1, 1, 1, 1, 0),
-      );
+      expect((a.present, a.halfDays, a.absent, a.sickLeave), (1, 1, 1, 1));
       expect(formatDays(a.attendance), '1.5');
       expect(a.workedMinutes, 910);
       expect(a.distanceM, 17500);
       expect(a.visits, 4);
       expect(r[1].waiting, 1);
-      expect(r[1].casualLeave, 1);
+      expect(r[1].sickLeave, 1);
       expect(formatDays(r[1].attendance), '0');
     });
 
@@ -126,14 +123,14 @@ void main() {
         'user_id': 'a',
         'day': '2026-11-04',
         'status': 'leave',
-        'leave_type': 'casual',
+        'leave_type': 'sick',
         'duty_on_at': null,
         'duty_off_at': null,
         'end_reason': null,
         'worked_minutes': null,
         'distance_m': null,
       }, visits: 2);
-      expect((r.day, r.statusLabel, r.visits), (d(4), 'Casual leave', 2));
+      expect((r.day, r.statusLabel, r.visits), (d(4), 'Sick leave', 2));
     });
   });
 

@@ -71,7 +71,7 @@ class DutyDay {
   final int? workedMinutes;
   final int? distanceM;
 
-  /// Sick or casual, on a leave day.
+  /// Sick, on a leave day (the only kind of leave).
   final LeaveType? leaveType;
 
   /// Set when the row was read with its user (admin lists).

@@ -158,7 +158,7 @@ class _NewRequestTiles extends StatelessWidget {
         child: _NewTile(
           icon: DsIcons.history,
           title: 'Leave',
-          caption: 'Sick or casual',
+          caption: 'Sick leave',
           background: DsStatus.leave.tint,
           foreground: const Color(0xFF4C1D95),
           captionColor: DsStatus.leave.text,
@@ -354,10 +354,7 @@ String myRequestTitle(AppRequest r) {
 (IconData, DsStatus) requestKindLook(AppRequest r) => switch (r.kind) {
   RequestKind.shortDuty => (DsIcons.clock, DsStatus.waiting),
   RequestKind.attendance => (DsIcons.attendance, DsStatus.onDuty),
-  RequestKind.leave =>
-    r.leaveType == LeaveType.sick
-        ? (DsIcons.sickLeave, DsStatus.sick)
-        : (DsIcons.casualLeave, DsStatus.leave),
+  RequestKind.leave => (DsIcons.sickLeave, DsStatus.sick),
 };
 
 /// One sent request: type icon, title, what it is, status pill; waiting

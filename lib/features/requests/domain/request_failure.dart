@@ -13,7 +13,9 @@ enum RequestFailure {
   alreadyRequested('You already have a request waiting for that day.'),
   photoRequired('Add a photo.'),
   messageRequired('Write a message.'),
-  invalidDates('Pick dates from the last 7 days up to 90 days ahead.'),
+  invalidDates('Pick up to 31 days, from today up to 90 days ahead.'),
+  leaveFromToday('Leave can be asked for today or later, not past days.'),
+  sickLeaveOnly('Only sick leave can be asked for. Update the app.'),
   notCancellable('This request is already decided.'),
   alreadyDecided('Another admin already decided this request.'),
   dayHasDuty(
@@ -76,6 +78,10 @@ RequestFailure mapRequestError(Object error) {
     'invalid_photo': RequestFailure.photoRequired,
     'message_required': RequestFailure.messageRequired,
     'invalid_dates': RequestFailure.invalidDates,
+    'leave_from_today': RequestFailure.leaveFromToday,
+    // Also matches the database checks requests_sick_leave_only and
+    // duty_days_sick_leave_only (an old app sending casual leave).
+    'sick_leave_only': RequestFailure.sickLeaveOnly,
     'request_not_cancellable': RequestFailure.notCancellable,
     'request_already_decided': RequestFailure.alreadyDecided,
     'day_has_duty': RequestFailure.dayHasDuty,

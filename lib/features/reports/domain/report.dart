@@ -150,10 +150,6 @@ class PersonReport {
     (ReportDay d) =>
         d.status == DayStatus.leave && d.leaveType == LeaveType.sick,
   );
-  int get casualLeave => _count(
-    (ReportDay d) =>
-        d.status == DayStatus.leave && d.leaveType == LeaveType.casual,
-  );
   int get waiting => _count(StatusFilter.waiting.matches);
 
   /// Present counts 1, half day counts 0.5.

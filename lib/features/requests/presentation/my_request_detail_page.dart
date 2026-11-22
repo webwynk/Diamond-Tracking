@@ -17,7 +17,6 @@ import '../application/requests_providers.dart';
 import '../data/requests_repository.dart';
 import '../domain/app_request.dart';
 import '../domain/request_failure.dart';
-import 'leave_request_page.dart' show leaveTone;
 import 'my_requests_page.dart' show requestKindLook, requestStatusLook;
 
 /// "Request" (design v2): one of the employee's own requests, where it
@@ -175,7 +174,7 @@ class _TopCard extends StatelessWidget {
       RequestKind.shortDuty => 'Short duty',
     };
     final Color dayLabel = r.kind == RequestKind.leave && r.leaveType != null
-        ? leaveTone(r.leaveType!).text
+        ? DsStatus.sick.text
         : tone.text;
     return Container(
       padding: const EdgeInsets.all(18),

@@ -96,15 +96,15 @@ void main() {
     expect(session.isActiveAt(ist(23)), isFalse);
   });
 
-  test('a leave day reads sick or casual from the server', () {
+  test('a leave day reads its leave type from the server', () {
     final DutyDay day = DutyDay.fromJson(<String, dynamic>{
       'id': 1,
       'day': '2026-11-20',
       'status': 'leave',
-      'leave_type': 'casual',
+      'leave_type': 'sick',
       'distance_m': null,
     });
-    expect(day.leaveType, LeaveType.casual);
+    expect(day.leaveType, LeaveType.sick);
     expect(
       DutyDay.fromJson(<String, dynamic>{
         'id': 2,

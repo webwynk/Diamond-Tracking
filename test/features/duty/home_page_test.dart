@@ -394,7 +394,7 @@ void main() {
     expect(find.text('Battery 15%'), findsOneWidget);
   });
 
-  testWidgets('on leave shows sick or casual', (WidgetTester tester) async {
+  testWidgets('on leave shows sick leave', (WidgetTester tester) async {
     repo.today = DutyDay(
       id: 6,
       day: DateTime.utc(2026, 11, 20),
