@@ -191,6 +191,14 @@ class FakeUsersRepository implements UsersRepository {
   }
 
   @override
+  Future<void> delete(String id, {required String userCode}) async {
+    calls.add('delete:$id:$userCode');
+    final Exception? f = failWith;
+    if (f != null) throw f;
+    users.removeWhere((Profile p) => p.id == id);
+  }
+
+  @override
   Future<bool> releasePhone(String id) async {
     calls.add('releasePhone:$id');
     final Exception? f = failWith;

@@ -62,6 +62,10 @@ export interface Backend {
     fullName: string,
   ): Promise<string | 'email_taken'>;
   deleteAuthUser(id: string): Promise<void>;
+  /** Deletes the person and all their data in one transaction, and queues
+   * their photos for the nightly purge. Returns how many photos were queued,
+   * or 'not_found'. */
+  deleteUser(id: string): Promise<number | 'not_found'>;
   insertProfile(p: NewProfile): Promise<'ok' | 'code_taken'>;
   updateProfile(id: string, changes: ProfileChanges): Promise<Profile>;
   /** Sets the password. With [mustChange] it also sets the "must change
@@ -76,10 +80,11 @@ export interface Backend {
   revokeSessions(id: string): Promise<void>;
   storeResetCode(id: string, code: string): Promise<boolean>;
   useResetCode(id: string, code: string): Promise<boolean>;
+  /** [target] is null when the person no longer exists (a deleted user). */
   logAdmin(
     adminId: string,
     action: string,
-    target: string,
+    target: string | null,
     details: Record<string, unknown>,
   ): Promise<void>;
   /** Stops of a day without an address, or 'not_allowed' for this caller. */
@@ -183,7 +188,16 @@ export function supabaseBackend(): Backend {
       return data.user.id;
     },
     async deleteAuthUser(id) {
-      await db.auth.admin.deleteUser(id);
+      const { error } = await db.auth.admin.deleteUser(id);
+      if (error) throw new Error(error.message);
+    },
+    async deleteUser(id) {
+      const { data, error } = await db.rpc('svc_delete_user', { p_user: id });
+      if (error) {
+        if (/user_not_found/.test(error.message)) return 'not_found';
+        throw new Error(error.message);
+      }
+      return typeof data === 'number' ? data : 0;
     },
     async insertProfile(p) {
       const { error } = await db.from('profiles').insert(p);

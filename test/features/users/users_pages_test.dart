@@ -12,6 +12,7 @@ import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/users/presentation/employee_profile_page.dart';
 import 'package:diamond_tracking/features/users/presentation/user_form_page.dart';
 import 'package:diamond_tracking/features/users/presentation/users_page.dart';
+import 'package:diamond_tracking/shared/ds/ds_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -356,6 +357,102 @@ void main() {
       await tester.tap(find.text('Take back'));
       await tester.pumpAndSettle();
       expect(users.calls, contains('revokeDutyOn:1'));
+    });
+
+    testWidgets('delete user: type the ID, then everything goes', (
+      WidgetTester tester,
+    ) async {
+      final FakeUsersRepository users = await open(tester);
+      await tester.tap(find.bySemanticsLabel(RegExp('^Delete user')));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete Asha Roy?'), findsOneWidget);
+      expect(find.text('Routes, visits and photos'), findsOneWidget);
+      final Finder delete = find.widgetWithText(DsButton, 'Delete permanently');
+      expect(tester.widget<DsButton>(delete).onPressed, isNull);
+
+      await tester.enterText(find.byType(TextField).last, 'EMP002');
+      await tester.pump();
+      expect(tester.widget<DsButton>(delete).onPressed, isNull);
+      await tester.enterText(find.byType(TextField).last, ' emp001 ');
+      await tester.pump();
+      await tester.tap(delete);
+      await tester.pumpAndSettle();
+      expect(users.calls, contains('delete:1: emp001 '));
+      expect(users.users, isEmpty);
+      expect(find.text('route /admin/users'), findsOneWidget);
+      expect(find.text('Asha Roy deleted'), findsOneWidget);
+    });
+
+    testWidgets('delete user: a refusal shows on the field and keeps them', (
+      WidgetTester tester,
+    ) async {
+      final FakeUsersRepository users = await open(tester);
+      users.failWith = AuthFailure.network;
+      await tester.tap(find.bySemanticsLabel(RegExp('^Delete user')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, 'EMP001');
+      await tester.pump();
+      await tester.tap(find.text('Delete permanently'));
+      await tester.pumpAndSettle();
+      expect(find.text(AuthFailure.network.message), findsOneWidget);
+      expect(find.text('Delete Asha Roy?'), findsOneWidget);
+      expect(users.users, hasLength(1));
+    });
+
+    testWidgets('delete user: turn off instead, or cancel', (
+      WidgetTester tester,
+    ) async {
+      final FakeUsersRepository users = await open(tester);
+      await tester.tap(find.bySemanticsLabel(RegExp('^Delete user')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete Asha Roy?'), findsNothing);
+      expect(users.calls, isEmpty);
+
+      await tester.tap(find.bySemanticsLabel(RegExp('^Delete user')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Turn off instead'));
+      await tester.pumpAndSettle();
+      expect(users.calls, <String>['update:1:Asha Roy:false']);
+      expect(users.users.single.isActive, isFalse);
+    });
+
+    testWidgets('the delete sheet fits 360 wide', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(360 * 3, 740 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await open(
+        tester,
+        tall: false,
+        user: const Profile(
+          id: '1',
+          userCode: 'EMP0123456789012345',
+          fullName: 'Mohammad Hasanur Rahaman Chowdhury',
+          role: AppRole.employee,
+          isActive: true,
+        ),
+      );
+      await tester.ensureVisible(find.text('Delete user'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete user'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Turn off instead'), findsOneWidget);
+    });
+
+    testWidgets('no delete on your own page', (WidgetTester tester) async {
+      await open(
+        tester,
+        user: profile(
+          'admin1',
+          code: 'ADMIN01',
+          name: 'Boss',
+          role: AppRole.admin,
+        ),
+      );
+      expect(find.bySemanticsLabel(RegExp('^Delete user')), findsNothing);
+      expect(find.text('Edit details'), findsOneWidget);
     });
 
     testWidgets('a refused permit says why', (WidgetTester tester) async {

@@ -6,6 +6,10 @@
 //   POST { action: "update", id, full_name?, phone?, contact_email?,
 //          designation? ("" clears it), role?, is_active? }       -> 200 { profile }
 //   POST { action: "reset_pin", id, temp_pin }                    -> 200 { ok }
+//   POST { action: "delete", id, user_code }                       -> 200 { ok }
+//        Deletes the person and all their data for good. user_code is the
+//        ID the admin typed to confirm; it must be the person's (any case).
+//        An admin cannot delete themselves.
 //
 // Authorization: an active admin's access token. Every action is logged with
 // the admin's id; an update logs each changed field as { from, to }. Never
@@ -46,6 +50,8 @@ export async function handler(req: Request, b: Backend): Promise<Response> {
       return update(body, admin, b);
     case 'reset_pin':
       return resetPin(body, admin, b);
+    case 'delete':
+      return deleteUser(body, admin, b);
     default:
       return reply(400, { error: 'unknown_action' });
   }
@@ -225,6 +231,41 @@ async function resetPin(body: Json, admin: Profile, b: Backend): Promise<Respons
   } catch (e) {
     console.error('admin-users reset_pin: sign-out failed', e instanceof Error ? e.message : e);
     return reply(500, { error: 'reset_incomplete' });
+  }
+  return reply(200, { ok: true });
+}
+
+async function deleteUser(body: Json, admin: Profile, b: Backend): Promise<Response> {
+  const id = str(body, 'id');
+  if (!UUID.test(id)) return reply(400, { error: 'validation_failed' });
+  const target = await b.profile(id);
+  if (!target) return reply(404, { error: 'user_not_found' });
+  if (id === admin.id) return reply(409, { error: 'cannot_change_own_access' });
+  if (str(body, 'user_code').toLowerCase() !== target.user_code.toLowerCase()) {
+    return reply(400, {
+      error: 'validation_failed',
+      fields: { user_code: `Type ${target.user_code} to confirm` },
+    });
+  }
+
+  const photos = await b.deleteUser(id);
+  if (photos === 'not_found') return reply(404, { error: 'user_not_found' });
+  // The person is gone, so the entry names them in its details only. The
+  // delete is done either way, so a failed log entry is not an error for
+  // the admin.
+  try {
+    await b.logAdmin(admin.id, 'delete_user', null, {
+      user_id: id,
+      user_code: target.user_code,
+      full_name: target.full_name,
+      role: target.role,
+      photos_queued: photos,
+    });
+  } catch (e) {
+    console.error(
+      `admin-users delete: ${target.user_code} deleted, log entry failed:`,
+      e instanceof Error ? e.message : e,
+    );
   }
   return reply(200, { ok: true });
 }

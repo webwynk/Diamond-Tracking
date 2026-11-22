@@ -16,6 +16,7 @@ type FailingCall =
   | 'setPassword'
   | 'revokeSessions'
   | 'deleteAuthUser'
+  | 'deleteUser'
   | 'noteSignedPhoto';
 
 export class FakeBackend implements Backend {
@@ -25,7 +26,11 @@ export class FakeBackend implements Backend {
   passwords = new Map<string, string>();
   emails = new Map<string, string>(); // auth email -> id
   revoked: string[] = [];
-  log: { admin: string; action: string; target: string }[] = [];
+  log: { admin: string; action: string; target: string | null }[] = [];
+  /** Photos each person has, for deleteUser. */
+  photos = new Map<string, string[]>();
+  /** Photos deleteUser queued for the purge. */
+  queuedPhotos: string[] = [];
   /** The details saved with each admin log entry, in the same order. */
   logDetails: Record<string, unknown>[] = [];
   /** Makes the next call of that name fail, like a dropped connection. */
@@ -99,6 +104,19 @@ export class FakeBackend implements Backend {
     for (const [e, i] of this.emails) if (i === id) this.emails.delete(e);
     this.meta.delete(id);
     return Promise.resolve();
+  }
+  deleteUser(id: string) {
+    if (this.fails('deleteUser')) return Promise.reject(new Error('db down'));
+    if (!this.profiles.has(id)) return Promise.resolve('not_found' as const);
+    const photos = this.photos.get(id) ?? [];
+    this.queuedPhotos.push(...photos);
+    this.photos.delete(id);
+    this.profiles.delete(id);
+    for (const [t, i] of this.tokens) if (i === id) this.tokens.delete(t);
+    for (const [e, i] of this.emails) if (i === id) this.emails.delete(e);
+    this.meta.delete(id);
+    this.passwords.delete(id);
+    return Promise.resolve(photos.length);
   }
   insertProfile(p: NewProfile) {
     if (this.failInsert) return Promise.reject(new Error('db down'));
@@ -212,7 +230,7 @@ export class FakeBackend implements Backend {
     this.droppedTokens.push(...tokens);
     return Promise.resolve();
   }
-  logAdmin(admin: string, action: string, target: string, details: Record<string, unknown>) {
+  logAdmin(admin: string, action: string, target: string | null, details: Record<string, unknown>) {
     this.log.push({ admin, action, target });
     this.logDetails.push(details);
     return Promise.resolve();

@@ -19,6 +19,10 @@ abstract interface class UsersRepository {
   Future<Profile> update(String id, ProfileDraft draft);
   Future<void> resetPin(String id, {required String tempPin});
 
+  /// Deletes the person and all their data for good. [userCode] is the user
+  /// ID the admin typed to confirm; the server checks it.
+  Future<void> delete(String id, {required String userCode});
+
   /// Signs [id] out of their phone and frees the account for another phone,
   /// without changing the password. False if no phone held it.
   Future<bool> releasePhone(String id);
@@ -98,6 +102,15 @@ class SupabaseUsersRepository implements UsersRepository {
       'action': 'reset_pin',
       'id': id,
       'temp_pin': tempPin,
+    });
+  }
+
+  @override
+  Future<void> delete(String id, {required String userCode}) async {
+    await _invoke(<String, Object?>{
+      'action': 'delete',
+      'id': id,
+      'user_code': userCode.trim(),
     });
   }
 
