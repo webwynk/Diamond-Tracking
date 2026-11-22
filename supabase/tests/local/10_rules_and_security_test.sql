@@ -2191,6 +2191,7 @@ declare
   u constant uuid := '00000000-0000-0000-0000-000000000020';
   d bigint;
   n integer;
+  req bigint;
 begin
   insert into public.duty_days (user_id, day, status)
   values (u, (now() at time zone 'Asia/Kolkata')::date - 3, 'absent') returning id into d;
@@ -2202,6 +2203,16 @@ begin
   values (u, 'leave', 'sick', array[(now() at time zone 'Asia/Kolkata')::date + 9],
           'Fever', 'req-first-1', array['req-extra-1']);
   insert into public.notifications (user_id, kind, title) values (u, 'test', 'Hello');
+  -- The admin's notifications: two about this person, one about someone else.
+  insert into public.notifications (user_id, kind, title, data) values
+    ('00000000-0000-0000-0000-00000000000a', 'short_duty', 'Short duty to review',
+     jsonb_build_object('user_id', u, 'day', current_date)),
+    ('00000000-0000-0000-0000-00000000000a', 'leave_request', 'Leave request',
+     jsonb_build_object('request_id', (select max(id) from public.requests where user_id = u))),
+    ('00000000-0000-0000-0000-00000000000a', 'leave_request', 'Leave request',
+     jsonb_build_object('user_id', '00000000-0000-0000-0000-000000000002',
+                        'note', 'someone else'));
+  req := (select max(id) from public.requests where user_id = u);
   insert into public.admin_log (admin_id, action, target_user)
   values ('00000000-0000-0000-0000-00000000000a', 'update_user', u);
 
@@ -2224,6 +2235,12 @@ begin
   perform t.eq((select count(*)::int from public.requests where user_id = u), 0, 'requests gone');
   perform t.eq((select count(*)::int from public.notifications where user_id = u), 0,
                'notifications gone');
+  perform t.eq((select count(*)::int from public.notifications
+                where data->>'user_id' = u::text or data->>'request_id' = req::text),
+               0, 'the admin''s notifications about them gone');
+  perform t.eq((select count(*)::int from public.notifications
+                where data->>'note' = 'someone else'), 1,
+               'a notification about someone else stays');
   perform t.eq((select count(*)::int from public.admin_log
                 where action = 'update_user' and target_user is null), 1,
                'the admin log entry stays, without the person');
