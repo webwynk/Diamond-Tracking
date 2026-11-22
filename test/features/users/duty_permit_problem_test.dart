@@ -1,4 +1,4 @@
-import 'package:diamond_tracking/features/users/presentation/duty_on_permission_card.dart';
+import 'package:diamond_tracking/features/users/presentation/duty_on_permission_row.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

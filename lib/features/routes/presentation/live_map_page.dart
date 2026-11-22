@@ -33,7 +33,11 @@ import 'live_team_drawer.dart';
 /// filter chips; the bottom has cards for people who need attention. Tap a
 /// person to see their route, stops and figures here.
 class LiveMapPage extends ConsumerStatefulWidget {
-  const LiveMapPage({super.key});
+  const LiveMapPage({super.key, this.focusDay});
+
+  /// A duty day to show picked when the page opens (from an employee's
+  /// profile: "Live map").
+  final int? focusDay;
 
   @override
   ConsumerState<LiveMapPage> createState() => _LiveMapPageState();
@@ -56,6 +60,7 @@ class _LiveMapPageState extends ConsumerState<LiveMapPage> {
   @override
   void initState() {
     super.initState();
+    _selected = widget.focusDay;
     // Positions arrive live. The "min ago" moves every minute; the duty
     // list reloads every 5 minutes (L76), and at once when someone new shows
     // up on the map (below). An open person's route reloads every 2 minutes.
@@ -71,6 +76,15 @@ class _LiveMapPageState extends ConsumerState<LiveMapPage> {
       }
       if (mounted) setState(() {});
     });
+  }
+
+  @override
+  void didUpdateWidget(LiveMapPage old) {
+    super.didUpdateWidget(old);
+    if (widget.focusDay != old.focusDay && widget.focusDay != null) {
+      _selected = widget.focusDay;
+      _fitSoon();
+    }
   }
 
   @override

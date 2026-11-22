@@ -28,6 +28,7 @@ import '../features/routes/presentation/history_page.dart';
 import '../features/routes/presentation/live_map_page.dart';
 import '../features/routes/presentation/my_map_page.dart';
 import '../features/users/presentation/account_page.dart';
+import '../features/users/presentation/employee_profile_page.dart';
 import '../features/users/presentation/profile_page.dart';
 import '../features/users/presentation/user_form_page.dart';
 import '../features/users/presentation/users_page.dart';
@@ -264,7 +265,11 @@ StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
             GoRoute(
               path: Routes.adminLiveMap,
               builder: (BuildContext context, GoRouterState state) =>
-                  const LiveMapPage(),
+                  LiveMapPage(
+                    focusDay: int.tryParse(
+                      state.uri.queryParameters['day'] ?? '',
+                    ),
+                  ),
             ),
           ],
         ),
@@ -305,8 +310,14 @@ StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
                   path: ':id',
                   parentNavigatorKey: rootKey,
                   builder: (BuildContext context, GoRouterState state) =>
-                      UserFormPage(userId: state.pathParameters['id']),
+                      EmployeeProfilePage(userId: state.pathParameters['id']!),
                   routes: <RouteBase>[
+                    GoRoute(
+                      path: 'edit',
+                      parentNavigatorKey: rootKey,
+                      builder: (BuildContext context, GoRouterState state) =>
+                          UserFormPage(userId: state.pathParameters['id']),
+                    ),
                     GoRoute(
                       path: 'days',
                       parentNavigatorKey: rootKey,

@@ -207,11 +207,13 @@ void main() {
 
     await tester.tap(find.text('Asha Roy'));
     await tester.pumpAndSettle();
-    expect(find.text('Edit user'), findsOneWidget);
-    await tester.pageBack();
+    expect(find.text('Edit details'), findsWidgets);
+    await tester.tap(find.bySemanticsLabel('Back'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('My account'));
+    await tester.tap(find.bySemanticsLabel('Home'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel(RegExp('^My account')));
     await tester.pumpAndSettle();
     expect(find.text('My account'), findsWidgets);
     expect(find.text('Boss'), findsOneWidget);
