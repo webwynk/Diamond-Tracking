@@ -21,6 +21,8 @@ enum RequestFailure {
     'Reject this request instead.',
   ),
   noteTooLong('Note too long (300 characters max).'),
+  dutyRunning('This duty is still running. Change it after duty off.'),
+  futureDay('A day in the future cannot be changed.'),
   photosNotReady('Photo upload is not set up yet. Tell the admin.'),
   photoLimit('Photo limit for today reached (60 photos). Try again tomorrow.'),
   photoUploadFailed(
@@ -78,6 +80,8 @@ RequestFailure mapRequestError(Object error) {
     'request_already_decided': RequestFailure.alreadyDecided,
     'day_has_duty': RequestFailure.dayHasDuty,
     'note_too_long': RequestFailure.noteTooLong,
+    'duty_running': RequestFailure.dutyRunning,
+    'future_day': RequestFailure.futureDay,
     'photos_not_configured': RequestFailure.photosNotReady,
     'photo_limit': RequestFailure.photoLimit,
     'signed_in_elsewhere': RequestFailure.signedInElsewhere,

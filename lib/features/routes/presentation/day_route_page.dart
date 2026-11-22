@@ -3,13 +3,16 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
+import '../../../app/routes.dart';
 import '../../../core/design/ds_colors.dart';
 import '../../../core/design/ds_icons.dart';
 import '../../../core/design/ds_layout.dart';
 import '../../../core/design/ds_status.dart';
 import '../../../core/design/ds_text.dart';
+import '../../../core/links/open_link.dart';
 import '../../../core/rules/duty_rules.dart';
 import '../../../core/time/clock_providers.dart';
 import '../../../core/time/ist.dart';
@@ -32,6 +35,7 @@ import '../application/route_providers.dart';
 import '../domain/day_route.dart';
 import '../domain/geo_point.dart';
 import 'app_map.dart';
+import 'change_day_status_sheet.dart';
 import 'day_pins.dart';
 import 'route_parts.dart';
 
@@ -147,26 +151,39 @@ class _DayRoutePageState extends ConsumerState<DayRoutePage> {
                     ),
                   ],
                 ),
-                child: view.hasError && loaded == null
-                    ? DsErrorState(
-                        title: "Couldn't load this day",
-                        message: 'Check the internet and try again.',
-                        onRetry: _reload,
-                      )
-                    : loaded == null
-                    ? const Center(child: CircularProgressIndicator())
-                    : _Sheet(
-                        admin: admin,
-                        day: day,
-                        route: route,
-                        visits: visits,
-                        visitsFailed: visitsValue.hasError && visits.isEmpty,
-                        onRetryVisits: () =>
-                            ref.invalidate(dayVisitsProvider(widget.dayId)),
-                        visitsTab: _visitsTab,
-                        onTab: (bool v) => setState(() => _visitsTab = v),
-                        updatedAt: _updatedAt,
-                      ),
+                child: Column(
+                  children: <Widget>[
+                    Expanded(
+                      child: view.hasError && loaded == null
+                          ? DsErrorState(
+                              title: "Couldn't load this day",
+                              message: 'Check the internet and try again.',
+                              onRetry: _reload,
+                            )
+                          : loaded == null
+                          ? const Center(child: CircularProgressIndicator())
+                          : _Sheet(
+                              admin: admin,
+                              day: day,
+                              route: route,
+                              visits: visits,
+                              visitsFailed:
+                                  visitsValue.hasError && visits.isEmpty,
+                              onRetryVisits: () => ref.invalidate(
+                                dayVisitsProvider(widget.dayId),
+                              ),
+                              visitsTab: _visitsTab,
+                              onTab: (bool v) => setState(() => _visitsTab = v),
+                              updatedAt: _updatedAt,
+                            ),
+                    ),
+                    if (admin &&
+                        day != null &&
+                        day.userId != null &&
+                        day.status != DayStatus.onDuty)
+                      _ChangeStatusBar(day: day),
+                  ],
+                ),
               ),
             ),
           Positioned(
@@ -185,7 +202,7 @@ class _DayRoutePageState extends ConsumerState<DayRoutePage> {
                 const SizedBox(width: DsSpace.sm),
                 Expanded(
                   child: admin && day != null
-                      ? Center(child: _DatePill(day: day))
+                      ? _DatePill(day: day)
                       : const SizedBox.shrink(),
                 ),
                 const SizedBox(width: DsSpace.sm),
@@ -221,7 +238,8 @@ class _Round extends StatelessWidget {
   );
 }
 
-/// "Today · Sat, 21 Nov" over the admin's map.
+/// "Today · Sat, 21 Nov" over the admin's map, with arrows to the
+/// person's day before and after (within the 90 days of history).
 class _DatePill extends ConsumerWidget {
   const _DatePill({required this.day});
 
@@ -231,20 +249,100 @@ class _DatePill extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final DateTime today = Ist.dateOf(ref.watch(serverClockProvider).now());
     final String date = IstFormat.weekdayDay(day.day);
+    final String? userId = day.userId;
+    final List<DutyDay> days = userId == null
+        ? const <DutyDay>[]
+        : ref.watch(historyProvider(userId)).value ?? const <DutyDay>[];
+    final (DutyDay? before, DutyDay? after) = neighbourDays(days, day);
+    Widget step(IconData icon, String label, DutyDay? to) => Semantics(
+      button: true,
+      enabled: to != null,
+      label: label,
+      excludeSemantics: true,
+      child: Material(
+        color: to == null ? const Color(0xFFF8FAFC) : DsColors.surface,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: to == null
+              ? null
+              : () => context.replace(Routes.adminDay(to.id)),
+          child: SizedBox.square(
+            dimension: 40,
+            child: Icon(
+              icon,
+              size: 16,
+              color: to == null ? const Color(0xFFCBD5E1) : DsColors.ink,
+            ),
+          ),
+        ),
+      ),
+    );
     return Container(
-      height: 46,
-      padding: const EdgeInsets.symmetric(horizontal: DsSpace.lg),
-      alignment: Alignment.center,
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: const BoxDecoration(
         color: DsColors.white,
         borderRadius: DsRadius.pill,
         boxShadow: DsShadow.card,
       ),
-      child: Text(
-        day.day == today ? 'Today · $date' : date,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: DsText.body.copyWith(fontWeight: FontWeight.w700),
+      child: Row(
+        children: <Widget>[
+          step(DsIcons.back, 'Previous day', before),
+          Expanded(
+            child: Text(
+              day.day == today ? 'Today · $date' : date,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: DsText.body.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          step(DsIcons.forward, 'Next day', after),
+        ],
+      ),
+    );
+  }
+}
+
+/// The days just before and after [day] in [days] (any order).
+(DutyDay?, DutyDay?) neighbourDays(List<DutyDay> days, DutyDay day) {
+  DutyDay? before;
+  DutyDay? after;
+  for (final DutyDay d in days) {
+    if (d.day.isBefore(day.day)) {
+      if (before == null || d.day.isAfter(before.day)) before = d;
+    } else if (d.day.isAfter(day.day)) {
+      if (after == null || d.day.isBefore(after.day)) after = d;
+    }
+  }
+  return (before, after);
+}
+
+/// Admin: the "Change day status" button pinned under the sheet.
+class _ChangeStatusBar extends StatelessWidget {
+  const _ChangeStatusBar({required this.day});
+
+  final DutyDay day;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        DsSpace.gutter,
+        DsSpace.md,
+        DsSpace.gutter,
+        DsSpace.md + MediaQuery.paddingOf(context).bottom,
+      ),
+      decoration: const BoxDecoration(
+        color: DsColors.white,
+        border: Border(top: BorderSide(color: Color(0xFFEEF2F6))),
+      ),
+      child: DsButton(
+        label: 'Change day status',
+        icon: DsIcons.edit,
+        kind: DsButtonKind.outline,
+        onPressed: () => showChangeDayStatus(context, day),
       ),
     );
   }
@@ -468,13 +566,58 @@ class _PersonHeader extends ConsumerWidget {
                   style: DsText.section,
                 ),
               ),
-              if (p != null) Text(p.userCode, style: DsText.caption),
+              // The pill wraps under the code on a narrow phone.
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                runSpacing: 4,
+                children: <Widget>[
+                  if (p != null)
+                    Text('${p.userCode} · ', style: DsText.caption),
+                  if (d != null)
+                    DsStatusPill(status: tone, label: dayStatusText(d)),
+                ],
+              ),
             ],
           ),
         ),
-        if (d != null) ...<Widget>[
+        if (p?.phone case final String phone when phone.isNotEmpty) ...<Widget>[
           const SizedBox(width: DsSpace.sm),
-          DsStatusPill(status: tone, label: dayStatusText(d)),
+          Semantics(
+            container: true,
+            button: true,
+            label: 'Call ${p!.fullName}',
+            excludeSemantics: true,
+            child: Material(
+              color: DsColors.successTint,
+              shape: const CircleBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () async {
+                  final ScaffoldMessengerState messenger = ScaffoldMessenger.of(
+                    context,
+                  );
+                  final bool opened = await ref.read(openLinkProvider)(
+                    Uri(scheme: 'tel', path: phone),
+                  );
+                  if (!opened) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text("Couldn't open the phone app."),
+                      ),
+                    );
+                  }
+                },
+                child: const SizedBox.square(
+                  dimension: 46,
+                  child: Icon(
+                    DsIcons.phone,
+                    size: 20,
+                    color: DsColors.successText,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ],
     );

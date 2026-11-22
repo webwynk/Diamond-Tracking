@@ -66,4 +66,5 @@ abstract final class DsIcons {
   static const IconData expand = LucideIcons.maximize2;
   static const IconData shrink = LucideIcons.minimize2;
   static const IconData store = LucideIcons.store;
+  static const IconData edit = LucideIcons.pencil;
 }

@@ -46,6 +46,17 @@ abstract interface class RequestsRepository {
 
   Future<void> decide(int id, DayStatus decision, String? note);
 
+  /// Admin: sets [userId]'s status on the IST date [day] (Present, Half
+  /// day, Absent or Leave with [leave]). Not while the duty is running,
+  /// not for a future date. Settles that day's waiting short-duty review.
+  Future<void> setDayStatus(
+    String userId,
+    DateTime day,
+    DayStatus status, {
+    LeaveType? leave,
+    String? note,
+  });
+
   /// Uploads a JPEG and returns its photo id for a request.
   Future<String> uploadPhoto(Uint8List jpeg);
 
@@ -190,6 +201,24 @@ class SupabaseRequestsRepository implements RequestsRepository {
           'p_note': (note?.trim().isEmpty ?? true) ? null : note!.trim(),
         },
       );
+
+  @override
+  Future<void> setDayStatus(
+    String userId,
+    DateTime day,
+    DayStatus status, {
+    LeaveType? leave,
+    String? note,
+  }) => _client.rpc<Object?>(
+    'set_day_status',
+    params: <String, Object?>{
+      'p_user': userId,
+      'p_day': isoDate(day),
+      'p_status': status.wire,
+      'p_leave': leave?.wire,
+      'p_note': (note?.trim().isEmpty ?? true) ? null : note!.trim(),
+    },
+  );
 
   @override
   Future<String> uploadPhoto(Uint8List jpeg) =>
