@@ -49,6 +49,11 @@ Future<void> pumpPage(
     routes: <RouteBase>[
       GoRoute(path: '/', builder: (_, _) => page),
       GoRoute(
+        path: '/:a/:b/:c/:d',
+        builder: (_, GoRouterState s) =>
+            Scaffold(body: Text('route ${s.uri.path}')),
+      ),
+      GoRoute(
         path: '/:a/:b/:c',
         builder: (_, GoRouterState s) =>
             Scaffold(body: Text('route ${s.uri.path}')),

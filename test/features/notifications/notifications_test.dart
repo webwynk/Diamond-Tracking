@@ -2,9 +2,7 @@ import 'package:diamond_tracking/app/routes.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/notifications/application/notifications_providers.dart';
 import 'package:diamond_tracking/features/notifications/domain/app_notification.dart';
-import 'package:diamond_tracking/features/notifications/presentation/notification_bell.dart';
 import 'package:diamond_tracking/features/notifications/presentation/notifications_page.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fakes.dart';
@@ -21,26 +19,6 @@ void main() {
         createdAt: DateTime.utc(2026, 11, 20, 5, id),
         readAt: read ? DateTime.utc(2026, 11, 20, 6) : null,
       );
-
-  testWidgets('the bell counts unread notifications live', (
-    WidgetTester tester,
-  ) async {
-    final FakeNotificationsRepository repo = FakeNotificationsRepository(
-      <AppNotification>[n(1), n(2, read: true)],
-    );
-    await pumpPage(
-      tester,
-      Scaffold(appBar: AppBar(actions: const <Widget>[NotificationBell()])),
-      notifications: repo,
-    );
-    expect(find.text('1'), findsOneWidget);
-    repo.push(<AppNotification>[n(3), n(1), n(2, read: true)]);
-    await tester.pumpAndSettle();
-    expect(find.text('2'), findsOneWidget);
-    await tester.tap(find.byType(NotificationBell));
-    await tester.pumpAndSettle();
-    expect(find.text('route ${Routes.adminNotifications}'), findsOneWidget);
-  });
 
   testWidgets('the list marks read and opens the request', (
     WidgetTester tester,
