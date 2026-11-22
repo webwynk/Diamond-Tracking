@@ -296,7 +296,8 @@ class DsTextLink extends StatelessWidget {
 }
 
 /// A round icon button (design v2): 46 white circle (back, bell), 54 primary
-/// circle (add), or a glass circle on a deep header. Always has a spoken
+/// circle (add), a glass circle on a deep header, or a soft grey circle on a
+/// white bar (the bell in the brand bar). Always has a spoken
 /// [label]. An optional red [badge] shows an unread count.
 class DsIconButton extends StatelessWidget {
   const DsIconButton({
@@ -325,6 +326,7 @@ class DsIconButton extends StatelessWidget {
       DsIconButtonKind.white => (DsColors.white, DsColors.ink),
       DsIconButtonKind.add => (DsColors.primary, DsColors.white),
       DsIconButtonKind.glass => (const Color(0x1FFFFFFF), DsColors.white),
+      DsIconButtonKind.soft => (DsColors.surface, DsColors.ink),
     };
     return Semantics(
       button: true,
@@ -355,7 +357,7 @@ class DsIconButton extends StatelessWidget {
   }
 }
 
-enum DsIconButtonKind { white, add, glass }
+enum DsIconButtonKind { white, add, glass, soft }
 
 /// A small round count: red for unread, amber for "waiting for you".
 class DsCountBadge extends StatelessWidget {

@@ -22,6 +22,7 @@ import 'package:diamond_tracking/features/users/application/users_providers.dart
 import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
 import 'package:diamond_tracking/features/visits/domain/visit.dart';
+import 'package:diamond_tracking/shared/ds/ds_brand_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -450,6 +451,8 @@ void main() {
   ) async {
     await pumpHome(tester);
     expect(find.text('Hello, Rahul'), findsOneWidget);
+    expect(find.text('Diamond Agritech'), findsOneWidget);
+    expect(find.byType(DsBrandBar), findsOneWidget);
     expect(find.text('RD'), findsOneWidget);
     expect(find.text('Friday, 20 Nov'), findsOneWidget);
   });
@@ -543,6 +546,8 @@ void main() {
     time.at = ist(12);
     await pumpHome(tester);
     expect(find.text('Add visit'), findsOneWidget);
+    // Below the brand bar the list starts lower: bring the visits in.
+    await tester.scrollUntilVisible(find.text('1 of the day'), 200);
     expect(find.text('1 of the day'), findsOneWidget);
     expect(find.text('Maa Tara Agro Store'), findsOneWidget);
     expect(find.text('8:12 AM · gallery photo, no place'), findsOneWidget);
@@ -687,6 +692,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text('Duty off'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Duty off'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);

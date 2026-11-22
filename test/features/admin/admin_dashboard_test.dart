@@ -13,6 +13,7 @@ import 'package:diamond_tracking/features/routes/domain/geo_point.dart';
 import 'package:diamond_tracking/features/routes/domain/live_position.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/visits/domain/visit.dart';
+import 'package:diamond_tracking/shared/ds/ds_brand_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -131,8 +132,10 @@ void main() {
   ) async {
     fillToday();
     await show(tester);
-    expect(find.text('Fri, 20 Nov'), findsOneWidget);
-    expect(find.text('Hi, Arjun'), findsOneWidget);
+    expect(find.text('Friday, 20 Nov'), findsOneWidget);
+    expect(find.text('Hello, Arjun'), findsOneWidget);
+    expect(find.text('Diamond Agritech'), findsOneWidget);
+    expect(find.byType(DsBrandBar), findsOneWidget);
     expect(find.text('AS'), findsOneWidget);
     // 2 of the 5 active employees are on duty.
     expect(
