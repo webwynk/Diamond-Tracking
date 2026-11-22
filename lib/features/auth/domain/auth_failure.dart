@@ -30,6 +30,7 @@ enum AuthFailure implements Exception {
     'Reset again to finish.',
   ),
   notAllowed('You are not allowed to do this.'),
+  passwordSavedSignIn('Your new password is saved. Sign in with it.'),
   unknown('Something went wrong. Please try again.');
 
   const AuthFailure(this.message);

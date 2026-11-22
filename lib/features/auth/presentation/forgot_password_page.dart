@@ -13,8 +13,11 @@ import '../../../shared/ds/ds_button.dart';
 import '../../../shared/ds/ds_feedback.dart';
 import '../../../shared/ds/ds_field.dart';
 import '../application/auth_providers.dart';
+import '../data/auth_repository.dart';
 import '../domain/auth_failure.dart';
 import '../domain/credentials.dart';
+import 'password_done_dialog.dart';
+import 'password_rules.dart';
 
 enum _Step { enterUserId, enterCode, done }
 
@@ -40,8 +43,9 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   AuthFailure? _failure;
   String? _userCodeError;
   String? _codeError;
-  String? _passwordError;
-  String? _confirmError;
+
+  /// Set new password was pressed; cleared on the next edit.
+  bool _tried = false;
   int _resendIn = 0;
   Timer? _ticker;
 
@@ -102,33 +106,46 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     final String? codeError = RegExp(r'^[0-9]{6}$').hasMatch(_code.text)
         ? null
         : 'Enter the 6 digits from the email';
-    final String? passwordError = passwordProblem(
+    final ({String? password, String? confirm}) problems = newPasswordProblems(
       _password.text,
+      _confirm.text,
       userCode: _userCode.text.trim(),
     );
-    final String? confirmError = _confirm.text == _password.text
-        ? null
-        : 'The passwords do not match';
     setState(() {
       _codeError = codeError;
-      _passwordError = passwordError;
-      _confirmError = confirmError;
+      _tried = true;
     });
-    if (codeError != null || passwordError != null || confirmError != null) {
+    if (codeError != null ||
+        problems.password != null ||
+        problems.confirm != null) {
       return;
     }
-    await _run(() async {
-      await ref
-          .read(authRepositoryProvider)
-          .resetWithCode(
-            userCode: _userCode.text,
-            code: _code.text,
-            newPassword: _password.text,
-          );
-      if (!mounted) return;
-      _ticker?.cancel();
-      setState(() => _step = _Step.done);
-    });
+    final AuthRepository auth = ref.read(authRepositoryProvider);
+    final AuthStatusNotifier status = ref.read(authStatusProvider.notifier);
+    // Held so the app stays here until "Go to Home": signing in would
+    // otherwise move it to Home at once, under the popup.
+    await _run(
+      () => status.holdWhile(() async {
+        await auth.resetWithCode(
+          userCode: _userCode.text,
+          code: _code.text,
+          newPassword: _password.text,
+        );
+        _ticker?.cancel();
+        try {
+          // The reset signed every phone out and freed the phone lock, so
+          // this phone can sign in with the new password straight away.
+          await auth.signIn(loginId: _userCode.text, password: _password.text);
+        } on AuthFailure {
+          // Reset, but not signed in (no internet): sign in by hand.
+          if (mounted) setState(() => _step = _Step.done);
+          return;
+        }
+        if (!mounted) return;
+        setState(() => _busy = false);
+        await showPasswordDone(context, PasswordDone.reset);
+      }),
+    );
   }
 
   void _toLogin() =>
@@ -192,31 +209,16 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
         children: <Widget>[
           _codeField(),
           AutofillGroup(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                DsTextField(
-                  label: 'New password',
-                  controller: _password,
-                  hint: '8+ characters, a letter and a digit',
-                  icon: DsIcons.lock,
-                  password: true,
-                  error: _passwordError,
-                  autofillHints: const <String>[AutofillHints.newPassword],
-                  textInputAction: TextInputAction.next,
-                ),
-                const SizedBox(height: 14),
-                DsTextField(
-                  label: 'Repeat new password',
-                  controller: _confirm,
-                  icon: DsIcons.lock,
-                  password: true,
-                  error: _confirmError,
-                  autofillHints: const <String>[AutofillHints.newPassword],
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _reset(),
-                ),
-              ],
+            child: NewPasswordFields(
+              password: _password,
+              confirm: _confirm,
+              userCode: userCode,
+              tried: _tried,
+              onEdited: () {
+                if (_tried) setState(() => _tried = false);
+              },
+              showExample: false,
+              onSubmitted: (_) => _reset(),
             ),
           ),
           if (_failure != null)

@@ -96,7 +96,8 @@ Widget gallery() {
               spacing: DsSpace.sm,
               children: <Widget>[
                 DsRuleTick(label: '8+ characters', met: true),
-                DsRuleTick(label: 'Letter and digit', met: false),
+                DsRuleTick(label: 'A digit', met: false),
+                DsRuleTick(label: 'A symbol', met: false, failed: true),
               ],
             ),
             SingleChildScrollView(

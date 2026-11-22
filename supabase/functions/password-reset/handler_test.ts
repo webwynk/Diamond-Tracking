@@ -67,12 +67,12 @@ Deno.test('a right code sets the password and signs out everywhere', async () =>
   const { b, id, mail } = setup();
   await handler(post({ action: 'request', user_code: 'DA-001' }), b, mail, () => '654321');
   const res = await handler(
-    post({ action: 'confirm', user_code: 'DA-001', code: '654321', new_password: 'newpass2026' }),
+    post({ action: 'confirm', user_code: 'DA-001', code: '654321', new_password: 'newpass@2026' }),
     b,
     mail,
   );
   assertEquals(res.status, 200);
-  assertEquals(b.passwords.get(id), 'newpass2026');
+  assertEquals(b.passwords.get(id), 'newpass@2026');
   assertEquals(b.meta.get(id)!.must_change_password, false);
   assertEquals(b.revoked, [id]);
 });
@@ -81,7 +81,7 @@ Deno.test('a wrong code changes nothing', async () => {
   const { b, id, mail } = setup();
   await handler(post({ action: 'request', user_code: 'DA-001' }), b, mail, () => '654321');
   const res = await handler(
-    post({ action: 'confirm', user_code: 'DA-001', code: '000000', new_password: 'newpass2026' }),
+    post({ action: 'confirm', user_code: 'DA-001', code: '000000', new_password: 'newpass@2026' }),
     b,
     mail,
   );
@@ -130,7 +130,7 @@ Deno.test('a turned-off user cannot use a code (L67)', async () => {
   await handler(post({ action: 'request', user_code: 'DA-001' }), b, mail, () => '654321');
   b.profiles.set(id, { ...b.profiles.get(id)!, is_active: false });
   const res = await handler(
-    post({ action: 'confirm', user_code: 'DA-001', code: '654321', new_password: 'newpass2026' }),
+    post({ action: 'confirm', user_code: 'DA-001', code: '654321', new_password: 'newpass@2026' }),
     b,
     mail,
   );

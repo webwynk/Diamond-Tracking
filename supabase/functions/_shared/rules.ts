@@ -52,8 +52,18 @@ export function pinProblem(pin: string): string | null {
 /** Same text in the app (lib/features/auth/domain/credentials.dart). */
 export const PASSWORD_TOO_LONG = 'Too long: use fewer non-English letters';
 
+/** The example the app shows under the password field; never accepted. */
+export const PASSWORD_EXAMPLE = 'Mango@2025';
+
+/** A symbol: any character that is not a letter, a letter's mark (as in
+ * Hindi), a digit or a space. Same in the app (credentials.dart). */
+const PASSWORD_SYMBOL = /[^\p{L}\p{M}\p{N}\s]/u;
+
 /**
- * The user's own password: 8 to 72 characters with a letter and a digit.
+ * The user's own password: 8 to 72 characters with a letter, a digit and a
+ * symbol, not the user ID and not the example (owner's rule, 2026-11-23).
+ * Passwords set before this rule keep working: it is checked only when a
+ * password is set.
  * Supabase Auth refuses more than 72 bytes (bcrypt's limit), and a Hindi or
  * Bengali letter is 3 bytes, so a shorter password can still be too long (L36).
  */
@@ -63,8 +73,12 @@ export function passwordProblem(password: string, userCode: string): string | nu
   if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
     return 'Use at least one letter and one digit';
   }
+  if (!PASSWORD_SYMBOL.test(password)) return 'Add a symbol, like @ # $ !';
   if (userCode !== '' && password.toLowerCase().includes(userCode.toLowerCase())) {
     return 'Do not use your user ID in the password';
+  }
+  if (password.toLowerCase() === PASSWORD_EXAMPLE.toLowerCase()) {
+    return 'Do not use the example password';
   }
   return null;
 }

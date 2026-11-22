@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/routes.dart';
 import '../../../core/design/ds_icons.dart';
 import '../../../shared/ds/ds_auth_frame.dart';
 import '../../../shared/ds/ds_button.dart';
@@ -9,7 +10,9 @@ import '../../../shared/ds/ds_feedback.dart';
 import '../../../shared/ds/ds_field.dart';
 import '../application/auth_providers.dart';
 import '../domain/auth_failure.dart';
-import '../domain/credentials.dart';
+import '../domain/auth_status.dart';
+import 'password_done_dialog.dart';
+import 'password_rules.dart';
 
 /// A signed-in user changes their password, confirming the current one
 /// (design v2, Change password). Used by employees and admins.
@@ -26,8 +29,9 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
   final TextEditingController _confirm = TextEditingController();
   bool _busy = false;
   String? _currentError;
-  String? _passwordError;
-  String? _confirmError;
+
+  /// Save was pressed; cleared on the next edit (see NewPasswordFields).
+  bool _tried = false;
   AuthFailure? _failure;
 
   @override
@@ -45,19 +49,20 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
     final String? currentError = _current.text.isEmpty
         ? 'Enter your current password'
         : null;
-    final String? passwordError = _password.text == _current.text
-        ? 'The new password must be different'
-        : passwordProblem(_password.text, userCode: userCode);
-    final String? confirmError = _confirm.text == _password.text
-        ? null
-        : 'The passwords do not match';
+    final ({String? password, String? confirm}) problems = newPasswordProblems(
+      _password.text,
+      _confirm.text,
+      userCode: userCode,
+      extra: _differentFromCurrent,
+    );
     setState(() {
       _currentError = currentError;
-      _passwordError = passwordError;
-      _confirmError = confirmError;
+      _tried = true;
       _failure = null;
     });
-    if (currentError != null || passwordError != null || confirmError != null) {
+    if (currentError != null ||
+        problems.password != null ||
+        problems.confirm != null) {
       return;
     }
     setState(() => _busy = true);
@@ -69,9 +74,10 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
             newPassword: _password.text,
           );
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Password changed')));
-      context.pop();
+      setState(() => _busy = false);
+      await showPasswordDone(context, PasswordDone.changed);
+      if (!mounted) return;
+      context.go(_admin ? Routes.adminDashboard : Routes.userHome);
     } on AuthFailure catch (failure) {
       if (!mounted) return;
       setState(() {
@@ -87,8 +93,28 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
     }
   }
 
+  String? _differentFromCurrent(String password) =>
+      password == _current.text ? 'The new password must be different' : null;
+
+  void _edited() {
+    if (_tried || _failure != null) {
+      setState(() {
+        _tried = false;
+        _failure = null;
+      });
+    }
+  }
+
+  /// Admins go home to the dashboard. Watched in build, so it is known by
+  /// the time the password is changed.
+  bool _admin = false;
+
   @override
   Widget build(BuildContext context) {
+    final AuthStatus status = ref.watch(authStatusProvider);
+    _admin = status is SignedIn && status.role == AppRole.admin;
+    final String userCode =
+        ref.read(authRepositoryProvider).currentUserCode ?? '';
     return DsAuthFrame(
       title: 'Change password.',
       accent: 'Keep your account safe.',
@@ -110,25 +136,14 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                 textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 14),
-              DsTextField(
-                label: 'New password',
-                controller: _password,
-                hint: '8+ characters, a letter and a digit',
-                icon: DsIcons.lock,
-                password: true,
-                error: _passwordError,
-                autofillHints: const <String>[AutofillHints.newPassword],
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 14),
-              DsTextField(
-                label: 'Repeat new password',
-                controller: _confirm,
-                icon: DsIcons.lock,
-                password: true,
-                error: _confirmError,
-                autofillHints: const <String>[AutofillHints.newPassword],
-                textInputAction: TextInputAction.done,
+              NewPasswordFields(
+                password: _password,
+                confirm: _confirm,
+                userCode: userCode,
+                tried: _tried,
+                onEdited: _edited,
+                showExample: false,
+                extra: _differentFromCurrent,
                 onSubmitted: (_) => _submit(),
               ),
             ],

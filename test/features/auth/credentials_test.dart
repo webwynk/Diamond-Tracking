@@ -34,24 +34,42 @@ void main() {
     expect(loginIdProblem('boss@example.com'), isNull);
   });
 
-  test('password rules', () {
-    expect(passwordProblem('abcd1234'), isNull);
-    expect(passwordProblem('abc123'), 'Use 8 to 72 characters');
-    expect(passwordProblem('abcdefgh'), isNotNull);
-    expect(passwordProblem('12345678'), isNotNull);
-    expect(passwordProblem('x' * 72 + '1'), isNotNull);
+  test('password rules: 8+, a letter, a digit and a symbol', () {
+    expect(passwordProblem('abcd@1234'), isNull);
+    expect(passwordProblem('abc12!'), 'Use 8 to 72 characters');
+    expect(passwordProblem('abcdefgh!'), isNotNull);
+    expect(passwordProblem('12345678!'), isNotNull);
+    expect(passwordProblem('abcd1234'), r'Add a symbol, like @ # $ !');
+    // A space is not a symbol.
+    expect(passwordProblem('abcd 1234'), r'Add a symbol, like @ # $ !');
+    expect(passwordProblem('${'x' * 71}1!'), isNotNull);
     // 72 English characters are 72 bytes: allowed.
-    expect(passwordProblem('a1' * 36), isNull);
+    expect(passwordProblem('${'a1' * 35}#!'), isNull);
+    expect(passwordProblem('Mango@2025'), 'Do not use the example password');
+    expect(passwordProblem('mango@2025'), 'Do not use the example password');
+    expect(passwordProblem('Mango@2026'), isNull);
+  });
+
+  test('the checks behind the live ticks', () {
+    final PasswordChecks c = PasswordChecks('river2026', userCode: 'emp1');
+    expect(
+      (c.long, c.letter, c.digit, c.symbol, c.notUserId),
+      (true, true, true, false, true),
+    );
+    expect(PasswordChecks('').notUserId, isFalse);
+    expect(PasswordChecks('my emp1!', userCode: 'EMP1').notUserId, isFalse);
+    // A Hindi vowel sign is part of a letter, not a symbol.
+    expect(PasswordChecks('रवि1234ab').symbol, isFalse);
   });
 
   test('a password over 72 bytes is too long, even under 72 characters', () {
-    // Each Hindi letter is 3 bytes: 30 letters + "ab12" = 94 bytes.
-    final String hindi = '${'क' * 30}ab12';
+    // Each Hindi letter is 3 bytes: 30 letters + "ab1!" = 94 bytes.
+    final String hindi = '${'क' * 30}ab1!';
     expect(hindi.length, 34);
     expect(passwordProblem(hindi), passwordTooLong);
-    // 22 Hindi letters + "ab12" = 70 bytes: allowed.
-    expect(passwordProblem('${'क' * 22}ab12'), isNull);
-    expect(passwordProblem('Emp01pass9', userCode: 'emp01'), isNotNull);
+    // 22 Hindi letters + "ab1!" = 70 bytes: allowed.
+    expect(passwordProblem('${'क' * 22}ab1!'), isNull);
+    expect(passwordProblem('Emp01pass9!', userCode: 'emp01'), isNotNull);
   });
 
   test('temporary PIN rules', () {

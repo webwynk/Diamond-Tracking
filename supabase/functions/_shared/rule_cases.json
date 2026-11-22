@@ -77,18 +77,27 @@
   "password": {
     "user_code": "DA-001",
     "ok": [
-      "abcd1234",
-      "Passw0rd",
-      "a1b2c3d4e5",
-      "रवि1234abcd"
+      "abcd@1234",
+      "Passw0rd!",
+      "a1b2c3d4e5#",
+      "रवि1234ab!",
+      "Mango@2026",
+      "my pass 1!",
+      "1234567a_"
     ],
     "bad": [
-      "abc123",
-      "abcdefgh",
-      "12345678",
-      "myda-001pass1",
-      "DA-001abc",
-      "रविरविरविरविरविरविरविरवि1a"
+      "abc12!",
+      "abcdefgh!",
+      "12345678!",
+      "abcd1234",
+      "Passw0rd",
+      "abcd 1234",
+      "रवि1234abcd",
+      "myda-001pass1!",
+      "DA-001abc!",
+      "mango@2025",
+      "MANGO@2025",
+      "रविरविरविरविरविरविरविरवि1a!"
     ]
   },
   "designation": {

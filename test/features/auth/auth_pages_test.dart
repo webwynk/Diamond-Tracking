@@ -1,5 +1,6 @@
 import 'package:diamond_tracking/core/app_version.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_failure.dart';
+import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/auth/presentation/change_password_page.dart';
 import 'package:diamond_tracking/features/auth/presentation/forgot_password_page.dart';
 import 'package:diamond_tracking/features/auth/presentation/login_page.dart';
@@ -27,9 +28,19 @@ Finder codeBoxes() => find.descendant(
 );
 
 Future<void> tapButton(WidgetTester tester, String label) async {
+  // As a person does: close the keyboard first. A focused field keeps
+  // scrolling itself back into view, which can hide the button.
+  FocusManager.instance.primaryFocus?.unfocus();
+  await tester.pump();
   final Finder button = find.widgetWithText(DsButton, label);
   await tester.ensureVisible(button);
   await tester.pumpAndSettle();
+  // Then to the end of the sheet, as a thumb would: the button is last.
+  final Finder sheet = find.byType(SingleChildScrollView).first;
+  if (sheet.evaluate().isNotEmpty) {
+    await tester.drag(sheet, const Offset(0, -600));
+    await tester.pumpAndSettle();
+  }
   await tester.tap(button);
 }
 
@@ -83,7 +94,7 @@ void main() {
   });
 
   group('choose password after a PIN', () {
-    testWidgets('greets by first name and ticks the rules', (
+    testWidgets('greets by first name and ticks each rule while typing', (
       WidgetTester tester,
     ) async {
       final FakeAuthRepository auth = FakeAuthRepository(
@@ -92,36 +103,122 @@ void main() {
       );
       await pumpPage(tester, const SetPasswordPage(), auth: auth);
       expect(find.textContaining('Welcome, Rahul.'), findsOneWidget);
-      expect(find.bySemanticsLabel('8+ characters, not yet'), findsOneWidget);
+      expect(find.textContaining('Example: Mango@2025'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('8+ characters, still needed'),
+        findsOneWidget,
+      );
       await tester.enterText(field('New password'), 'river2026');
       await tester.pump();
-      expect(find.bySemanticsLabel('8+ characters, done'), findsOneWidget);
-      expect(find.bySemanticsLabel('Letter and digit, done'), findsOneWidget);
-      expect(find.bySemanticsLabel('Not your user ID, done'), findsOneWidget);
+      for (final String done in <String>[
+        '8+ characters',
+        'A letter',
+        'A digit',
+        'Not your user ID',
+      ]) {
+        expect(find.bySemanticsLabel('$done, done'), findsOneWidget);
+      }
+      expect(
+        find.bySemanticsLabel(r'A symbol like @ # $ !, still needed'),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel('Looks good'), findsNothing);
+
+      await tester.enterText(field('New password'), 'river@2026');
+      await tester.pump();
+      expect(
+        find.bySemanticsLabel(r'A symbol like @ # $ !, done'),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel('Looks good'), findsOneWidget);
+      await tester.enterText(field('Repeat new password'), 'river@2026');
+      await tester.pump();
+      expect(find.text('Passwords match'), findsOneWidget);
+      expect(find.bySemanticsLabel('Looks good'), findsNWidgets(2));
     });
 
-    testWidgets('rejects a mismatch and the user ID inside', (
+    testWidgets('red only after Save, and gone at the next edit', (
       WidgetTester tester,
     ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       final FakeAuthRepository auth = FakeAuthRepository(userCode: 'emp1');
       await pumpPage(tester, const SetPasswordPage(), auth: auth);
       expect(find.textContaining('Welcome.'), findsOneWidget);
-      await tester.enterText(field('New password'), 'myemp1pass');
-      await tester.enterText(field('Repeat new password'), 'other123');
+      await tester.enterText(field('New password'), 'river2026');
+      await tester.enterText(field('Repeat new password'), 'river2025');
+      await tester.pump();
+      expect(find.text(r'Add a symbol, like @ # $ !'), findsNothing);
       await tapButton(tester, 'Save and continue');
       await tester.pumpAndSettle();
-      expect(
-        find.text('Do not use your user ID in the password'),
-        findsOneWidget,
-      );
-      expect(find.text('The passwords do not match'), findsOneWidget);
+      expect(find.text(r'Add a symbol, like @ # $ !'), findsOneWidget);
+      expect(find.text("Passwords don't match"), findsOneWidget);
       expect(auth.calls, isEmpty);
 
-      await tester.enterText(field('New password'), 'river2026');
-      await tester.enterText(field('Repeat new password'), 'river2026');
+      await tester.enterText(field('New password'), 'river20266');
+      await tester.pump();
+      expect(find.text(r'Add a symbol, like @ # $ !'), findsNothing);
+      expect(find.text("Passwords don't match"), findsNothing);
+
+      for (final (String pw, String why) in <(String, String)>[
+        ('myemp1pass!', 'Do not use your user ID in the password'),
+        ('Mango@2025', 'Do not use the example password'),
+      ]) {
+        await tester.enterText(field('New password'), pw);
+        await tester.enterText(field('Repeat new password'), pw);
+        await tapButton(tester, 'Save and continue');
+        await tester.pumpAndSettle();
+        expect(find.text(why), findsOneWidget);
+      }
+      expect(auth.calls, isEmpty);
+    });
+
+    testWidgets('saved: the popup, then Go to Home', (
+      WidgetTester tester,
+    ) async {
+      final FakeAuthRepository auth = FakeAuthRepository(
+        userCode: 'emp1',
+        firstName: 'Rahul',
+      );
+      await pumpPage(tester, const SetPasswordPage(), auth: auth);
+      await tester.enterText(field('New password'), 'river@2026');
+      await tester.enterText(field('Repeat new password'), 'river@2026');
       await tapButton(tester, 'Save and continue');
       await tester.pumpAndSettle();
       expect(auth.calls, <String>['setFirstPassword']);
+      expect(find.text('Password saved'), findsOneWidget);
+      expect(
+        find.text(
+          "You're all set, Rahul. Use this password every time you sign in.",
+        ),
+        findsOneWidget,
+      );
+      // Only the button closes it.
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
+      expect(find.text('Password saved'), findsOneWidget);
+      await tester.tap(find.text('Go to Home'));
+      await tester.pumpAndSettle();
+      expect(find.text('Password saved'), findsNothing);
+    });
+
+    testWidgets('saved but not signed in again: off to sign in, saying so', (
+      WidgetTester tester,
+    ) async {
+      final FakeAuthRepository auth = FakeAuthRepository()
+        ..failWith = AuthFailure.passwordSavedSignIn;
+      await pumpPage(tester, const SetPasswordPage(), auth: auth);
+      await tester.enterText(field('New password'), 'river@2026');
+      await tester.enterText(field('Repeat new password'), 'river@2026');
+      await tapButton(tester, 'Save and continue');
+      await tester.pumpAndSettle();
+      expect(auth.calls, <String>['setFirstPassword', 'signOut']);
+      expect(
+        find.text(AuthFailure.passwordSavedSignIn.message),
+        findsOneWidget,
+      );
+      expect(find.text('Password saved'), findsNothing);
     });
 
     testWidgets('"Not you? Log out" signs out', (WidgetTester tester) async {
@@ -135,37 +232,79 @@ void main() {
   });
 
   group('forgot password', () {
-    testWidgets('3 steps: user ID, code and new password, done', (
+    Future<void> toCodeStep(
       WidgetTester tester,
+      FakeAuthRepository auth,
     ) async {
-      final FakeAuthRepository auth = FakeAuthRepository();
       await pumpPage(tester, const ForgotPasswordPage(), auth: auth);
       expect(find.text('1/3'), findsOneWidget);
       await tester.enterText(field('User ID'), 'emp1');
       await tapButton(tester, 'Send code');
       await tester.pump();
-      expect(auth.calls, <String>['requestResetCode:emp1']);
       expect(find.text('2/3'), findsOneWidget);
+    }
+
+    testWidgets('code and new password, then signed in with the popup', (
+      WidgetTester tester,
+    ) async {
+      final FakeAuthRepository auth = FakeAuthRepository();
+      await toCodeStep(tester, auth);
+      expect(auth.calls, <String>['requestResetCode:emp1']);
       expect(find.text('Resend in 0:60'), findsOneWidget);
 
+      await tester.enterText(codeBoxes(), '123456');
+      await tester.enterText(field('New password'), 'river@2026');
+      await tester.enterText(field('Repeat new password'), 'river@2026');
+      await tapButton(tester, 'Set new password');
+      await tester.pumpAndSettle();
+      expect(auth.calls, <String>[
+        'requestResetCode:emp1',
+        'resetWithCode:emp1:123456',
+        'signIn:emp1',
+      ]);
+      expect(find.text('Password reset'), findsOneWidget);
+      await tester.tap(find.text('Go to Home'));
+      await tester.pumpAndSettle();
+      expect(find.text('Password reset'), findsNothing);
+    });
+
+    testWidgets('reset but not signed in: the old "sign in now" step', (
+      WidgetTester tester,
+    ) async {
+      final FakeAuthRepository auth = FakeAuthRepository()
+        ..signInFailWith = AuthFailure.network;
+      await toCodeStep(tester, auth);
+      await tester.enterText(codeBoxes(), '123456');
+      await tester.enterText(field('New password'), 'river@2026');
+      await tester.enterText(field('Repeat new password'), 'river@2026');
+      await tapButton(tester, 'Set new password');
+      await tester.pumpAndSettle();
+      expect(find.text('3/3'), findsOneWidget);
+      expect(find.widgetWithText(DsButton, 'Back to sign in'), findsOneWidget);
+      expect(find.text('Password reset'), findsNothing);
+    });
+
+    testWidgets('the new password follows the same rules', (
+      WidgetTester tester,
+    ) async {
+      final FakeAuthRepository auth = FakeAuthRepository();
+      await toCodeStep(tester, auth);
+      expect(find.text('Example: Mango@2025'), findsOneWidget);
       await tester.enterText(codeBoxes(), '123456');
       await tester.enterText(field('New password'), 'river2026');
       await tester.enterText(field('Repeat new password'), 'river2026');
       await tapButton(tester, 'Set new password');
-      await tester.pumpAndSettle();
-      expect(auth.calls.last, 'resetWithCode:emp1:123456');
-      expect(find.text('3/3'), findsOneWidget);
-      expect(find.widgetWithText(DsButton, 'Back to sign in'), findsOneWidget);
+      await tester.pump();
+      expect(find.text(r'Add a symbol, like @ # $ !'), findsOneWidget);
+      expect(auth.calls, <String>['requestResetCode:emp1']);
+      await tester.pump(const Duration(seconds: 61));
     });
 
     testWidgets('a new code can be asked for after a minute', (
       WidgetTester tester,
     ) async {
       final FakeAuthRepository auth = FakeAuthRepository();
-      await pumpPage(tester, const ForgotPasswordPage(), auth: auth);
-      await tester.enterText(field('User ID'), 'emp1');
-      await tapButton(tester, 'Send code');
-      await tester.pump();
+      await toCodeStep(tester, auth);
       expect(find.text('Send a new code'), findsNothing);
       await tester.pump(const Duration(seconds: 61));
       expect(find.text('Send a new code'), findsOneWidget);
@@ -180,16 +319,15 @@ void main() {
 
     testWidgets('a wrong code says so and stays', (WidgetTester tester) async {
       final FakeAuthRepository auth = FakeAuthRepository();
-      await pumpPage(tester, const ForgotPasswordPage(), auth: auth);
-      await tester.enterText(field('User ID'), 'emp1');
-      await tapButton(tester, 'Send code');
-      await tester.pump();
+      await toCodeStep(tester, auth);
       auth.failWith = AuthFailure.invalidCode;
       await tester.enterText(codeBoxes(), '000000');
-      await tester.enterText(field('New password'), 'river2026');
-      await tester.enterText(field('Repeat new password'), 'river2026');
+      await tester.enterText(field('New password'), 'river@2026');
+      await tester.enterText(field('Repeat new password'), 'river@2026');
       await tapButton(tester, 'Set new password');
-      await tester.pump();
+      // The hold lets go on the next tick of the clock.
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 1));
       expect(find.text(AuthFailure.invalidCode.message), findsOneWidget);
       expect(find.text('2/3'), findsOneWidget);
       await tester.pump(const Duration(seconds: 61));
@@ -199,13 +337,10 @@ void main() {
       WidgetTester tester,
     ) async {
       final FakeAuthRepository auth = FakeAuthRepository();
-      await pumpPage(tester, const ForgotPasswordPage(), auth: auth);
-      await tester.enterText(field('User ID'), 'emp1');
-      await tapButton(tester, 'Send code');
-      await tester.pump();
+      await toCodeStep(tester, auth);
       await tester.enterText(codeBoxes(), '123');
-      await tester.enterText(field('New password'), 'river2026');
-      await tester.enterText(field('Repeat new password'), 'river2026');
+      await tester.enterText(field('New password'), 'river@2026');
+      await tester.enterText(field('Repeat new password'), 'river@2026');
       await tapButton(tester, 'Set new password');
       await tester.pump();
       expect(find.text('Enter the 6 digits from the email'), findsOneWidget);
@@ -215,31 +350,60 @@ void main() {
   });
 
   group('change password', () {
+    Future<void> fill(WidgetTester tester, String current) async {
+      await tester.enterText(field('Current password'), current);
+      await tester.enterText(field('New password'), 'river@2026');
+      await tester.enterText(field('Repeat new password'), 'river@2026');
+      await tapButton(tester, 'Change password');
+      await tester.pumpAndSettle();
+    }
+
     testWidgets('a wrong current password shows on that field', (
       WidgetTester tester,
     ) async {
       final FakeAuthRepository auth = FakeAuthRepository()
         ..failWith = AuthFailure.invalidCredentials;
       await pumpPushed(tester, const ChangePasswordPage(), auth: auth);
-      await tester.enterText(field('Current password'), 'old12345');
-      await tester.enterText(field('New password'), 'river2026');
-      await tester.enterText(field('Repeat new password'), 'river2026');
-      await tapButton(tester, 'Change password');
-      await tester.pumpAndSettle();
+      await fill(tester, 'old12345');
       expect(find.text("That's not your current password."), findsOneWidget);
     });
 
-    testWidgets('success goes back with a note', (WidgetTester tester) async {
+    testWidgets('the new one must differ from the current one', (
+      WidgetTester tester,
+    ) async {
       final FakeAuthRepository auth = FakeAuthRepository();
       await pumpPushed(tester, const ChangePasswordPage(), auth: auth);
-      await tester.enterText(field('Current password'), 'old12345');
-      await tester.enterText(field('New password'), 'river2026');
-      await tester.enterText(field('Repeat new password'), 'river2026');
-      await tapButton(tester, 'Change password');
-      await tester.pumpAndSettle();
+      await fill(tester, 'river@2026');
+      expect(find.text('The new password must be different'), findsOneWidget);
+      expect(auth.calls, isEmpty);
+    });
+
+    testWidgets('success: the popup, then Home', (WidgetTester tester) async {
+      final FakeAuthRepository auth = FakeAuthRepository();
+      await pumpPage(
+        tester,
+        const ChangePasswordPage(),
+        auth: auth,
+        status: const SignedIn(
+          userId: 'u1',
+          role: AppRole.employee,
+          mustChangePassword: false,
+        ),
+      );
+      await fill(tester, 'old12345');
       expect(auth.calls, <String>['changePassword']);
-      expect(find.text('below'), findsOneWidget);
       expect(find.text('Password changed'), findsOneWidget);
+      await tester.tap(find.text('Go to Home'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /home'), findsOneWidget);
+    });
+
+    testWidgets('an admin goes to the dashboard', (WidgetTester tester) async {
+      await pumpPage(tester, const ChangePasswordPage());
+      await fill(tester, 'old12345');
+      await tester.tap(find.text('Go to Home'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /admin'), findsOneWidget);
     });
 
     testWidgets('the back button goes back', (WidgetTester tester) async {
