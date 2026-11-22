@@ -8,6 +8,7 @@ import '../../../core/design/ds_icons.dart';
 import '../../../core/design/ds_layout.dart';
 import '../../../core/design/ds_status.dart';
 import '../../../core/design/ds_text.dart';
+import '../../../core/links/open_link.dart';
 import '../../../core/time/ist_format.dart';
 import '../../../shared/ds/ds_button.dart';
 import '../../../shared/ds/ds_cards.dart';
@@ -22,7 +23,7 @@ import 'route_parts.dart';
 /// The card at the bottom of the live map when a person is picked: who,
 /// how they are now, km / duty time / visits, and buttons for their stops
 /// and full day route.
-class LivePersonCard extends StatelessWidget {
+class LivePersonCard extends ConsumerWidget {
   const LivePersonCard({
     required this.row,
     required this.now,
@@ -36,9 +37,23 @@ class LivePersonCard extends StatelessWidget {
   final AsyncValue<DayView> view;
   final AsyncValue<List<Visit>> visits;
 
+  Future<void> _call(BuildContext context, WidgetRef ref, String phone) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final bool opened = await ref.read(openLinkProvider)(
+      Uri(scheme: 'tel', path: phone),
+    );
+    if (!opened) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text("Couldn't open the phone app.")),
+      );
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final DayView? v = view.value;
+    final String? phone = row.phone?.trim();
+    final int? battery = row.onDuty ? row.position?.battery : null;
     final int metres = row.day.distanceM ?? v?.route?.distanceM ?? 0;
     final Duration? worked = workedSoFar(row.day, now);
     final int stops = v?.route?.stops.length ?? 0;
@@ -94,6 +109,10 @@ class LivePersonCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (battery != null) ...<Widget>[
+                const SizedBox(width: DsSpace.sm),
+                BatteryChip(percent: battery),
+              ],
             ],
           ),
           const SizedBox(height: DsSpace.md),
@@ -130,6 +149,13 @@ class LivePersonCard extends StatelessWidget {
           const SizedBox(height: DsSpace.md),
           Row(
             children: <Widget>[
+              if (phone != null && phone.isNotEmpty) ...<Widget>[
+                _CallButton(
+                  name: row.name,
+                  onTap: () => _call(context, ref, phone),
+                ),
+                const SizedBox(width: DsSpace.sm),
+              ],
               Expanded(
                 child: DsButton(
                   label: loading ? 'Stops' : 'Stops $stops',
@@ -346,4 +372,70 @@ class MapControls extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// A round green button that opens the phone's dialler.
+class _CallButton extends StatelessWidget {
+  const _CallButton({required this.name, required this.onTap});
+
+  final String name;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: 'Call $name',
+    excludeSemantics: true,
+    child: Material(
+      color: DsColors.successTint,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: const SizedBox.square(
+          dimension: 52,
+          child: Icon(DsIcons.phone, size: 20, color: DsColors.successText),
+        ),
+      ),
+    ),
+  );
+}
+
+/// "64%" with a battery icon; red at 20% or less.
+class BatteryChip extends StatelessWidget {
+  const BatteryChip({required this.percent, super.key});
+
+  final int percent;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool low = percent <= 20;
+    final Color fg = low ? DsColors.dangerText : DsColors.slate;
+    return Semantics(
+      label: 'Battery $percent percent',
+      excludeSemantics: true,
+      child: Container(
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: low ? DsColors.dangerTint : DsColors.disabled,
+          borderRadius: DsRadius.pill,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(DsIcons.battery, size: 15, color: fg),
+            const SizedBox(width: 5),
+            Text(
+              '$percent%',
+              style: DsText.caption.copyWith(
+                color: fg,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

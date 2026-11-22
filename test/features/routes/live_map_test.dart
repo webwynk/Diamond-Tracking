@@ -1,4 +1,6 @@
+import 'package:diamond_tracking/core/links/open_link.dart';
 import 'package:diamond_tracking/core/time/clock_providers.dart';
+import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/domain/duty_day.dart';
 import 'package:diamond_tracking/features/routes/application/route_providers.dart';
 import 'package:diamond_tracking/features/routes/domain/day_route.dart';
@@ -29,14 +31,26 @@ void main() {
     visits = FakeVisitsRepository();
   });
 
+  final List<Uri> opened = <Uri>[];
   List<Override> overrides() => <Override>[
+    openLinkProvider.overrideWithValue((Uri uri) async {
+      opened.add(uri);
+      return true;
+    }),
     routeRepositoryProvider.overrideWithValue(routes),
     showGoogleMapProvider.overrideWithValue(false),
     serverClockProvider.overrideWithValue(FixedClock(now).clock),
   ];
 
   final FakeUsersRepository people = FakeUsersRepository(<Profile>[
-    profile('r', code: 'EMP001', name: 'Rahul Das'),
+    const Profile(
+      id: 'r',
+      userCode: 'EMP001',
+      fullName: 'Rahul Das',
+      role: AppRole.employee,
+      isActive: true,
+      phone: '9876543210',
+    ),
     profile('s', code: 'EMP002', name: 'Sourav Mondal'),
     profile('k', code: 'EMP003', name: 'Kunal Paul'),
     profile('g', code: 'EMP009', name: 'Subhajit Ghosh'),
@@ -303,6 +317,30 @@ void main() {
     );
   });
 
+  testWidgets('a person with a phone: call button and battery', (
+    WidgetTester tester,
+  ) async {
+    fillTeam();
+    opened.clear();
+    await show(tester);
+    await tester.tap(find.bySemanticsLabel(RegExp('Open team list')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rahul Das'));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel('Battery 64 percent'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Call Rahul Das'));
+    await tester.pumpAndSettle();
+    expect(opened.single.toString(), 'tel:9876543210');
+
+    // Sourav has no phone number: no Call button.
+    await tester.tap(find.bySemanticsLabel('Back to everyone'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sourav Mondal'));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel(RegExp('^Call ')), findsNothing);
+    expect(find.bySemanticsLabel('Battery 18 percent'), findsOneWidget);
+  });
+
   testWidgets('nobody on duty yet', (WidgetTester tester) async {
     await show(tester);
     expect(find.text('Nobody on duty yet'), findsOneWidget);
@@ -358,7 +396,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(Drawer),
-          matching: find.text('Kunal Paul'),
+          matching: find.text('Rahul Das'),
         ),
       );
       await tester.pumpAndSettle();

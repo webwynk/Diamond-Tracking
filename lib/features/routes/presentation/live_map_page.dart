@@ -424,9 +424,13 @@ class LiveRow {
     required this.day,
     required this.position,
     required this.state,
+    this.phone,
   });
 
   final String name;
+
+  /// The employee's phone number, for the Call button.
+  final String? phone;
 
   /// The employee ID ("EMP014"), for the search.
   final String code;
@@ -488,6 +492,7 @@ List<LiveRow> liveRows({
         LiveRow(
           name: byId[d.userId]?.fullName ?? 'Unknown',
           code: byId[d.userId]?.userCode ?? '',
+          phone: byId[d.userId]?.phone,
           day: d,
           position: byDay[d.id],
           state: stateOf(d, byDay[d.id]),
