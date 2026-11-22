@@ -237,7 +237,8 @@ void main() {
       expect(find.text('Away from a stop'), findsOneWidget);
       await tester.tap(find.text('Maa Tara Agro'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Camera photo at'), findsOneWidget);
+      expect(find.text('Place saved'), findsOneWidget);
+      expect(find.text('22.55000, 88.35000'), findsOneWidget);
     });
 
     testWidgets('on duty: "Now" and a reload every 2 minutes', (
