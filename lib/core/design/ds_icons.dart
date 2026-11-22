@@ -12,6 +12,9 @@ abstract final class DsIcons {
   static const IconData map = LucideIcons.map;
   static const IconData history = LucideIcons.calendar;
   static const IconData profile = LucideIcons.user;
+  static const IconData live = LucideIcons.radio;
+  static const IconData team = LucideIcons.users;
+  static const IconData reports = LucideIcons.fileText;
   static const IconData back = LucideIcons.chevronLeft;
   static const IconData forward = LucideIcons.chevronRight;
   static const IconData arrow = LucideIcons.arrowRight;

@@ -729,6 +729,10 @@ class FakeVisitsRepository implements VisitsRepository {
   final List<String> photosAsked = <String>[];
 
   @override
+  Future<int> countForDays(List<int> dayIds) async =>
+      <Visit>[for (final int id in dayIds) ...?byDay[id]].length;
+
+  @override
   Future<List<Visit>> forDay(int dayId) async =>
       List<Visit>.of(byDay[dayId] ?? const <Visit>[]);
 
