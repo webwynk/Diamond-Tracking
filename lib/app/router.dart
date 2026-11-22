@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/design/ds_icons.dart';
 import '../features/admin/presentation/admin_dashboard_page.dart';
+import '../features/admin/presentation/admin_nav_shell.dart';
 import '../features/auth/application/auth_providers.dart';
 import '../features/auth/domain/auth_status.dart';
 import '../features/auth/presentation/change_password_page.dart';
@@ -33,7 +34,6 @@ import '../features/users/presentation/users_page.dart';
 import '../features/visits/presentation/add_visit_page.dart';
 import '../shared/ds/ds_frame.dart';
 import '../shared/ds/ds_nav_shell.dart';
-import '../shared/widgets/nav_shell.dart';
 import 'routes.dart';
 
 /// The app's router. Rebuilt never: it re-checks [resolveRedirect] whenever
@@ -241,21 +241,11 @@ StatefulShellRoute _userShell(GlobalKey<NavigatorState> rootKey) =>
 
 StatefulShellRoute _adminShell(GlobalKey<NavigatorState> rootKey) =>
     StatefulShellRoute.indexedStack(
-      builder:
-          (
-            BuildContext context,
-            GoRouterState state,
-            StatefulNavigationShell s,
-          ) => NavShell(
-            shell: s,
-            tabs: const <NavTab>[
-              NavTab(label: 'Dashboard', icon: Icons.dashboard_rounded),
-              NavTab(label: 'Live', icon: Icons.location_on_rounded),
-              NavTab(label: 'Requests', icon: Icons.inbox_rounded),
-              NavTab(label: 'Users', icon: Icons.group_rounded),
-              NavTab(label: 'Reports', icon: Icons.picture_as_pdf_rounded),
-            ],
-          ),
+      builder: (
+        BuildContext context,
+        GoRouterState state,
+        StatefulNavigationShell s,
+      ) => AdminNavShell(shell: s),
       branches: <StatefulShellBranch>[
         StatefulShellBranch(
           routes: <RouteBase>[

@@ -15,7 +15,6 @@ import 'package:diamond_tracking/features/users/application/users_providers.dart
 import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
 import 'package:diamond_tracking/shared/ds/ds_frame.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -91,7 +90,7 @@ void main() {
     for (final String tab in <String>['Home', 'Map', 'History', 'Profile']) {
       expect(find.bySemanticsLabel(tab), findsOneWidget);
     }
-    expect(find.text('Dashboard'), findsNothing);
+    expect(find.bySemanticsLabel('Team'), findsNothing);
 
     await tester.tap(find.bySemanticsLabel('Map'));
     await tester.pumpAndSettle();
@@ -115,11 +114,18 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(
-      find.widgetWithText(NavigationDestination, 'Requests'),
-      findsOneWidget,
-    );
-    await tester.tap(find.widgetWithText(NavigationDestination, 'Live'));
+    expect(find.byType(DsNavBar), findsOneWidget);
+    for (final String tab in <String>[
+      'Home',
+      'Live',
+      'Requests',
+      'Team',
+      'Reports',
+    ]) {
+      expect(find.bySemanticsLabel(tab), findsOneWidget);
+    }
+    expect(find.text('Hi, Boss'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Live'));
     await tester.pumpAndSettle();
     expect(find.text('Nobody on duty yet'), findsOneWidget);
 
@@ -138,7 +144,7 @@ void main() {
     auth.add(const SignedOut());
     await tester.pumpAndSettle();
     expect(find.textContaining('You were signed out.'), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(DsNavBar), findsNothing);
     await tester.ensureVisible(find.text('Sign in again'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Sign in again'));
@@ -195,7 +201,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(NavigationDestination, 'Users'));
+    await tester.tap(find.bySemanticsLabel('Team'));
     await tester.pumpAndSettle();
     expect(find.text('Asha Roy'), findsOneWidget);
 

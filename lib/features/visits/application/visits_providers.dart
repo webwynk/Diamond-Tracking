@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/misc.dart' show FutureProviderFamily;
 import '../../../core/supabase/supabase_providers.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/auth_status.dart';
+import '../../duty/domain/duty_day.dart';
+import '../../routes/application/route_providers.dart';
 import '../data/current_location.dart';
 import '../data/visit_outbox.dart';
 import '../data/visits_repository.dart';
@@ -27,6 +29,16 @@ final FutureProviderFamily<List<Visit>, int> dayVisitsProvider = FutureProvider
       (Ref ref, int dayId) => ref.watch(visitsRepositoryProvider).forDay(dayId),
       retry: (int count, Object error) => null,
     );
+
+/// Everyone's visits today, for the admin dashboard.
+final FutureProvider<int> todayVisitsCountProvider =
+    FutureProvider.autoDispose<int>((Ref ref) async {
+      final List<DutyDay> days = await ref.watch(todayDaysProvider.future);
+      return ref.watch(visitsRepositoryProvider).countForDays(<int>[
+        for (final DutyDay d in days)
+          if (d.dutyOnAt != null) d.id,
+      ]);
+    }, retry: (int count, Object error) => null);
 
 /// Visits kept on the phone until sent (M10). Overridden in tests.
 final Provider<VisitOutbox> visitOutboxProvider = Provider<VisitOutbox>(

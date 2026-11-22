@@ -67,6 +67,12 @@ const String requestDecidedKind = 'request_decided';
 /// The server ended a forgotten duty at 11 PM; the data has the day.
 const String dutyAutoOffKind = 'duty_auto_off';
 
+/// The admin's notifications: a new attendance or leave request, and a
+/// short duty to review.
+const String attendanceRequestKind = 'attendance_request';
+const String leaveRequestKind = 'leave_request';
+const String shortDutyKind = 'short_duty';
+
 /// Registers this phone for push after sign-in and opens tapped
 /// notifications. Lives as long as the app.
 final Provider<PushRegistrar> pushRegistrarProvider = Provider<PushRegistrar>((

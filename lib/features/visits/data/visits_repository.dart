@@ -11,6 +11,9 @@ abstract interface class VisitsRepository {
   /// A day's visits, in time order.
   Future<List<Visit>> forDay(int dayId);
 
+  /// How many visits these duty days have (the admin dashboard's total).
+  Future<int> countForDays(List<int> dayIds);
+
   /// Uploads a JPEG and returns its photo id, `visit-<uuid>`. The uuid is the
   /// new visit's id.
   Future<String> uploadPhoto(Uint8List jpeg);
@@ -52,6 +55,17 @@ class SupabaseVisitsRepository implements VisitsRepository {
         .eq('duty_day_id', dayId)
         .order('captured_at');
     return rows.map(Visit.fromRow).toList();
+  }
+
+  @override
+  Future<int> countForDays(List<int> dayIds) async {
+    if (dayIds.isEmpty) return 0;
+    final PostgrestResponse<List<Map<String, dynamic>>> res = await _client
+        .from('visits')
+        .select('id')
+        .inFilter('duty_day_id', dayIds)
+        .count(CountOption.exact);
+    return res.count;
   }
 
   @override
