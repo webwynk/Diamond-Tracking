@@ -2180,4 +2180,60 @@ select t.expect_error($$update public.profiles set designation = ' Sales'
 select t.expect_error($$update public.profiles set designation = repeat('x', 41)
   where id = '00000000-0000-0000-0000-000000000002'$$, 'profiles_designation_check');
 
+\echo '--- delete user: all their data goes, their photos are queued for the purge'
+select t.act_as_owner();
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000020', 'e20@test');
+insert into public.profiles (id, user_code, full_name, role, created_at) values
+  ('00000000-0000-0000-0000-000000000020', 'DA-020', 'Employee Twenty', 'employee',
+   now() - interval '30 days');
+do $$
+declare
+  u constant uuid := '00000000-0000-0000-0000-000000000020';
+  d bigint;
+  n integer;
+begin
+  insert into public.duty_days (user_id, day, status)
+  values (u, (now() at time zone 'Asia/Kolkata')::date - 3, 'absent') returning id into d;
+  insert into public.visits (id, user_id, duty_day_id, from_gallery, captured_at, photo_id)
+  values ('00000000-0000-0000-0000-0000000000f1', u, d, true, now(), 'visit-keep-1'),
+         ('00000000-0000-0000-0000-0000000000f2', u, d, true, now(), 'visit-gone-1');
+  update public.visits set photo_removed_at = now() where photo_id = 'visit-gone-1';
+  insert into public.requests (user_id, kind, leave_type, dates, message, photo_id, extra_photo_ids)
+  values (u, 'leave', 'sick', array[(now() at time zone 'Asia/Kolkata')::date + 9],
+          'Fever', 'req-first-1', array['req-extra-1']);
+  insert into public.notifications (user_id, kind, title) values (u, 'test', 'Hello');
+  insert into public.admin_log (admin_id, action, target_user)
+  values ('00000000-0000-0000-0000-00000000000a', 'update_user', u);
+
+  -- Only the server may call it.
+  perform t.act_as(u);
+  perform t.expect_error($q$select public.svc_delete_user('00000000-0000-0000-0000-000000000020')$q$,
+                         'permission denied');
+  perform t.act_as_owner();
+  perform t.expect_error($q$select public.svc_delete_user('00000000-0000-0000-0000-0000000000ff')$q$,
+                         'user_not_found');
+
+  perform set_config('role', 'service_role', false);
+  n := public.svc_delete_user(u);
+  perform t.act_as_owner();
+  perform t.eq(n, 3, 'three photos queued (an already removed one is not)');
+  perform t.eq((select count(*)::int from auth.users where id = u), 0, 'sign-in gone');
+  perform t.eq((select count(*)::int from public.profiles where id = u), 0, 'profile gone');
+  perform t.eq((select count(*)::int from public.duty_days where user_id = u), 0, 'days gone');
+  perform t.eq((select count(*)::int from public.visits where user_id = u), 0, 'visits gone');
+  perform t.eq((select count(*)::int from public.requests where user_id = u), 0, 'requests gone');
+  perform t.eq((select count(*)::int from public.notifications where user_id = u), 0,
+               'notifications gone');
+  perform t.eq((select count(*)::int from public.admin_log
+                where action = 'update_user' and target_user is null), 1,
+               'the admin log entry stays, without the person');
+  perform t.eq((select array_agg(photo_id order by photo_id) from public.svc_photos_to_purge(500)
+                where kind = 'orphan' and photo_id like any (array['visit-%', 'req-%'])),
+               array['req-extra-1', 'req-first-1', 'visit-keep-1'],
+               'the next purge deletes their photos');
+  perform t.eq((select count(*)::int from public.profiles
+                where id = '00000000-0000-0000-0000-000000000002'), 1, 'others stay');
+end;
+$$;
+
 \echo 'ALL TESTS PASSED'

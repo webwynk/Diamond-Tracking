@@ -32,6 +32,7 @@ import '../data/users_repository.dart';
 import '../domain/profile.dart';
 import '../domain/team.dart';
 import '../domain/temp_pin.dart';
+import 'delete_user_sheet.dart';
 import 'duty_on_permission_row.dart';
 import 'pin_dialog.dart';
 import 'users_page.dart' show TeamAvatar, callPhone;
@@ -115,13 +116,6 @@ class EmployeeProfilePage extends ConsumerWidget {
                     const SizedBox(height: DsSpace.md),
                   ],
                   _Account(member: m),
-                  const SizedBox(height: DsSpace.md),
-                  DsButton(
-                    label: 'Edit details',
-                    icon: DsIcons.edit,
-                    kind: DsButtonKind.secondary,
-                    onPressed: () => context.push(Routes.adminUserEdit(p.id)),
-                  ),
                 ],
               ),
             ),
@@ -706,9 +700,11 @@ class _AccountState extends ConsumerState<_Account> {
     return false;
   }
 
-  Future<void> _setActive(bool on) async {
+  /// [ask] is false when the admin already chose "Turn off instead" in the
+  /// delete sheet.
+  Future<void> _setActive(bool on, {bool ask = true}) async {
     final Profile p = _p;
-    if (!on) {
+    if (!on && ask) {
       final bool sure = await showDsConfirm(
         context: context,
         title: 'Turn off ${p.fullName}?',
@@ -735,6 +731,38 @@ class _AccountState extends ConsumerState<_Account> {
       ),
     );
     if (ok) _reload();
+  }
+
+  Future<void> _delete() async {
+    final Profile p = _p;
+    final DeleteChoice? choice = await showDeleteUserSheet(context, p);
+    if (!mounted) return;
+    switch (choice) {
+      case DeleteChoice.turnOff:
+        await _setActive(false, ask: false);
+      case DeleteChoice.deleted:
+        final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+        final ProviderContainer providers = ProviderScope.containerOf(
+          context,
+          listen: false,
+        );
+        // Leave the page first: once the lists reload, this person is gone.
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go(Routes.adminUsers);
+        }
+        providers
+          ..invalidate(usersListProvider)
+          ..invalidate(todayDaysProvider)
+          ..invalidate(livePositionsProvider)
+          ..invalidate(userByIdProvider(p.id));
+        messenger.showSnackBar(
+          SnackBar(content: Text('${p.fullName} deleted')),
+        );
+      case null:
+        break;
+    }
   }
 
   Future<void> _releasePhone() async {
@@ -869,7 +897,7 @@ class _AccountState extends ConsumerState<_Account> {
           onTap: _busy ? null : _resetPassword,
         ),
     ];
-    return _Card(
+    final Widget account = _Card(
       padding: const EdgeInsets.fromLTRB(DsSpace.lg, 6, DsSpace.lg, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -895,6 +923,26 @@ class _AccountState extends ConsumerState<_Account> {
             ),
         ],
       ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        account,
+        const SizedBox(height: DsSpace.md),
+        DsButton(
+          label: 'Edit details',
+          icon: DsIcons.edit,
+          kind: DsButtonKind.secondary,
+          onPressed: () => context.push(Routes.adminUserEdit(p.id)),
+        ),
+        if (!self) ...<Widget>[
+          const SizedBox(height: DsSpace.lg),
+          DeleteUserCard(
+            firstName: firstNameOfProfile(p),
+            onTap: _busy ? null : _delete,
+          ),
+        ],
+      ],
     );
   }
 }

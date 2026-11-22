@@ -38,6 +38,10 @@ abstract final class DsIcons {
 
   // Actions and states
   static const IconData check = LucideIcons.check;
+  static const IconData delete = LucideIcons.trash2;
+
+  /// A red cross in a circle: something that will be removed.
+  static const IconData removed = LucideIcons.circleX;
   static const IconData add = LucideIcons.plus;
   static const IconData minus = LucideIcons.minus;
   static const IconData show = LucideIcons.eye;

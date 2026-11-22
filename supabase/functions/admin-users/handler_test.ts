@@ -310,3 +310,78 @@ Deno.test('reset PIN: a failed sign-out says the PIN is set (L42)', async () => 
   assertEquals(again.status, 200);
   assertEquals(b.revoked, [empId]);
 });
+
+Deno.test('delete: removes the person, queues their photos and logs it', async () => {
+  const { b, adminId, empId } = setup();
+  b.photos.set(empId, ['visit-1', 'req-2']);
+  const res = await handler(
+    post({ action: 'delete', id: empId, user_code: 'da-001' }, 'admin-token'),
+    b,
+  );
+  assertEquals(res.status, 200);
+  assertEquals(b.profiles.has(empId), false);
+  assertEquals(b.tokens.has('emp-token'), false);
+  assertEquals(b.queuedPhotos, ['visit-1', 'req-2']);
+  assertEquals(b.log.at(-1), { admin: adminId, action: 'delete_user', target: null });
+  assertEquals(b.logDetails.at(-1), {
+    user_id: empId,
+    user_code: 'DA-001',
+    full_name: 'Someone',
+    role: 'employee',
+    photos_queued: 2,
+  });
+});
+
+Deno.test('delete: the typed user ID must match', async () => {
+  const { b, empId } = setup();
+  for (const user_code of [undefined, '', 'DA-002']) {
+    const res = await handler(post({ action: 'delete', id: empId, user_code }, 'admin-token'), b);
+    assertEquals(res.status, 400);
+    assertEquals((await res.json()).fields, { user_code: 'Type DA-001 to confirm' });
+  }
+  assertEquals(b.profiles.has(empId), true);
+  assertEquals(b.log, []);
+});
+
+Deno.test('delete: an admin cannot delete themselves; employees cannot delete', async () => {
+  const { b, adminId, empId } = setup();
+  const self = await handler(
+    post({ action: 'delete', id: adminId, user_code: 'ADMIN1' }, 'admin-token'),
+    b,
+  );
+  assertEquals(self.status, 409);
+  const emp = await handler(
+    post({ action: 'delete', id: adminId, user_code: 'ADMIN1' }, 'emp-token'),
+    b,
+  );
+  assertEquals(emp.status, 403);
+  assertEquals([b.profiles.has(adminId), b.profiles.has(empId)], [true, true]);
+});
+
+Deno.test('delete: an unknown or bad id', async () => {
+  const { b } = setup();
+  const gone = await handler(
+    post(
+      { action: 'delete', id: '00000000-0000-0000-0000-000000000999', user_code: 'X' },
+      'admin-token',
+    ),
+    b,
+  );
+  assertEquals(gone.status, 404);
+  const bad = await handler(post({ action: 'delete', id: 'x', user_code: 'X' }, 'admin-token'), b);
+  assertEquals(bad.status, 400);
+});
+
+Deno.test('delete: a failed delete keeps everything and logs nothing', async () => {
+  const { b, empId } = setup();
+  b.failNext.add('deleteUser');
+  let message = '';
+  try {
+    await handler(post({ action: 'delete', id: empId, user_code: 'DA-001' }, 'admin-token'), b);
+  } catch (e) {
+    message = (e as Error).message;
+  }
+  assertEquals(message, 'db down');
+  assertEquals(b.profiles.has(empId), true);
+  assertEquals(b.log, []);
+});
