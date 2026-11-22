@@ -40,8 +40,9 @@ void main() {
         container.read(authStatusProvider),
         const SignedOut(unexpected: true),
       );
-      expect(find.textContaining('You were signed out.'), findsOneWidget);
+      expect(find.text('You were signed out'), findsOneWidget);
       expect(find.textContaining('Tell your admin'), findsOneWidget);
+      expect(find.text('Use your user ID and password'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       final Finder again = find.widgetWithText(DsButton, 'Sign in again');

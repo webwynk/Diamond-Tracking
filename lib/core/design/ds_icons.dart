@@ -69,6 +69,8 @@ abstract final class DsIcons {
   static const IconData store = LucideIcons.store;
   static const IconData edit = LucideIcons.pencil;
   static const IconData admin = LucideIcons.shield;
+  static const IconData shieldAlert = LucideIcons.shieldAlert;
+  static const IconData smartphone = LucideIcons.smartphone;
   static const IconData idCard = LucideIcons.idCard;
   static const IconData copy = LucideIcons.copy;
   static const IconData download = LucideIcons.download;
