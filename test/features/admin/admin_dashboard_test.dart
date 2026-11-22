@@ -149,6 +149,29 @@ void main() {
     expect(find.bySemanticsLabel(RegExp(r'^On leave 1,')), findsOneWidget);
   });
 
+  // Each button goes where its label says (every one checked, not assumed).
+  final Map<String, String> buttons = <String, String>{
+    'Notifications': '/admin/notifications',
+    'My account': '/admin/account',
+    '2 of 5 people on duty. Open live map.': '/admin/live',
+    'No location 1, Check now': '/admin/live',
+    'Not started 2, No duty on yet': '/admin/users',
+    'On leave 1, Approved': '/admin/users',
+  };
+  for (final MapEntry<String, String> b in buttons.entries) {
+    testWidgets('the "${b.key}" button opens ${b.value}', (
+      WidgetTester tester,
+    ) async {
+      fillToday();
+      await show(tester);
+      await tester.tap(
+        find.bySemanticsLabel(RegExp('^${RegExp.escape(b.key)}')).first,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('route ${b.value}'), findsOneWidget);
+    });
+  }
+
   testWidgets('the card and tiles open their tabs', (
     WidgetTester tester,
   ) async {
