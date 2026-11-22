@@ -1,3 +1,4 @@
+import 'package:diamond_tracking/core/links/open_link.dart';
 import 'package:diamond_tracking/core/time/clock_providers.dart';
 import 'package:diamond_tracking/features/auth/domain/auth_status.dart';
 import 'package:diamond_tracking/features/duty/application/duty_providers.dart';
@@ -12,8 +13,9 @@ import 'package:diamond_tracking/features/routes/presentation/history_page.dart'
 import 'package:diamond_tracking/features/routes/presentation/my_map_page.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/visits/domain/visit.dart';
+import 'package:diamond_tracking/shared/ds/ds_button.dart';
 import 'package:diamond_tracking/shared/ds/ds_chips.dart';
-import 'package:flutter/material.dart' show Size;
+import 'package:flutter/material.dart' show Size, TextField;
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -114,7 +116,7 @@ void main() {
       );
 
       expect(find.text('Asha Roy'), findsOneWidget);
-      expect(find.text('EMP007'), findsOneWidget);
+      expect(find.text('EMP007 · '), findsOneWidget);
       expect(find.text('AR'), findsOneWidget);
       expect(find.text('Today · Fri, 20 Nov'), findsOneWidget);
       expect(find.text('Map: 1 lines, 0 gaps, 3 pins'), findsOneWidget);
@@ -269,6 +271,7 @@ void main() {
     testWidgets('full screen map hides the details and brings them back', (
       WidgetTester tester,
     ) async {
+      tall(tester);
       routes.days[7] = day(7, on: at(0));
       routes.routes[7] = route(7, addresses: const <String?>['Shop']);
       await pumpPage(
@@ -307,6 +310,7 @@ void main() {
     testWidgets('a failed load can be tried again', (
       WidgetTester tester,
     ) async {
+      tall(tester);
       routes.dayError = Exception('offline');
       await pumpPage(
         tester,
@@ -607,5 +611,209 @@ void main() {
       overrides: overrides(),
     );
     expect(find.textContaining('Fake GPS'), findsNothing);
+  });
+
+  group('Day route, admin extras', () {
+    final FakeUsersRepository withPhone = FakeUsersRepository(<Profile>[
+      const Profile(
+        id: 'u',
+        userCode: 'EMP007',
+        fullName: 'Rahul Das',
+        role: AppRole.employee,
+        isActive: true,
+        phone: '9876543210',
+      ),
+    ]);
+
+    testWidgets('Change day status saves the new status and a note', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      routes.days[7] = day(7, on: at(0), status: DayStatus.halfDay);
+      routes.routes[7] = route(7);
+      final FakeRequestsRepository requests = FakeRequestsRepository();
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        users: withPhone,
+        overrides: <Override>[
+          ...overrides(),
+          requestsRepositoryProvider.overrideWithValue(requests),
+        ],
+      );
+      await tester.tap(find.text('Change day status'));
+      await tester.pumpAndSettle();
+      expect(find.text('Fri, 20 Nov · now Half day'), findsOneWidget);
+      // The same status cannot be saved again.
+      final Finder save = find.widgetWithText(DsButton, 'Save');
+      expect(tester.widget<DsButton>(save).onPressed, isNull);
+
+      await tester.tap(find.text('Present'));
+      await tester.enterText(find.byType(TextField), 'Manager confirmed');
+      await tester.pump();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(requests.calls, <String>[
+        'setDayStatus:u:2026-11-20:present::Manager confirmed',
+      ]);
+      expect(find.text('Saved: Present.'), findsOneWidget);
+    });
+
+    testWidgets('leave is saved with its type; a server refusal shows', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      routes.days[7] = day(7, on: at(0));
+      routes.routes[7] = route(7);
+      final FakeRequestsRepository requests = FakeRequestsRepository()
+        ..error = Exception('future_day');
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        users: withPhone,
+        overrides: <Override>[
+          ...overrides(),
+          requestsRepositoryProvider.overrideWithValue(requests),
+        ],
+      );
+      await tester.tap(find.text('Change day status'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sick leave'));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(DsButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('A day in the future cannot be changed.'),
+        findsOneWidget,
+      );
+
+      requests.error = null;
+      await tester.tap(find.widgetWithText(DsButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(requests.calls.last, 'setDayStatus:u:2026-11-20:leave:sick:');
+    });
+
+    testWidgets('no Change day status while on duty, or for the employee', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      routes.days[7] = day(7, on: at(0), status: DayStatus.onDuty);
+      routes.routes[7] = route(7);
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        users: withPhone,
+        overrides: overrides(),
+      );
+      expect(find.text('Change day status'), findsNothing);
+    });
+
+    testWidgets('the employee sees no call, arrows or status button', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      routes.days[7] = day(7, on: at(0));
+      routes.routes[7] = route(7);
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        users: withPhone,
+        status: employee,
+        overrides: overrides(),
+      );
+      expect(find.text('Change day status'), findsNothing);
+      expect(find.bySemanticsLabel('Call Rahul Das'), findsNothing);
+      expect(find.bySemanticsLabel('Previous day'), findsNothing);
+    });
+
+    testWidgets('Call opens the dialler', (WidgetTester tester) async {
+      tall(tester);
+      routes.days[7] = day(7, on: at(0));
+      routes.routes[7] = route(7);
+      final List<Uri> opened = <Uri>[];
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        users: withPhone,
+        overrides: <Override>[
+          ...overrides(),
+          openLinkProvider.overrideWithValue((Uri uri) async {
+            opened.add(uri);
+            return true;
+          }),
+        ],
+      );
+      await tester.tap(find.bySemanticsLabel('Call Rahul Das'));
+      await tester.pumpAndSettle();
+      expect(opened.single.toString(), 'tel:9876543210');
+    });
+
+    testWidgets('arrows step to the day before; none after today', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      routes.days[7] = day(7, on: at(0));
+      routes.days[6] = day(6, date: DateTime.utc(2026, 11, 18));
+      routes.days[9] = day(9, user: 'other', date: DateTime.utc(2026, 11, 19));
+      routes.routes[7] = route(7);
+      await pumpPage(
+        tester,
+        const DayRoutePage(dayId: 7),
+        users: withPhone,
+        overrides: overrides(),
+      );
+      expect(find.text('Today · Fri, 20 Nov'), findsOneWidget);
+      // Nothing after today: Next does nothing.
+      await tester.tap(find.bySemanticsLabel('Next day'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('route /'), findsNothing);
+      await tester.tap(find.bySemanticsLabel('Previous day'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /admin/days/6'), findsOneWidget);
+    });
+
+    test('neighbourDays picks the closest day on each side', () {
+      final List<DutyDay> days = <DutyDay>[
+        day(1, date: DateTime.utc(2026, 11, 10)),
+        day(2, date: DateTime.utc(2026, 11, 14)),
+        day(3, date: DateTime.utc(2026, 11, 16)),
+        day(4, date: DateTime.utc(2026, 11, 19)),
+      ];
+      final (DutyDay? before, DutyDay? after) = neighbourDays(days, days[2]);
+      expect(before?.id, 2);
+      expect(after?.id, 4);
+      expect(neighbourDays(days, days[0]).$1, isNull);
+    });
+
+    for (final double width in <double>[360, 390, 430]) {
+      testWidgets('admin day off fits $width wide', (
+        WidgetTester tester,
+      ) async {
+        tester.view.physicalSize = Size(width * 3, 800 * 3);
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        routes.days[7] = day(7, on: at(0));
+        routes.routes[7] = route(7);
+        await pumpPage(
+          tester,
+          const DayRoutePage(dayId: 7),
+          users: FakeUsersRepository(<Profile>[
+            const Profile(
+              id: 'u',
+              userCode: 'EMP007',
+              fullName: 'Mohammad Hasanur Rahaman Chowdhury',
+              role: AppRole.employee,
+              isActive: true,
+              phone: '9876543210',
+            ),
+          ]),
+          overrides: overrides(),
+        );
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.text('Change day status'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 }

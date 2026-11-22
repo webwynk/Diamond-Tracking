@@ -588,6 +588,21 @@ class FakeRequestsRepository implements RequestsRepository {
   }
 
   @override
+  Future<void> setDayStatus(
+    String userId,
+    DateTime day,
+    DayStatus status, {
+    LeaveType? leave,
+    String? note,
+  }) async {
+    _maybeFail();
+    calls.add(
+      'setDayStatus:$userId:${day.toIso8601String().substring(0, 10)}:'
+      '${status.wire}:${leave?.wire ?? ''}:${note ?? ''}',
+    );
+  }
+
+  @override
   Future<void> decide(int id, DayStatus decision, String? note) async {
     _maybeFail();
     calls.add('decide:$id:${decision.wire}:${note ?? ''}');
