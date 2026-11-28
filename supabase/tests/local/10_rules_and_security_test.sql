@@ -327,7 +327,8 @@ begin
   perform public.duty_off(v_id, now());
   perform t.act_as_owner();
 
-  perform t.eq((select status from public.duty_days where id = v_id), 'present'::public.day_status, 'long day is present');
+  -- Every day waits for an admin, 10 hours or more too.
+  perform t.eq((select status from public.duty_days where id = v_id), 'pending'::public.day_status, 'a long day waits for review');
   perform t.eq((select duty_off_at from public.duty_days where id = v_id), private.auto_off_at(v_day), 'duty off capped at 23:00');
   perform t.eq((select worked_minutes from public.duty_days where id = v_id), 16 * 60, 'worked minutes');
   perform t.eq((select jsonb_array_length(stops) from public.day_routes where duty_day_id = v_id), 1, 'one stop');
@@ -337,8 +338,18 @@ begin
     raise exception 'distance should be about 4 km, got %',
       (select distance_m from public.duty_days where id = v_id);
   end if;
-  perform t.eq((select count(*) from public.requests where user_id = '00000000-0000-0000-0000-000000000001'),
-               0::bigint, 'no review for a full day');
+  perform t.eq((select count(*) from public.requests where user_id = '00000000-0000-0000-0000-000000000001'
+                and kind = 'short_duty' and status = 'pending'),
+               1::bigint, 'a review for a full day too');
+  perform t.eq((select title || ' | ' || body from public.notifications
+                where kind = 'short_duty' and data->>'user_id' = '00000000-0000-0000-0000-000000000001'
+                order by id desc limit 1),
+               'Duty to review | ' || (select full_name from public.profiles
+                                       where id = '00000000-0000-0000-0000-000000000001')
+                 || ' worked 16 h 0 min · '
+                 || to_char((select distance_m from public.duty_days where id = v_id) / 1000.0, 'FM9990.0')
+                 || ' km',
+               'the alert gives hours and km');
 end;
 $$;
 
@@ -361,10 +372,10 @@ begin
   perform t.expect_error(format('select public.cancel_request(%s)', v_req), 'request_not_cancellable');
 
   perform t.act_as('00000000-0000-0000-0000-00000000000a');
-  perform t.eq((select count(*) from public.notifications where kind = 'short_duty'), 1::bigint, 'admin notified');
-  perform t.eq((select (data->>'request_id')::bigint from public.notifications where kind = 'short_duty'),
-               (select id from public.requests where kind = 'short_duty' order by id desc limit 1),
-               'the alert names its request');
+  perform t.eq((select count(*) from public.notifications where kind = 'short_duty'
+                and data->>'request_id' = v_req::text), 1::bigint, 'admin notified');
+  perform t.eq((select count(*) from public.notifications where kind = 'short_duty'
+                and data->>'day' = v_day::text), 1::bigint, 'the alert names its request');
   perform t.expect_error(format($q$select public.decide_request(%s, 'leave')$q$, v_req), 'invalid_decision');
   perform public.decide_request(v_req, 'half_day', 'Left early, approved');
   perform t.expect_error(format($q$select public.decide_request(%s, 'present')$q$, v_req), 'request_already_decided');
@@ -373,6 +384,8 @@ begin
   perform t.eq((select status from public.duty_days where id = v_id), 'half_day'::public.day_status, 'half day after decision');
   perform t.eq((select status from public.requests where id = v_req), 'approved'::public.request_status, 'request approved');
   perform t.eq((select count(*) from public.notifications where kind = 'request_decided'), 1::bigint, 'employee notified');
+  perform t.eq((select title from public.notifications where kind = 'request_decided'),
+               'Your day was marked Half day', 'the employee is told the decision');
   perform t.eq((select count(*) from public.notifications where kind = 'short_duty'), 0::bigint, 'employee cannot see admin alerts');
   perform t.eq(public.mark_notifications_read(), 1, 'mark read');
   perform t.act_as_owner();
@@ -395,7 +408,11 @@ begin
   perform t.eq(private.auto_duty_off(), 0, 'running again changes nothing');
   perform t.eq((select end_reason from public.duty_days where id = v_id), 'auto'::public.duty_end_reason, 'auto end');
   perform t.eq((select duty_off_at from public.duty_days where id = v_id), private.auto_off_at(v_day), 'closed at 23:00');
-  perform t.eq((select status from public.duty_days where id = v_id), 'present'::public.day_status, '14.5 h is present');
+  perform t.eq((select status from public.duty_days where id = v_id), 'pending'::public.day_status, '14.5 h waits for review');
+  perform t.eq((select body like '% · ended at 11 PM' from public.notifications
+                where kind = 'short_duty' and data->>'day' = v_day::text
+                  and data->>'user_id' = '00000000-0000-0000-0000-000000000002'),
+               true, 'the alert says 11 PM ended it');
 
   perform t.eq(private.mark_absent(v_day), 1, 'only the employee with nothing is absent');
   perform t.eq((select status from public.duty_days
@@ -510,8 +527,16 @@ begin
                          'invalid_decision');
   perform public.set_day_status('00000000-0000-0000-0000-000000000001', v_day, 'present');
   perform t.act_as_owner();
+  -- The day was waiting for review; the admin's change settles the review.
   perform t.eq((select details->>'from' from public.admin_log where action = 'set_day_status' order by id limit 1),
-               'present', 'previous status logged');
+               'pending', 'previous status logged');
+  perform t.eq((select (details->>'closed_request') is not null from public.admin_log
+                where action = 'set_day_status' order by id limit 1),
+               true, 'the open review is closed by the change');
+  perform t.eq((select count(*) from public.requests
+                where user_id = '00000000-0000-0000-0000-000000000001' and day = v_day
+                  and kind = 'short_duty' and status = 'pending'),
+               0::bigint, 'no review left waiting');
   perform t.eq((select status from public.duty_days
                 where user_id = '00000000-0000-0000-0000-000000000001' and day = v_day),
                'present'::public.day_status, 'undo works');
@@ -1767,7 +1792,7 @@ begin
   perform t.eq((select count(*) from public.notifications
                 where kind = 'short_duty' and data->>'request_id' = v_req::text), 0::bigint,
                'old notice removed');
-  perform t.eq((select body like '%4 h 0 min' from public.notifications
+  perform t.eq((select body like '% worked 4 h 0 min · % km' from public.notifications
                 where kind = 'short_duty' and data->>'user_id' = e12::text limit 1), true,
                'new notice has the real hours');
 

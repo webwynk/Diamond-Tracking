@@ -29,7 +29,7 @@ import 'my_requests_page.dart'
 /// Which kind of request the list shows.
 enum RequestKindFilter {
   all('All', null),
-  shortDuty('Short', RequestKind.shortDuty),
+  review('Review', RequestKind.dutyReview),
   attendance('Attendance', RequestKind.attendance),
   leave('Leave', RequestKind.leave);
 
@@ -42,7 +42,7 @@ enum RequestKindFilter {
 
   DsStatus get tone => switch (this) {
     all => DsStatus.off,
-    shortDuty => DsStatus.waiting,
+    review => DsStatus.waiting,
     attendance => DsStatus.onDuty,
     leave => DsStatus.leave,
   };
@@ -499,7 +499,7 @@ class _AdminRequestCardState extends ConsumerState<AdminRequestCard> {
           ),
           const SizedBox(height: 10),
           switch (r.kind) {
-            RequestKind.shortDuty => _ShortDutyStrip(request: r),
+            RequestKind.dutyReview => _ReviewStrip(request: r),
             RequestKind.attendance => _AttendanceStrip(request: r),
             RequestKind.leave => _LeaveStrip(request: r),
           },
@@ -538,7 +538,7 @@ class _AdminRequestCardState extends ConsumerState<AdminRequestCard> {
     );
   }
 
-  /// Short duty: Present, Half day, Absent. Leave: Reject, Approve.
+  /// Duty review: Present, Half day, Absent. Leave: Reject, Approve.
   static List<DayStatus> _quickChoices(AppRequest r) =>
       r.kind == RequestKind.leave
       ? const <DayStatus>[DayStatus.absent, DayStatus.leave]
@@ -657,9 +657,10 @@ class _QuickButton extends StatelessWidget {
   }
 }
 
-/// Short duty: "7h 40m / 10h", a bar and the day.
-class _ShortDutyStrip extends ConsumerWidget {
-  const _ShortDutyStrip({required this.request});
+/// Duty review: "10h 42m / 10h · 86.4 km", a bar (green at 10 h, amber
+/// under) and the day.
+class _ReviewStrip extends ConsumerWidget {
+  const _ReviewStrip({required this.request});
 
   final AppRequest request;
 
@@ -670,56 +671,67 @@ class _ShortDutyStrip extends ConsumerWidget {
         ? null
         : ref.watch(requestDayProvider((r.userId, r.day!))).value;
     final int? minutes = d?.workedMinutes;
+    final bool met = minutes != null && minutes >= fullDay.inMinutes;
+    final DsStatus tone = met ? DsStatus.present : DsStatus.waiting;
     final double part = minutes == null
         ? 0
         : (minutes / fullDay.inMinutes).clamp(0, 1).toDouble();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFFBEB),
+      decoration: BoxDecoration(
+        color: tone.tint,
         borderRadius: DsRadius.medium,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text.rich(
-            TextSpan(
-              children: <InlineSpan>[
-                TextSpan(
-                  text: minutes == null
-                      ? '…'
-                      : IstFormat.hoursMinutes(Duration(minutes: minutes)),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    children: <InlineSpan>[
+                      TextSpan(
+                        text: minutes == null
+                            ? '…'
+                            : IstFormat.hoursMinutes(
+                                Duration(minutes: minutes),
+                              ),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const TextSpan(text: ' / 10h'),
+                      if (d?.distanceM case final int m)
+                        TextSpan(text: ' · ${reviewKm(m)}'),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DsText.label.copyWith(
+                    color: DsColors.ink,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
-                const TextSpan(text: ' / 10h'),
+              ),
+              if (r.day case final DateTime day) ...<Widget>[
+                const SizedBox(width: 10),
+                Text(
+                  IstFormat.weekdayDay(day).replaceAll(',', ''),
+                  maxLines: 1,
+                  style: DsText.caption,
+                ),
               ],
-            ),
-            style: DsText.label.copyWith(
-              color: DsColors.ink,
-              fontWeight: FontWeight.w400,
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: DsRadius.pill,
+            child: LinearProgressIndicator(
+              value: part,
+              minHeight: 6,
+              backgroundColor: DsColors.white,
+              color: tone.dot,
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: DsRadius.pill,
-              child: LinearProgressIndicator(
-                value: part,
-                minHeight: 6,
-                backgroundColor: const Color(0xFFFDE68A),
-                color: DsStatus.waiting.dot,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          if (r.day case final DateTime day)
-            Flexible(
-              child: Text(
-                IstFormat.weekdayDay(day).replaceAll(',', ''),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: DsText.caption,
-              ),
-            ),
         ],
       ),
     );

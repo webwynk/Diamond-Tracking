@@ -1,6 +1,7 @@
 import '../../duty/domain/duty_day.dart';
 
-/// A full day: 10 hours or more on duty is Present (the duty rules).
+/// A full day: 10 hours or more on duty. The admin's review usually marks it
+/// Present; shorter days usually Half day.
 const Duration fullDay = Duration(hours: 10);
 
 /// One month of the History tab (design v2): the days in it, the counts by

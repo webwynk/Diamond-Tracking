@@ -19,10 +19,12 @@ import '../../../shared/ds/ds_feedback.dart';
 import '../../../shared/ds/ds_field.dart';
 import '../../duty/domain/duty_day.dart';
 import '../../routes/application/route_providers.dart';
+import '../../routes/domain/day_route.dart';
 import '../../routes/domain/history_month.dart' show fullDay;
 import '../../routes/presentation/recent_days.dart';
 import '../../users/application/users_providers.dart';
 import '../../users/domain/profile.dart';
+import '../../visits/application/visits_providers.dart';
 import '../application/requests_providers.dart';
 import '../data/photo_upload.dart';
 import '../domain/app_request.dart';
@@ -103,7 +105,24 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
       );
     }
     final Profile? person = ref.watch(userByIdProvider(r.userId)).value;
-    final DayStatus choice = _choice ?? r.choices.first;
+    // A duty review starts on the usual choice for the hours: Present at
+    // 10 h or more, Half day under. Nothing is saved until Confirm, and
+    // Confirm waits while the hours load.
+    final bool review = r.kind == RequestKind.dutyReview && r.day != null;
+    final AsyncValue<DutyDay?>? reviewAsync = review
+        ? ref.watch(requestDayProvider((r.userId, r.day!)))
+        : null;
+    final DutyDay? reviewDay = reviewAsync?.value;
+    final int? worked = reviewDay?.workedMinutes;
+    final DayStatus choice =
+        _choice ??
+        (worked == null
+            ? r.choices.first
+            : worked >= fullDay.inMinutes
+            ? DayStatus.present
+            : DayStatus.halfDay);
+    final bool waitForDay =
+        r.isPending && reviewDay == null && (reviewAsync?.isLoading ?? false);
     return Scaffold(
       backgroundColor: DsColors.surface,
       body: Column(
@@ -123,10 +142,13 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      if (r.kind == RequestKind.leave)
-                        _LeaveDays(request: r)
-                      else
-                        _Facts(request: r),
+                      switch (r.kind) {
+                        RequestKind.leave => _LeaveDays(request: r),
+                        RequestKind.dutyReview when r.day != null => _ReviewDay(
+                          request: r,
+                        ),
+                        _ => _Facts(request: r),
+                      },
                       if (r.photoCount > 0 ||
                           (r.message?.trim().isNotEmpty ?? false)) ...<Widget>[
                         const SizedBox(height: DsSpace.md),
@@ -155,7 +177,7 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
               noteOpen: _noteOpen,
               onToggleNote: () => setState(() => _noteOpen = !_noteOpen),
               note: _note,
-              busy: _busy,
+              busy: _busy || waitForDay,
               error: _error,
               onConfirm: () => _decide(r, choice),
             ),
@@ -382,7 +404,8 @@ class _Card extends StatelessWidget {
   );
 }
 
-/// Day, duty times, worked (against 10 h) and when it was sent.
+/// Attendance: day, the times sent, worked (against 10 h) and when it was
+/// sent.
 class _Facts extends ConsumerWidget {
   const _Facts({required this.request});
 
@@ -391,15 +414,9 @@ class _Facts extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AppRequest r = request;
-    // A short duty's times come from the day itself.
-    final DutyDay? day = r.kind == RequestKind.shortDuty && r.day != null
-        ? ref.watch(requestDayProvider((r.userId, r.day!))).value
-        : null;
-    final DateTime? on = r.dutyOnAt ?? day?.dutyOnAt;
-    final DateTime? off = r.dutyOffAt ?? day?.dutyOffAt;
-    final Duration? worked = day?.workedMinutes != null
-        ? Duration(minutes: day!.workedMinutes!)
-        : on != null && off != null
+    final DateTime? on = r.dutyOnAt;
+    final DateTime? off = r.dutyOffAt;
+    final Duration? worked = on != null && off != null
         ? off.difference(on)
         : null;
     final bool met = worked != null && worked >= fullDay;
@@ -421,10 +438,7 @@ class _Facts extends ConsumerWidget {
             runSpacing: 4,
             children: <Widget>[
               _value(IstFormat.hoursMinutes(worked)),
-              DsStatusPill(
-                status: met ? DsStatus.present : DsStatus.waiting,
-                label: met ? '✓ 10h met' : 'Under 10h',
-              ),
+              _MetPill(met: met),
             ],
           ),
         ),
@@ -433,55 +447,264 @@ class _Facts extends ConsumerWidget {
         _value(_sent(r.createdAt, ref.watch(serverClockProvider).now())),
       ),
     ];
-    return _Card(
-      child: Column(
-        children: <Widget>[
-          for (final (int i, (String label, Widget value)) in rows.indexed)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: i == rows.length - 1 && day == null
-                  ? null
-                  : const BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Color(0xFFEEF2F6)),
-                      ),
-                    ),
-              child: Row(
-                children: <Widget>[
-                  Text(
-                    label,
-                    style: DsText.body.copyWith(color: DsColors.text2),
-                  ),
-                  const SizedBox(width: DsSpace.md),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: value,
-                    ),
-                  ),
-                ],
-              ),
+    return _Card(child: _Rows(rows: rows));
+  }
+}
+
+Widget _value(String text) => Text(
+  text,
+  textAlign: TextAlign.right,
+  style: DsText.body.copyWith(fontWeight: FontWeight.w700),
+);
+
+/// "✓ 10h met" (green) or "Under 10h" (amber).
+class _MetPill extends StatelessWidget {
+  const _MetPill({required this.met});
+
+  final bool met;
+
+  @override
+  Widget build(BuildContext context) => DsStatusPill(
+    status: met ? DsStatus.present : DsStatus.waiting,
+    label: met ? '✓ 10h met' : 'Under 10h',
+  );
+}
+
+/// Label on the left, value on the right, a line between rows.
+class _Rows extends StatelessWidget {
+  const _Rows({required this.rows, this.lineAbove = false});
+
+  final List<(String, Widget)> rows;
+
+  /// A line above the first row too (under the review's two numbers).
+  final bool lineAbove;
+
+  static const BorderSide _line = BorderSide(color: Color(0xFFEEF2F6));
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: <Widget>[
+      for (final (int i, (String label, Widget value)) in rows.indexed)
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              top: i == 0 && lineAbove ? _line : BorderSide.none,
+              bottom: i == rows.length - 1 ? BorderSide.none : _line,
             ),
-          if (day != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: DsTextLink(
-                  label: 'View route',
-                  onPressed: () => context.push(Routes.adminDay(day.id)),
+          ),
+          child: Row(
+            children: <Widget>[
+              Text(label, style: DsText.body.copyWith(color: DsColors.text2)),
+              const SizedBox(width: DsSpace.md),
+              Expanded(
+                child: Align(alignment: Alignment.centerRight, child: value),
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
+}
+
+/// Duty review (design: Duty review): the day's total km and hours against
+/// 10 h, duty on → off, who ended it, visits and stops, gaps in the route,
+/// and View route.
+class _ReviewDay extends ConsumerWidget {
+  const _ReviewDay({required this.request});
+
+  final AppRequest request;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AppRequest r = request;
+    final AsyncValue<DutyDay?> dayAsync = ref.watch(
+      requestDayProvider((r.userId, r.day!)),
+    );
+    final DutyDay? day = dayAsync.value;
+    if (day == null) {
+      return _Card(
+        child: Padding(
+          padding: const EdgeInsets.all(DsSpace.lg),
+          child: dayAsync.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Text(
+                  dayAsync.hasError
+                      ? "Couldn't load the day. Check the internet."
+                      : 'This day has no duty record.',
+                  style: DsText.body.copyWith(color: DsColors.text2),
+                ),
+        ),
+      );
+    }
+    final DateTime now = ref.watch(serverClockProvider).now();
+    final DateTime? on = day.dutyOnAt;
+    final DateTime? off = day.dutyOffAt;
+    final Duration? worked = day.workedMinutes != null
+        ? Duration(minutes: day.workedMinutes!)
+        : on != null && off != null
+        ? off.difference(on)
+        : null;
+    final bool met = worked != null && worked >= fullDay;
+    // A day with no route row (no points) has no stops and no gaps; "…"
+    // only while loading.
+    final AsyncValue<DayRoute?> routeAsync = ref.watch(
+      reviewRouteProvider(day.id),
+    );
+    final bool routeKnown = routeAsync.hasValue;
+    final DayRoute? route = routeAsync.value;
+    final int? visits = ref.watch(dayVisitsProvider(day.id)).value?.length;
+    final List<RouteNote> gaps = route?.notes ?? const <RouteNote>[];
+    final Duration gapTime = gaps.fold(
+      Duration.zero,
+      (Duration sum, RouteNote n) => sum + n.to.difference(n.from),
+    );
+    final List<(String, Widget)> rows = <(String, Widget)>[
+      if (on != null && off != null)
+        (
+          'Duty on → off',
+          _value('${IstFormat.time(on)} → ${IstFormat.time(off)}'),
+        ),
+      (
+        'Ended by',
+        _value(day.autoEnded ? 'Auto off at 11 PM' : 'Employee (Duty off)'),
+      ),
+      (
+        'Visits · stops',
+        _value(
+          '${visits == null ? '…' : _count(visits, 'visit')} · '
+          '${routeKnown ? _count(route?.stops.length ?? 0, 'stop') : '…'}',
+        ),
+      ),
+      (
+        'Gaps in route',
+        !routeKnown
+            ? _value('…')
+            : Text(
+                gaps.isEmpty
+                    ? 'None'
+                    : '${gaps.length} · ${IstFormat.duration(gapTime)}',
+                textAlign: TextAlign.right,
+                style: DsText.body.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: gaps.isEmpty
+                      ? DsColors.successText
+                      : DsColors.warningText,
                 ),
               ),
+      ),
+    ];
+    return _Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: DsSpace.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      _dayTitle(day.day, now),
+                      style: DsText.body.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontVariations: const <FontVariation>[
+                          FontVariation('wght', 700),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (worked != null) _MetPill(met: met),
+              ],
             ),
-        ],
+            const SizedBox(height: 14),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: _Stat(
+                    label: 'Total distance',
+                    value: reviewKm(day.distanceM),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _Stat(
+                    label: 'Total hours',
+                    value: worked == null
+                        ? '…'
+                        : IstFormat.hoursMinutes(worked),
+                    color: worked == null
+                        ? null
+                        : met
+                        ? DsColors.successText
+                        : DsColors.warningText,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DsSpace.sm),
+            _Rows(rows: rows, lineAbove: true),
+            const SizedBox(height: DsSpace.sm),
+            DsButton(
+              label: 'View route',
+              icon: DsIcons.map,
+              kind: DsButtonKind.secondary,
+              onPressed: () => context.push(Routes.adminDay(day.id)),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  static Widget _value(String text) => Text(
-    text,
-    textAlign: TextAlign.right,
-    style: DsText.body.copyWith(fontWeight: FontWeight.w700),
+  static String _count(int n, String word) =>
+      '$n ${n == 1 ? word : '${word}s'}';
+
+  /// "Today · Sat, 28 Nov", "Yesterday · Fri, 27 Nov", "Thu, 26 Nov".
+  static String _dayTitle(DateTime day, DateTime now) {
+    final int ago = Ist.dateOf(now).difference(day).inDays;
+    final String date = DateFormat('EEE, d MMM').format(day);
+    return switch (ago) {
+      0 => 'Today · $date',
+      1 => 'Yesterday · $date',
+      _ => date,
+    };
+  }
+}
+
+/// One of the review's two big numbers.
+class _Stat extends StatelessWidget {
+  const _Stat({required this.label, required this.value, this.color});
+
+  final String label;
+  final String value;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: const BoxDecoration(
+      color: DsColors.surface,
+      borderRadius: DsRadius.medium,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(label, style: DsText.caption.copyWith(color: DsColors.text2)),
+        const SizedBox(height: 2),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: DsText.value.copyWith(color: color),
+          ),
+        ),
+      ],
+    ),
   );
 }
 

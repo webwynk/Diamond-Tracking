@@ -134,7 +134,7 @@ class _MyRequestDetailPageState extends ConsumerState<MyRequestDetailPage> {
   }
 }
 
-/// The days of a request: one for attendance and short duty.
+/// The days of a request: one for attendance and duty review.
 List<DateTime> _daysOf(AppRequest r) => r.kind == RequestKind.leave
     ? r.dates
     : <DateTime>[if (r.day != null) r.day!];
@@ -171,7 +171,7 @@ class _TopCard extends StatelessWidget {
     final String title = switch (r.kind) {
       RequestKind.leave => r.leaveType?.label ?? 'Leave',
       RequestKind.attendance => 'Attendance',
-      RequestKind.shortDuty => 'Short duty',
+      RequestKind.dutyReview => 'Duty review',
     };
     final Color dayLabel = r.kind == RequestKind.leave && r.leaveType != null
         ? DsStatus.sick.text
@@ -290,7 +290,7 @@ class _Progress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppRequest r = request;
-    final bool byApp = r.kind == RequestKind.shortDuty;
+    final bool byApp = r.kind == RequestKind.dutyReview;
     final _Step last = switch (r.status) {
       RequestStatus.pending => const _Step(
         state: _StepState.todo,
@@ -565,7 +565,7 @@ class _WhatYouSent extends ConsumerWidget {
         ),
       );
     }
-    if (r.kind == RequestKind.shortDuty && r.day != null) {
+    if (r.kind == RequestKind.dutyReview && r.day != null) {
       final DutyDay? d = ref
           .watch(requestDayProvider((r.userId, r.day!)))
           .value;
@@ -638,7 +638,7 @@ class _WhatYouSent extends ConsumerWidget {
     }
     if (rows.isEmpty) return const SizedBox.shrink();
     return _Card(
-      title: r.kind == RequestKind.shortDuty ? 'The day' : 'What you sent',
+      title: r.kind == RequestKind.dutyReview ? 'The day' : 'What you sent',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: rows,

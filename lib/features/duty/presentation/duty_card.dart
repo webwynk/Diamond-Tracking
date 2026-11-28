@@ -108,7 +108,7 @@ class DutyCard extends StatelessWidget {
       ),
       DutyPhase.ended =>
         day!.status == DayStatus.pending
-            ? _ShortDayCard(day: day, home: home, now: now)
+            ? _ReviewWaitCard(day: day, home: home, now: now)
             : _DayDoneCard(day: day, home: home, now: now),
       DutyPhase.onLeave => _LeaveCard(type: day?.leaveType),
     };
@@ -461,7 +461,7 @@ class _HeroStat extends StatelessWidget {
   );
 }
 
-/// Day complete (10 hours or more), or a day the admin already decided.
+/// A day the admin has decided.
 class _DayDoneCard extends ConsumerWidget {
   const _DayDoneCard({
     required this.day,
@@ -549,9 +549,9 @@ class _DoneTile extends StatelessWidget {
   );
 }
 
-/// Under 10 hours: waiting for the admin to decide.
-class _ShortDayCard extends StatelessWidget {
-  const _ShortDayCard({
+/// Duty off done: waiting for the admin's review (every duty day).
+class _ReviewWaitCard extends StatelessWidget {
+  const _ReviewWaitCard({
     required this.day,
     required this.home,
     required this.now,
@@ -572,11 +572,11 @@ class _ShortDayCard extends StatelessWidget {
       icon: DsIcons.waiting,
       iconStatus: DsStatus.waiting,
       borderColor: const Color(0xFFFCD34D),
-      title: 'Waiting for admin',
+      title: 'Waiting for review',
       subtitle: 'Duty ${IstFormat.time(on)} – ${IstFormat.time(off)}',
       body:
-          'You worked ${IstFormat.duration(worked)}, less than 10 hours. The '
-          'admin will decide: present, half day or absent. You will get a '
+          'You worked ${IstFormat.duration(worked)}. The admin will check '
+          'your day: present, half day or absent. You will get a '
           'notification.',
     );
   }

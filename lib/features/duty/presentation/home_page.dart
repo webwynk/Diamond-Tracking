@@ -195,10 +195,9 @@ class _HomePageState extends ConsumerState<HomePage> {
       await _showProblem(problem);
     } else if (outcome!.savedOffline) {
       _snack('No internet. Duty off is saved and will be sent by itself.');
-    } else if (outcome.isShort) {
-      _snack('Duty off done. The admin will decide your day.');
     } else {
-      _snack('Duty off done. Thank you.');
+      // Every duty day is reviewed by an admin.
+      _snack('Duty off done. The admin will review your day.');
     }
   }
 

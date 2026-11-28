@@ -52,23 +52,6 @@ void main() {
     expect(phase(day(DayStatus.pending), ist(17), s: off), DutyPhase.ended);
   });
 
-  test('short day outcome', () {
-    expect(
-      const DutyOffOutcome(
-        worked: Duration(hours: 9, minutes: 59),
-        savedOffline: false,
-      ).isShort,
-      isTrue,
-    );
-    expect(
-      const DutyOffOutcome(
-        worked: Duration(hours: 10),
-        savedOffline: false,
-      ).isShort,
-      isFalse,
-    );
-  });
-
   test('server errors become plain messages', () {
     expect(
       mapDutyError(const PostgrestException(message: 'duty_on_closed')),

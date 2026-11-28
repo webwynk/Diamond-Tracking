@@ -272,7 +272,7 @@ void main() {
     expect(find.text('Ready to start?'), findsOneWidget);
   });
 
-  testWidgets('a short duty off warns, then waits for the admin', (
+  testWidgets('a short duty off warns, then waits for review', (
     WidgetTester tester,
   ) async {
     repo.today = onDuty();
@@ -285,16 +285,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('End your duty?'), findsOneWidget);
     expect(find.text('2h 00m short'), findsOneWidget);
-    expect(find.textContaining("Won't count for attendance"), findsOneWidget);
+    expect(
+      find.textContaining('Under 10 hours.', findRichText: true),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Yes, duty off'));
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Duty off done. The admin will decide your day.'),
+      find.text('Duty off done. The admin will review your day.'),
       findsOneWidget,
     );
     expect(tracker.calls, contains('dutyOff:true'));
-    expect(find.text('Waiting for admin'), findsOneWidget);
+    expect(find.text('Waiting for review'), findsOneWidget);
   });
 
   testWidgets('Keep working closes the sheet and duty stays on', (
@@ -323,11 +326,18 @@ void main() {
     await tester.tap(find.text('Duty off'));
     await tester.pumpAndSettle();
     expect(find.text('10 h done'), findsWidgets);
-    expect(find.textContaining("Won't count for attendance"), findsNothing);
+    expect(
+      find.textContaining('Under 10 hours.', findRichText: true),
+      findsNothing,
+    );
     await tester.tap(find.text('Yes, duty off'));
     await tester.pumpAndSettle();
-    expect(find.text('Duty off done. Thank you.'), findsOneWidget);
-    expect(find.text('Present'), findsOneWidget);
+    // A full day waits for the admin's review too.
+    expect(
+      find.text('Duty off done. The admin will review your day.'),
+      findsOneWidget,
+    );
+    expect(find.text('Waiting for review'), findsOneWidget);
   });
 
   testWidgets('duty off without internet is saved for later', (
@@ -613,7 +623,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Yes, duty off'));
     await tester.pumpAndSettle();
-    expect(find.text('Duty off done. Thank you.'), findsOneWidget);
+    expect(
+      find.text('Duty off done. The admin will review your day.'),
+      findsOneWidget,
+    );
     expect(find.text('Retry'), findsNothing);
     expect(find.textContaining('went wrong'), findsNothing);
   });

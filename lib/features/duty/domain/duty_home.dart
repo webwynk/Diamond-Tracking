@@ -84,20 +84,11 @@ class DutyHome {
 
 /// What happened at duty off, for the message after it.
 class DutyOffOutcome {
-  const DutyOffOutcome({
-    required this.worked,
-    required this.savedOffline,
-    this.status,
-  });
-
-  final Duration worked;
+  const DutyOffOutcome({required this.savedOffline, this.status});
 
   /// No internet: the duty off is saved and sent later.
   final bool savedOffline;
 
   /// The day's status from the server, when it was reached.
   final DayStatus? status;
-
-  /// Shorter than 10 hours: not counted until the admin decides.
-  bool get isShort => worked < DutyRules.minimumDuty;
 }

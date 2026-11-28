@@ -38,7 +38,7 @@ enum MyNotificationsFilter {
 
 /// The icon and colours of a notification: a green tick for an approval,
 /// a red cross for a rejection or absent, grey for duty turned off; for the
-/// admin, blue attendance, purple leave and amber short duty.
+/// admin, blue attendance, purple leave and amber duty review.
 (IconData, DsStatus) notificationLook(AppNotification n) {
   final String t = n.title.toLowerCase();
   return switch (n.kind) {
@@ -52,7 +52,7 @@ enum MyNotificationsFilter {
     // The admin's kinds.
     attendanceRequestKind => (DsIcons.attendance, DsStatus.onDuty),
     leaveRequestKind => (DsIcons.sickLeave, DsStatus.sick),
-    shortDutyKind => (DsIcons.waiting, DsStatus.waiting),
+    dutyReviewKind => (DsIcons.waiting, DsStatus.waiting),
     _ => (DsIcons.bell, DsStatus.onDuty),
   };
 }

@@ -182,10 +182,10 @@ class DutyOffSheet extends ConsumerWidget {
           const _Note(
             icon: DsIcons.warning,
             status: DsStatus.waiting,
-            bold: "Won't count for attendance",
+            bold: 'Under 10 hours.',
             text:
-                ' unless the admin approves. The admin will decide: present, '
-                'half day or absent.',
+                ' The admin reviews your day and may mark it half day or '
+                'absent.',
           ),
           const SizedBox(height: 10),
         ],

@@ -10,10 +10,10 @@ import '../application/requests_providers.dart';
 import '../domain/app_request.dart';
 import '../domain/request_failure.dart';
 
-/// The request's kind in words: "Short duty", "Attendance request",
+/// The request's kind in words: "Duty review", "Attendance request",
 /// "Sick leave".
 String adminRequestKind(AppRequest r) => switch (r.kind) {
-  RequestKind.shortDuty => 'Short duty',
+  RequestKind.dutyReview => 'Duty review',
   RequestKind.attendance => 'Attendance request',
   RequestKind.leave => r.leaveType?.label ?? 'Leave',
 };
@@ -150,3 +150,8 @@ class RequestCardBox extends StatelessWidget {
     ),
   );
 }
+
+/// A duty review's distance with one decimal ("86.4 km"), the same as the
+/// admins' alert, so the list, the review and the alert show one number.
+String reviewKm(int? metres) =>
+    '${((metres ?? 0) / 1000).toStringAsFixed(1)} km';

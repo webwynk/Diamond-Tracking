@@ -347,7 +347,8 @@ class FakeDutyRepository implements DutyRepository {
     final DutyDay off = DutyDay(
       id: on.id,
       day: on.day,
-      status: minutes >= 600 ? DayStatus.present : DayStatus.pending,
+      // Like the server: every duty day waits for the admin's review.
+      status: DayStatus.pending,
       dutyOnAt: on.dutyOnAt,
       dutyOffAt: offAt,
       workedMinutes: minutes,
@@ -633,7 +634,7 @@ class FakeRequestsRepository implements RequestsRepository {
     final int i = requests.indexWhere((AppRequest r) => r.id == id);
     final bool rejected =
         decision == DayStatus.absent &&
-        requests[i].kind != RequestKind.shortDuty;
+        requests[i].kind != RequestKind.dutyReview;
     requests[i] = _copy(
       requests[i],
       status: rejected ? RequestStatus.rejected : RequestStatus.approved,

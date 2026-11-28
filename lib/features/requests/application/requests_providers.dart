@@ -48,7 +48,7 @@ final FutureProvider<List<AppRequest>> myRequestsProvider =
           .mine(status.userId, since: now.subtract(myRequestsWindow));
     }, retry: (int count, Object error) => null);
 
-/// A user's record for a day: the hours behind a short duty request.
+/// A user's record for a day: the hours and km behind a duty review.
 final FutureProviderFamily<DutyDay?, (String, DateTime)> requestDayProvider =
     FutureProvider.autoDispose.family<DutyDay?, (String, DateTime)>(
       (Ref ref, (String, DateTime) key) =>
@@ -76,7 +76,7 @@ final Provider<Set<DateTime>> waitingRequestDaysProvider =
             ...switch (r.kind) {
               RequestKind.leave => r.dates,
               RequestKind.attendance => <DateTime>[r.day!],
-              RequestKind.shortDuty => const <DateTime>[],
+              RequestKind.dutyReview => const <DateTime>[],
             },
       },
     );
