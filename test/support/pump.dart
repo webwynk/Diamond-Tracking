@@ -81,6 +81,7 @@ Future<void> pumpPage(
         usersRepositoryProvider.overrideWithValue(
           users ?? FakeUsersRepository(),
         ),
+        phoneSetupProvider.overrideWithValue(FakePhoneSetup()),
         trackerControlProvider.overrideWithValue(
           tracker ?? FakeTrackerControl(),
         ),
@@ -137,6 +138,7 @@ Future<void> pumpPushed(
         usersRepositoryProvider.overrideWithValue(
           users ?? FakeUsersRepository(),
         ),
+        phoneSetupProvider.overrideWithValue(FakePhoneSetup()),
         trackerControlProvider.overrideWithValue(
           tracker ?? FakeTrackerControl(),
         ),

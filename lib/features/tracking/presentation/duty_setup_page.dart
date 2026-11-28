@@ -11,6 +11,9 @@ import '../../../shared/ds/ds_chips.dart';
 import '../../../shared/ds/ds_frame.dart';
 import '../application/tracker_control.dart';
 import '../application/tracker_providers.dart';
+import '../data/phone_setup.dart';
+import '../domain/phone_maker.dart';
+import 'phone_setup_sheet.dart';
 
 /// Opens "Get ready for duty" (design v2) when the phone is missing
 /// something. True when the employee tapped Start duty.
@@ -24,7 +27,9 @@ Future<bool> showTrackingSetup(BuildContext context) async =>
     false;
 
 /// The phone settings duty needs, one row each, with Allow buttons. Done
-/// rows fold into one line; the next one to allow is highlighted.
+/// rows fold into one line; the next one to allow is highlighted. On phones
+/// whose maker closes apps to save battery, one more optional row opens the
+/// maker's steps.
 class DutySetupPage extends ConsumerStatefulWidget {
   const DutySetupPage({super.key});
 
@@ -35,9 +40,12 @@ class DutySetupPage extends ConsumerStatefulWidget {
 class _DutySetupPageState extends ConsumerState<DutySetupPage> {
   late final AppLifecycleListener _lifecycle;
   List<TrackerRequirement>? _missing;
+  PhoneMaker? _maker;
+  bool _makerDone = false;
   bool _asking = false;
 
   TrackerControl get _tracker => ref.read(trackerControlProvider);
+  PhoneSetup get _phone => ref.read(phoneSetupProvider);
 
   @override
   void initState() {
@@ -56,7 +64,23 @@ class _DutySetupPageState extends ConsumerState<DutySetupPage> {
   Future<void> _check() async {
     final List<TrackerRequirement> missing = await _tracker
         .missingRequirements();
-    if (mounted) setState(() => _missing = missing);
+    final PhoneMaker? maker = await _phone.maker();
+    final bool makerDone = maker != null && await _phone.isDone();
+    if (!mounted) return;
+    setState(() {
+      _missing = missing;
+      _maker = maker;
+      _makerDone = makerDone;
+    });
+  }
+
+  Future<void> _openMaker(PhoneMaker maker) async {
+    final bool done = await showPhoneSetupSheet(
+      context,
+      maker: maker,
+      setup: _phone,
+    );
+    if (done && mounted) setState(() => _makerDone = true);
   }
 
   Future<void> _ask(TrackerRequirement r) async {
@@ -83,6 +107,12 @@ class _DutySetupPageState extends ConsumerState<DutySetupPage> {
         .where((TrackerRequirement r) => r.required)
         .length;
     final bool ready = missing != null && requiredLeft == 0;
+    final PhoneMaker? maker = _maker;
+    final List<String> doneNames = <String>[
+      ...done.map(requirementShortName),
+      if (maker != null && _makerDone) '${maker.name} settings',
+    ];
+    final int total = all.length + (maker == null ? 0 : 1);
     return Scaffold(
       backgroundColor: DsColors.surface,
       body: SafeArea(
@@ -116,7 +146,7 @@ class _DutySetupPageState extends ConsumerState<DutySetupPage> {
                       child: Center(child: CircularProgressIndicator()),
                     )
                   else ...<Widget>[
-                    _Progress(done: done, total: all.length),
+                    _Progress(done: doneNames, total: total),
                     const SizedBox(height: DsSpace.lg),
                     for (int i = 0; i < todo.length; i++) ...<Widget>[
                       _RequirementCard(
@@ -126,6 +156,18 @@ class _DutySetupPageState extends ConsumerState<DutySetupPage> {
                       ),
                       const SizedBox(height: 10),
                     ],
+                    if (maker != null && !_makerDone)
+                      _SetupCard(
+                        icon: DsIcons.smartphone,
+                        title: maker.title,
+                        why:
+                            '${maker.name} phones close apps to save battery. '
+                            '${_steps(maker.steps.length)}.',
+                        optional: true,
+                        next: todo.isEmpty,
+                        button: 'Open',
+                        onPressed: _asking ? null : () => _openMaker(maker),
+                      ),
                   ],
                 ],
               ),
@@ -152,11 +194,14 @@ class _DutySetupPageState extends ConsumerState<DutySetupPage> {
   }
 }
 
+String _steps(int n) => n == 1 ? '1 quick step' : '$n quick steps';
+
 /// "3 of 5 done", a bar of one part per setting, and the done ones.
 class _Progress extends StatelessWidget {
   const _Progress({required this.done, required this.total});
 
-  final List<TrackerRequirement> done;
+  /// Short names of the settings done.
+  final List<String> done;
   final int total;
 
   @override
@@ -198,7 +243,7 @@ class _Progress extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  done.map(requirementShortName).join(' · '),
+                  done.join(' · '),
                   style: DsText.caption.copyWith(color: DsColors.successText),
                 ),
               ),
@@ -218,14 +263,48 @@ class _RequirementCard extends StatelessWidget {
   });
 
   final TrackerRequirement requirement;
-
-  /// The next one to allow: white with a blue ring, and a solid button.
   final bool next;
   final VoidCallback? onAllow;
 
   @override
   Widget build(BuildContext context) {
     final (String title, String why) = requirementText(requirement);
+    return _SetupCard(
+      icon: requirementIcon(requirement),
+      title: title,
+      why: why,
+      optional: !requirement.required,
+      next: next,
+      button: 'Allow',
+      onPressed: onAllow,
+    );
+  }
+}
+
+/// One row of the setup list: icon, title (Optional tag), reason, button.
+class _SetupCard extends StatelessWidget {
+  const _SetupCard({
+    required this.icon,
+    required this.title,
+    required this.why,
+    required this.optional,
+    required this.next,
+    required this.button,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String title;
+  final String why;
+  final bool optional;
+
+  /// The next one to do: white with a blue ring, and a solid button.
+  final bool next;
+  final String button;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -246,7 +325,7 @@ class _RequirementCard extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              requirementIcon(requirement),
+              icon,
               size: 20,
               color: next ? DsColors.primary : DsColors.text2,
             ),
@@ -269,7 +348,7 @@ class _RequirementCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (!requirement.required)
+                    if (optional)
                       const DsTag(label: 'Optional', status: DsStatus.off),
                   ],
                 ),
@@ -279,7 +358,7 @@ class _RequirementCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: DsSpace.sm),
-          DsSmallButton(label: 'Allow', onPressed: onAllow, filled: next),
+          DsSmallButton(label: button, onPressed: onPressed, filled: next),
         ],
       ),
     );

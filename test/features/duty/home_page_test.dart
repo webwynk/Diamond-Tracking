@@ -15,9 +15,11 @@ import 'package:diamond_tracking/features/requests/application/requests_provider
 import 'package:diamond_tracking/features/requests/domain/app_request.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_control.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_providers.dart';
+import 'package:diamond_tracking/features/tracking/domain/phone_maker.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracker_status.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracking_session.dart';
 import 'package:diamond_tracking/features/tracking/presentation/duty_setup_page.dart';
+import 'package:diamond_tracking/features/tracking/presentation/phone_setup_sheet.dart';
 import 'package:diamond_tracking/features/users/application/users_providers.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
 import 'package:diamond_tracking/features/visits/application/visits_providers.dart';
@@ -36,6 +38,7 @@ void main() {
 
   late FakeDutyRepository repo;
   late FakeTrackerControl tracker;
+  late FakePhoneSetup phone;
   late FixedClock time;
   late FakeVisitsRepository visits;
   late FakeUsersRepository users;
@@ -47,6 +50,7 @@ void main() {
     requests = FakeRequestsRepository();
     repo = FakeDutyRepository()..dutyOnTime = ist(7);
     tracker = FakeTrackerControl();
+    phone = FakePhoneSetup();
     time = FixedClock(ist(7));
     FlutterSecureStorage.setMockInitialValues(<String, String>{});
   });
@@ -66,6 +70,7 @@ void main() {
           ),
           dutyRepositoryProvider.overrideWithValue(repo),
           trackerControlProvider.overrideWithValue(tracker),
+          phoneSetupProvider.overrideWithValue(phone),
           serverClockProvider.overrideWithValue(time.clock),
           deviceIdStoreProvider.overrideWithValue(FakeDeviceIdStore()),
           visitsRepositoryProvider.overrideWithValue(visits),
@@ -663,6 +668,124 @@ void main() {
       });
       expect(await asksAfterDutyOn(tester), 1);
     });
+  });
+
+  group('phone maker steps', () {
+    setUp(() => phone.phoneMaker = PhoneMaker.xiaomi);
+
+    testWidgets('shown at duty on; Later lets duty on go ahead', (
+      WidgetTester tester,
+    ) async {
+      await pumpHome(tester);
+      await tester.tap(find.text('Duty on'));
+      await tester.pumpAndSettle();
+      expect(find.text('Xiaomi phone settings'), findsOneWidget);
+      expect(repo.calls, isNot(contains('dutyOn')));
+
+      await tester.tap(find.text('Open settings').first);
+      await tester.pumpAndSettle();
+      expect(phone.opened, <PhoneSettingsPage>[
+        PhoneSettingsPage.xiaomiAutostart,
+      ]);
+      await tester.ensureVisible(find.text('Later'));
+      await tester.tap(find.text('Later'));
+      await tester.pumpAndSettle();
+      expect(repo.calls, contains('dutyOn'));
+      expect(phone.done, isFalse);
+      expect(phone.askedAt, ist(7));
+    });
+
+    testWidgets("I've done these: saved, not shown again", (
+      WidgetTester tester,
+    ) async {
+      await pumpHome(tester);
+      await tester.tap(find.text('Duty on'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text("I've done these"));
+      await tester.tap(find.text("I've done these"));
+      await tester.pumpAndSettle();
+      expect(phone.done, isTrue);
+      expect(repo.calls, contains('dutyOn'));
+    });
+
+    testWidgets('not shown again within a week', (WidgetTester tester) async {
+      phone.askedAt = ist(7).subtract(const Duration(days: 6));
+      await pumpHome(tester);
+      await tester.tap(find.text('Duty on'));
+      await tester.pumpAndSettle();
+      expect(find.text('Xiaomi phone settings'), findsNothing);
+      expect(repo.calls, contains('dutyOn'));
+    });
+
+    testWidgets('not shown right after the battery question', (
+      WidgetTester tester,
+    ) async {
+      tracker.missing = <TrackerRequirement>[
+        TrackerRequirement.batteryOptimization,
+      ];
+      await pumpHome(tester);
+      await tester.tap(find.text('Duty on'));
+      await tester.pumpAndSettle();
+      expect(tracker.calls, contains('request:batteryOptimization'));
+      expect(find.text('Xiaomi phone settings'), findsNothing);
+      expect(repo.calls, contains('dutyOn'));
+    });
+
+    testWidgets('Setup shows the card; done moves it to the done line', (
+      WidgetTester tester,
+    ) async {
+      tracker.missing = <TrackerRequirement>[TrackerRequirement.notifications];
+      await pumpHome(tester);
+      await tester.tap(find.text('Duty on'));
+      await tester.pumpAndSettle();
+      expect(find.text('4 of 6 done'), findsOneWidget);
+      expect(find.text('Xiaomi phone settings'), findsOneWidget);
+      expect(
+        find.text('Xiaomi phones close apps to save battery. 3 quick steps.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text("I've done these"));
+      await tester.tap(find.text("I've done these"));
+      await tester.pumpAndSettle();
+      expect(find.text('5 of 6 done'), findsOneWidget);
+      expect(find.textContaining('Xiaomi settings'), findsOneWidget);
+      expect(find.text('Open'), findsNothing);
+      // Optional: Start duty still waits only for notifications.
+      expect(find.text('Allow 1 more to start'), findsOneWidget);
+    });
+
+    for (final PhoneMaker maker in PhoneMaker.values) {
+      testWidgets('the ${maker.name} sheet fits a 360 wide phone', (
+        WidgetTester tester,
+      ) async {
+        tester.view.physicalSize = const Size(360 * 3, 740 * 3);
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        phone.phoneMaker = maker;
+        repo.today = onDuty();
+        tracker.stored = sessionFor(repo.today!);
+        time.at = ist(10);
+        await pumpHome(tester);
+        unawaited(
+          showPhoneSetupSheet(
+            tester.element(find.byType(HomePage)),
+            maker: maker,
+            setup: phone,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text(maker.title), findsOneWidget);
+        expect(
+          find.text('Open settings'),
+          findsNWidgets(
+            maker.steps.where((PhoneStep s) => s.page != null).length,
+          ),
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 
   for (final double width in <double>[360, 390, 430]) {

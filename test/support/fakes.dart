@@ -23,6 +23,8 @@ import 'package:diamond_tracking/features/routes/domain/day_route.dart';
 import 'package:diamond_tracking/features/routes/domain/geo_point.dart';
 import 'package:diamond_tracking/features/routes/domain/live_position.dart';
 import 'package:diamond_tracking/features/tracking/application/tracker_control.dart';
+import 'package:diamond_tracking/features/tracking/data/phone_setup.dart';
+import 'package:diamond_tracking/features/tracking/domain/phone_maker.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracker_status.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracking_session.dart';
 import 'package:diamond_tracking/features/users/data/users_repository.dart';
@@ -882,4 +884,36 @@ class FakePdfSharer implements PdfSharer {
   Future<void> share(Uint8List bytes, String filename) async {
     shared.add((bytes.length, filename));
   }
+}
+
+/// No phone maker by default; set [phoneMaker] to show its steps.
+class FakePhoneSetup implements PhoneSetup {
+  FakePhoneSetup({this.phoneMaker});
+
+  PhoneMaker? phoneMaker;
+  bool done = false;
+  DateTime? askedAt;
+  final List<PhoneSettingsPage> opened = <PhoneSettingsPage>[];
+
+  @override
+  Future<PhoneMaker?> maker() async => phoneMaker;
+
+  @override
+  Future<void> open(PhoneSettingsPage page) async => opened.add(page);
+
+  @override
+  Future<bool> isDone() async => done;
+
+  @override
+  Future<void> markDone() async => done = true;
+
+  @override
+  Future<bool> isDue(DateTime now) async {
+    if (phoneMaker == null || done) return false;
+    final DateTime? last = askedAt;
+    return last == null || !now.isBefore(last.add(askInterval));
+  }
+
+  @override
+  Future<void> markAsked(DateTime now) async => askedAt = now;
 }

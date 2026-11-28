@@ -62,6 +62,7 @@ void main() {
           authStatusStreamProvider.overrideWithValue(auth.stream),
           authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
           dutyRepositoryProvider.overrideWithValue(FakeDutyRepository()),
+          phoneSetupProvider.overrideWithValue(FakePhoneSetup()),
           trackerControlProvider.overrideWithValue(FakeTrackerControl()),
           serverClockProvider.overrideWithValue(
             FixedClock(DateTime.utc(2026, 11, 20, 6)).clock,

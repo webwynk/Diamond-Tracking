@@ -238,12 +238,14 @@ class DutyHomeController extends AsyncNotifier<DutyHome> {
 
   /// Asks for "no battery limits" when it is still missing and was not asked
   /// in the last week (L52). It is optional, so duty on goes ahead either way.
-  Future<void> askBatteryIfDue() async {
+  /// True when it was asked.
+  Future<bool> askBatteryIfDue() async {
     final BatteryPromptStore store = ref.read(batteryPromptStoreProvider);
     final DateTime now = _clock.now();
-    if (!await store.isDue(now)) return;
+    if (!await store.isDue(now)) return false;
     await store.markAsked(now);
     await _tracker.request(TrackerRequirement.batteryOptimization);
+    return true;
   }
 
   Future<void>? _dutyOnRun;
