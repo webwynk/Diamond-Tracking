@@ -92,7 +92,7 @@ void main() {
     expect(find.text('route /admin/requests/30'), findsOneWidget);
   });
 
-  testWidgets('filters: unread, short duty, requests', (
+  testWidgets('filters: unread, duty review, requests', (
     WidgetTester tester,
   ) async {
     await pumpPage(
@@ -107,7 +107,7 @@ void main() {
     expect(find.text('Amit Roy'), findsOneWidget);
     expect(find.text('Priya Ghosh'), findsOneWidget);
 
-    await tester.tap(find.bySemanticsLabel('Short duty'));
+    await tester.tap(find.bySemanticsLabel('Duty review'));
     await tester.pumpAndSettle();
     expect(find.text('Rahul Das'), findsOneWidget);
     expect(find.text('Amit Roy'), findsNothing);
@@ -142,6 +142,31 @@ void main() {
       overrides: clock(),
     );
     expect(find.text("You're all caught up"), findsOneWidget);
+  });
+
+  test('duty review alerts, new and old wording', () {
+    expect(
+      adminNotificationText(
+        admin(
+          8,
+          'short_duty',
+          'Rahul Das worked 10 h 42 min · 86.4 km · ended at 11 PM',
+          at: now,
+        ),
+      ),
+      ('Rahul Das', 'worked 10 h 42 min · 86.4 km · ended at 11 PM'),
+    );
+    expect(
+      adminNotificationText(
+        admin(
+          7,
+          'short_duty',
+          'Rahul Das ended duty after 7 h 40 min',
+          at: now,
+        ),
+      ),
+      ('Rahul Das', 'worked 7 h 40 min'),
+    );
   });
 
   test('unknown text falls back to the title and body', () {
@@ -189,7 +214,7 @@ void main() {
     final AppNotification parsed = AppNotification.fromRow(<String, dynamic>{
       'id': 1,
       'kind': 'short_duty',
-      'title': 'Short duty to review',
+      'title': 'Duty to review',
       'body': null,
       'data': <String, dynamic>{'request_id': 12, 'day': '2026-11-20'},
       'created_at': '2026-11-20T05:00:00+00:00',

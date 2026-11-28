@@ -8,7 +8,7 @@ enum DayStatus {
   absent('absent'),
   leave('leave'),
 
-  /// A short day waiting for the admin's decision.
+  /// A duty day waiting for the admin's review.
   pending('pending');
 
   const DayStatus(this.wire);
@@ -24,7 +24,7 @@ enum DayStatus {
     DayStatus.halfDay => 'Half day',
     DayStatus.absent => 'Absent',
     DayStatus.leave => 'On leave',
-    DayStatus.pending => 'Waiting for admin',
+    DayStatus.pending => 'Waiting for review',
   };
 }
 

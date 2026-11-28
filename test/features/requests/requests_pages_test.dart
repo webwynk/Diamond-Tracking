@@ -16,7 +16,10 @@ import 'package:diamond_tracking/features/requests/presentation/my_request_detai
 import 'package:diamond_tracking/features/requests/presentation/my_requests_page.dart';
 import 'package:diamond_tracking/features/requests/presentation/request_detail_page.dart';
 import 'package:diamond_tracking/features/routes/application/route_providers.dart';
+import 'package:diamond_tracking/features/routes/domain/day_route.dart';
+import 'package:diamond_tracking/features/routes/domain/geo_point.dart';
 import 'package:diamond_tracking/features/users/domain/profile.dart';
+import 'package:diamond_tracking/features/visits/domain/visit.dart';
 import 'package:diamond_tracking/shared/ds/ds_button.dart';
 import 'package:diamond_tracking/shared/ds/ds_chips.dart';
 import 'package:flutter/material.dart';
@@ -336,7 +339,7 @@ void main() {
     });
   }
 
-  testWidgets('my requests: short duty with hours, filters with counts', (
+  testWidgets('my requests: duty review with hours, filters with counts', (
     WidgetTester tester,
   ) async {
     tall(tester);
@@ -346,7 +349,7 @@ void main() {
         AppRequest(
           id: 6,
           userId: 'u',
-          kind: RequestKind.shortDuty,
+          kind: RequestKind.dutyReview,
           status: RequestStatus.pending,
           createdAt: DateTime.utc(2026, 11, 20, 13),
           day: DateTime.utc(2026, 11, 20),
@@ -396,7 +399,7 @@ void main() {
       status: employee,
       overrides: overrides(duty: duty),
     );
-    expect(find.text(cardTitle('Short duty · Fri, 20 Nov')), findsOneWidget);
+    expect(find.text(cardTitle('Duty review · Fri, 20 Nov')), findsOneWidget);
     expect(find.text('7h 40m worked · sent by the app'), findsOneWidget);
     expect(find.text(cardTitle('Attendance · 19 Nov')), findsOneWidget);
     expect(find.text(cardTitle('Sick leave · 24 – 26 Nov')), findsOneWidget);
@@ -645,7 +648,7 @@ void main() {
     AppRequest short() => AppRequest(
       id: 7,
       userId: 'u',
-      kind: RequestKind.shortDuty,
+      kind: RequestKind.dutyReview,
       status: RequestStatus.pending,
       createdAt: DateTime.utc(2026, 11, 20, 13),
       day: DateTime.utc(2026, 11, 20),
@@ -658,6 +661,7 @@ void main() {
         dutyOnAt: DateTime.utc(2026, 11, 20, 1, 30),
         dutyOffAt: DateTime.utc(2026, 11, 20, 8),
         workedMinutes: 390,
+        distanceM: 41200,
       ),
     );
 
@@ -678,7 +682,7 @@ void main() {
       );
       expect(find.text('3 waiting for you'), findsOneWidget);
       expect(find.bySemanticsLabel('All, 3'), findsOneWidget);
-      expect(find.bySemanticsLabel('Short, 1'), findsOneWidget);
+      expect(find.bySemanticsLabel('Review, 1'), findsOneWidget);
       expect(find.text('Asha Roy'), findsNothing, reason: 'name · time');
       expect(find.textContaining('Asha Roy'), findsNWidgets(3));
       expect(find.text('Attendance request'), findsOneWidget);
@@ -807,7 +811,70 @@ void main() {
       expect(find.text('Your decision'), findsNothing);
     });
 
-    testWidgets('detail: a short duty shows the day and links the route', (
+    testWidgets('detail: a short day review shows km, hours, gaps, route', (
+      WidgetTester tester,
+    ) async {
+      tall(tester);
+      repo.requests.add(short());
+      routes.routes[42] = DayRoute(
+        dayId: 42,
+        segments: const <List<GeoPoint>>[],
+        stops: <RouteStop>[
+          RouteStop(
+            point: const GeoPoint(22.5, 88.3),
+            start: DateTime.utc(2026, 11, 20, 3),
+            end: DateTime.utc(2026, 11, 20, 3, 20),
+          ),
+        ],
+        notes: <RouteNote>[
+          RouteNote(
+            from: DateTime.utc(2026, 11, 20, 5),
+            to: DateTime.utc(2026, 11, 20, 5, 25),
+            kind: NoteKind.noLocation,
+          ),
+        ],
+        distanceM: 41200,
+        pointCount: 90,
+      );
+      final FakeVisitsRepository visits = FakeVisitsRepository();
+      visits.byDay[42] = <Visit>[
+        Visit(
+          id: 'v1',
+          storeName: 'Shop',
+          fromGallery: false,
+          capturedAt: DateTime.utc(2026, 11, 20, 3, 5),
+        ),
+      ];
+      await pumpPage(
+        tester,
+        const RequestDetailPage(requestId: 7),
+        users: asha(),
+        visits: visits,
+        overrides: admin(duty: shortDay()),
+      );
+      expect(find.text('Duty review · EMP011'), findsOneWidget);
+      expect(find.text('Today · Fri, 20 Nov'), findsOneWidget);
+      expect(find.text('41.2 km'), findsOneWidget);
+      expect(find.text('7:00 AM → 1:30 PM'), findsOneWidget);
+      expect(find.text('6h 30m'), findsOneWidget);
+      expect(find.text('Under 10h'), findsOneWidget);
+      expect(find.text('Employee (Duty off)'), findsOneWidget);
+      expect(find.text('1 visit · 1 stop'), findsOneWidget);
+      expect(find.text('1 · 25 min'), findsOneWidget);
+      // Under 10 hours starts on Half day; nothing is saved yet.
+      expect(find.text('Confirm · Half day'), findsOneWidget);
+      expect(repo.calls, isNot(contains(startsWith('decide'))));
+      // No paid address lookup until the route page opens.
+      expect(routes.addressRequests, 0);
+      for (final String b in <String>['Present', 'Half day', 'Absent']) {
+        expect(find.bySemanticsLabel(b), findsOneWidget);
+      }
+      await tester.tap(find.text('View route'));
+      await tester.pumpAndSettle();
+      expect(find.text('route /admin/days/42'), findsOneWidget);
+    });
+
+    testWidgets('detail: a full day review starts on Present', (
       WidgetTester tester,
     ) async {
       tall(tester);
@@ -816,17 +883,29 @@ void main() {
         tester,
         const RequestDetailPage(requestId: 7),
         users: asha(),
-        overrides: admin(duty: shortDay()),
+        overrides: admin(
+          duty: FakeDutyRepository(
+            today: DutyDay(
+              id: 42,
+              day: DateTime.utc(2026, 11, 20),
+              status: DayStatus.pending,
+              dutyOnAt: DateTime.utc(2026, 11, 20, 1, 30),
+              dutyOffAt: DateTime.utc(2026, 11, 20, 17, 30),
+              autoEnded: true,
+              workedMinutes: 960,
+              distanceM: 86400,
+            ),
+          ),
+        ),
       );
-      expect(find.text('7:00 AM → 1:30 PM'), findsOneWidget);
-      expect(find.text('6h 30m'), findsOneWidget);
-      expect(find.text('Under 10h'), findsOneWidget);
-      for (final String b in <String>['Present', 'Half day', 'Absent']) {
-        expect(find.bySemanticsLabel(b), findsOneWidget);
-      }
-      await tester.tap(find.text('View route'));
-      await tester.pumpAndSettle();
-      expect(find.text('route /admin/days/42'), findsOneWidget);
+      expect(find.text('86.4 km'), findsOneWidget);
+      expect(find.text('16h 00m'), findsOneWidget);
+      expect(find.text('✓ 10h met'), findsOneWidget);
+      expect(find.text('Auto off at 11 PM'), findsOneWidget);
+      // No route row at all: no stops, no gaps (not "…" forever).
+      expect(find.text('0 visits · 0 stops'), findsOneWidget);
+      expect(find.text('None'), findsOneWidget, reason: 'no gaps');
+      expect(find.text('Confirm · Present'), findsOneWidget);
     });
 
     testWidgets('detail: leave days, two photos, approve', (

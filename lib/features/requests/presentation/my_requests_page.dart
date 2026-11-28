@@ -327,15 +327,15 @@ String requestDays(AppRequest r) {
   return '${IstFormat.day(first)} – ${IstFormat.day(last)}';
 }
 
-/// The card title: "Short duty · Fri, 20 Nov", "Sick leave · 24 – 26 Nov".
+/// The card title: "Duty review · Fri, 20 Nov", "Sick leave · 24 – 26 Nov".
 /// The date never breaks across lines.
 String myRequestTitle(AppRequest r) {
   final String days = switch (r.kind) {
-    RequestKind.shortDuty => IstFormat.weekdayDay(r.day!),
+    RequestKind.dutyReview => IstFormat.weekdayDay(r.day!),
     _ => requestDays(r),
   }.replaceAll(' ', '\u00A0');
   final String kind = switch (r.kind) {
-    RequestKind.shortDuty => 'Short duty',
+    RequestKind.dutyReview => 'Duty review',
     RequestKind.attendance => 'Attendance',
     RequestKind.leave => r.leaveType?.label ?? 'Leave',
   };
@@ -352,7 +352,7 @@ String myRequestTitle(AppRequest r) {
 
 /// The icon and its colours for a request's kind.
 (IconData, DsStatus) requestKindLook(AppRequest r) => switch (r.kind) {
-  RequestKind.shortDuty => (DsIcons.clock, DsStatus.waiting),
+  RequestKind.dutyReview => (DsIcons.clock, DsStatus.waiting),
   RequestKind.attendance => (DsIcons.attendance, DsStatus.onDuty),
   RequestKind.leave => (DsIcons.sickLeave, DsStatus.sick),
 };
@@ -375,7 +375,7 @@ class MyRequestCard extends ConsumerWidget {
         ? ' · ${r.decision!.label}'
         : '';
     switch (r.kind) {
-      case RequestKind.shortDuty:
+      case RequestKind.dutyReview:
         final DutyDay? d = ref
             .watch(requestDayProvider((r.userId, r.day!)))
             .value;

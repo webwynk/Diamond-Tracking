@@ -310,13 +310,6 @@ class DutyHomeController extends AsyncNotifier<DutyHome> {
       AppLog.failure('DutyHome.dutyOff', e, st);
     }
     await _refreshAfterAction();
-    final int? minutes = ended?.workedMinutes;
-    return DutyOffOutcome(
-      worked: minutes != null
-          ? Duration(minutes: minutes)
-          : offAt.difference(day.dutyOnAt!),
-      savedOffline: offline,
-      status: ended?.status,
-    );
+    return DutyOffOutcome(savedOffline: offline, status: ended?.status);
   }
 }

@@ -53,6 +53,17 @@ final FutureProviderFamily<DayView, int> dayViewProvider = FutureProvider
       return DayView(day: day, route: route);
     }, retry: (int count, Object error) => null);
 
+/// A day's route alone, for the admin's duty review (stops and gaps). Unlike
+/// [dayViewProvider] it never asks for stop addresses (a paid lookup); the
+/// route page does that when the admin opens it.
+final FutureProviderFamily<DayRoute?, int> reviewRouteProvider = FutureProvider
+    .autoDispose
+    .family<DayRoute?, int>(
+      (Ref ref, int dayId) =>
+          ref.watch(routeRepositoryProvider).dayRoute(dayId),
+      retry: (int count, Object error) => null,
+    );
+
 /// Days whose addresses were already requested in this app session.
 final Provider<Set<int>> _askedProvider = Provider<Set<int>>(
   (Ref ref) => <int>{},

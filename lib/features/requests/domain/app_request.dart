@@ -3,7 +3,10 @@ import '../../duty/domain/duty_day.dart';
 enum RequestKind {
   attendance('attendance', 'Attendance'),
   leave('leave', 'Leave'),
-  shortDuty('short_duty', 'Short duty');
+
+  /// A duty day for the admin to review (every duty off). Its wire name is
+  /// still "short_duty" (from when only days under 10 hours were reviewed).
+  dutyReview('short_duty', 'Duty review');
 
   const RequestKind(this.wire, this.label);
 
@@ -44,7 +47,7 @@ enum LeaveType {
       values.firstWhere((LeaveType t) => t.wire == v);
 }
 
-/// An attendance request, a leave request or a short duty to review.
+/// An attendance request, a leave request or a duty day to review.
 class AppRequest {
   const AppRequest({
     required this.id,
@@ -99,7 +102,7 @@ class AppRequest {
   final RequestStatus status;
   final DateTime createdAt;
 
-  /// attendance and short duty: the IST date (UTC midnight).
+  /// attendance and duty review: the IST date (UTC midnight).
   final DateTime? day;
   final DateTime? dutyOnAt;
   final DateTime? dutyOffAt;
@@ -132,7 +135,7 @@ class AppRequest {
       DayStatus.absent,
     ],
     RequestKind.leave => const <DayStatus>[DayStatus.leave, DayStatus.absent],
-    RequestKind.shortDuty => const <DayStatus>[
+    RequestKind.dutyReview => const <DayStatus>[
       DayStatus.present,
       DayStatus.halfDay,
       DayStatus.absent,
@@ -140,7 +143,7 @@ class AppRequest {
   };
 
   /// Only employees' own attendance and leave requests can be cancelled.
-  bool get cancellable => isPending && kind != RequestKind.shortDuty;
+  bool get cancellable => isPending && kind != RequestKind.dutyReview;
 
   static DateTime? _date(Object? v) =>
       v is String ? DateTime.parse('${v}T00:00:00Z') : null;

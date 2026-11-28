@@ -24,7 +24,7 @@ import 'my_notifications_page.dart' show notificationLook;
 enum AdminNotificationsFilter {
   all('All'),
   unread('Unread'),
-  shortDuty('Short duty'),
+  review('Duty review'),
   requests('Requests');
 
   const AdminNotificationsFilter(this.label);
@@ -34,7 +34,7 @@ enum AdminNotificationsFilter {
   bool matches(AppNotification n) => switch (this) {
     all => true,
     unread => n.unread,
-    shortDuty => n.kind == shortDutyKind,
+    review => n.kind == dutyReviewKind,
     requests => n.kind == attendanceRequestKind || n.kind == leaveRequestKind,
   };
 }
@@ -71,7 +71,12 @@ enum AdminNotificationsFilter {
         }
         return (who, rest);
       }
-    case shortDutyKind:
+    case dutyReviewKind:
+      // "Rahul Das worked 10 h 42 min · 86.4 km"; older alerts say
+      // "Rahul Das ended duty after 7 h 40 min".
+      if (split(' worked ') case (final who, final worked)) {
+        return (who, 'worked $worked');
+      }
       if (split(' ended duty after ') case (final who, final worked)) {
         return (who, 'worked $worked');
       }
@@ -79,9 +84,9 @@ enum AdminNotificationsFilter {
   return (n.title, body);
 }
 
-/// The kind as a word: "Short duty", "Attendance", "Leave".
+/// The kind as a word: "Duty review", "Attendance", "Leave".
 String adminNotificationKind(AppNotification n) => switch (n.kind) {
-  shortDutyKind => 'Short duty',
+  dutyReviewKind => 'Duty review',
   attendanceRequestKind => 'Attendance',
   leaveRequestKind => 'Leave',
   _ => 'Notice',
@@ -108,7 +113,7 @@ String adminNotificationWhen(DateTime t, DateTime now) {
 }
 
 /// "Notifications" (design v2), the admin's side: new attendance and leave
-/// requests and short duties to review, newest first, grouped by day. A
+/// requests and duty days to review, newest first, grouped by day. A
 /// tap marks one read and opens its request. (The employee's are
 /// MyNotificationsPage.)
 class NotificationsPage extends ConsumerStatefulWidget {
@@ -233,7 +238,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   }
 }
 
-/// All · Unread (count) · Short duty · Requests on a grey track.
+/// All · Unread (count) · Duty review · Requests on a grey track.
 class _FilterBar extends StatelessWidget {
   const _FilterBar({
     required this.selected,

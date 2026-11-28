@@ -68,10 +68,10 @@ const String requestDecidedKind = 'request_decided';
 const String dutyAutoOffKind = 'duty_auto_off';
 
 /// The admin's notifications: a new attendance or leave request, and a
-/// short duty to review.
+/// duty day to review.
 const String attendanceRequestKind = 'attendance_request';
 const String leaveRequestKind = 'leave_request';
-const String shortDutyKind = 'short_duty';
+const String dutyReviewKind = 'short_duty';
 
 /// Registers this phone for push after sign-in and opens tapped
 /// notifications. Lives as long as the app.

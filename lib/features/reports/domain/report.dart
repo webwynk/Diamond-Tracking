@@ -77,7 +77,7 @@ class ReportDay {
   final int? distanceM;
   final int visits;
 
-  /// "Present", "Sick leave", "Waiting for admin".
+  /// "Present", "Sick leave", "Waiting for review".
   String get statusLabel =>
       status == DayStatus.leave ? (leaveType?.label ?? 'Leave') : status.label;
 
