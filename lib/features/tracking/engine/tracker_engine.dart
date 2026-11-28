@@ -7,6 +7,7 @@ import '../domain/phone_off.dart';
 import '../domain/point_filter.dart';
 import '../domain/track_break.dart';
 import '../domain/track_fix.dart';
+import '../domain/tracker_status.dart';
 import '../domain/tracking_session.dart';
 
 /// What the service should be doing.
@@ -60,7 +61,29 @@ class TrackerEngine {
 
   final PointFilter _filter;
 
+  /// No GPS fix for this long during the duty: GPS is silent, restart it.
+  static const Duration gpsSilence = Duration(minutes: 5);
+
+  /// A hole with a reason is reported from this length: the server shows a
+  /// gap in the route after 15 minutes without a point.
+  static const Duration reasonMinimum = Duration(minutes: 15);
+
   TrackingSession? _session;
+
+  /// When this run of the tracker started recording, and when the last GPS
+  /// fix arrived (kept or not): the watchdog measures silence from these.
+  DateTime? _trackingSince;
+  DateTime? _lastFixAt;
+
+  /// GPS silent since (the last fix), until a fix arrives again.
+  DateTime? _silentFrom;
+  DateTime? _lastRestartAt;
+  bool _restartDue = false;
+
+  /// A problem the phone reported (location off, permission off, GPS error)
+  /// and since when.
+  TrackBreakKind? _problem;
+  DateTime? _problemFrom;
   int? _battery;
   bool _uploading = false;
   DateTime? _lastUploadAt;
@@ -94,7 +117,10 @@ class TrackerEngine {
       AppLog.info('Tracker: ${gap.kind.wire} for ${gap.length.inMinutes} min');
       files.queue.addBreak(session.dayId, session.pass, gap);
     }
-    if (session.isActiveAt(at)) _writeState(state, at);
+    if (session.isActiveAt(at)) {
+      _trackingSince = at;
+      _writeState(state, at);
+    }
     return tick();
   }
 
@@ -111,6 +137,8 @@ class TrackerEngine {
     if (at.isBefore(session.dutyOnAt) || !at.isBefore(end)) {
       return;
     }
+    _lastFixAt = at;
+    _closeSilence(session, at);
     final TrackFix shifted = TrackFix(
       time: at,
       latitude: fix.latitude,
@@ -151,12 +179,19 @@ class TrackerEngine {
     }
 
     if (session.isActiveAt(at)) {
+      _checkFrozen(session, state, at);
       _writeState(state, at);
+      _checkSilence(at);
       if (files.queue.pendingCount > 0) await upload();
       return TrackerMode.tracking;
     }
 
-    // Duty is over: send what is left, then stop.
+    // Duty is over: close any open reason at the end of the duty, send what
+    // is left, then stop.
+    final DateTime end = session.offAt ?? session.autoOffAt;
+    final DateTime closeAt = at.isBefore(end) ? at : end;
+    _closeSilence(session, closeAt);
+    _closeProblem(session, closeAt);
     files.writeState(state);
     await upload();
     if (session.isOff &&
@@ -172,6 +207,112 @@ class TrackerEngine {
     return files.queue.pendingCount == 0
         ? TrackerMode.stop
         : TrackerMode.finishing;
+  }
+
+  /// Whether GPS should be restarted now (the watchdog found it silent).
+  /// Answers true once per restart.
+  bool takeGpsRestart() {
+    final bool due = _restartDue;
+    _restartDue = false;
+    return due;
+  }
+
+  /// The service's view of GPS: [problem] is why it cannot record (location
+  /// off, permission off, GPS error), or null once it records again. The
+  /// time it lasted is reported as the reason for the hole.
+  void onProblem(TrackerProblem? problem) {
+    final TrackingSession? session = _session;
+    if (session == null) return;
+    final DateTime at = now();
+    final TrackBreakKind? kind = switch (problem) {
+      TrackerProblem.locationOff => TrackBreakKind.locationOff,
+      TrackerProblem.permissionOff => TrackBreakKind.permissionOff,
+      TrackerProblem.gps => TrackBreakKind.gpsSilent,
+      null => null,
+    };
+    if (kind == _problem) return;
+    _closeProblem(session, at);
+    if (kind != null && session.isActiveAt(at)) {
+      // The problem explains the silence from where it began.
+      _problemFrom = _silentFrom ?? at;
+      _problem = kind;
+      _silentFrom = null;
+    }
+  }
+
+  /// The tick itself did not run for a while: Android froze or stopped the
+  /// tracker without restarting it. The same check as at a restart.
+  void _checkFrozen(TrackingSession session, TrackerState state, DateTime at) {
+    final Heartbeat? last = state.heartbeat;
+    final Duration uptime = system.uptime();
+    final TrackBreak? gap = breakSince(
+      last,
+      dayId: session.dayId,
+      now: at,
+      uptime: uptime,
+      bootId: system.bootId(),
+    );
+    if (gap == null || last == null) return;
+    // The phone's uptime cannot jump: if it moved less than the clock, the
+    // clock was corrected (first server time), the tracker did not freeze.
+    if (gap.kind == TrackBreakKind.trackingStopped &&
+        uptime - last.uptime < const Duration(minutes: 5)) {
+      return;
+    }
+    AppLog.info('Tracker: ${gap.kind.wire} for ${gap.length.inMinutes} min');
+    files.queue.addBreak(session.dayId, session.pass, gap);
+    // The freeze explains the silence; measure GPS again from now.
+    _silentFrom = null;
+    _lastFixAt = at;
+  }
+
+  /// The watchdog: no fix for [gpsSilence] means GPS is silent. Asks for a
+  /// GPS restart, at most once every [gpsSilence].
+  void _checkSilence(DateTime at) {
+    _trackingSince ??= at;
+    if (_problem != null) return;
+    final DateTime since = _lastFixAt ?? _trackingSince!;
+    if (at.difference(since) < gpsSilence) return;
+    _silentFrom ??= since;
+    final DateTime? last = _lastRestartAt;
+    if (last == null || at.difference(last) >= gpsSilence) {
+      _lastRestartAt = at;
+      _restartDue = true;
+    }
+  }
+
+  void _closeSilence(TrackingSession session, DateTime at) {
+    final DateTime? from = _silentFrom;
+    _silentFrom = null;
+    if (from != null) _addReason(session, from, at, TrackBreakKind.gpsSilent);
+  }
+
+  void _closeProblem(TrackingSession session, DateTime at) {
+    final DateTime? from = _problemFrom;
+    final TrackBreakKind? kind = _problem;
+    _problem = null;
+    _problemFrom = null;
+    if (from == null || kind == null) return;
+    _addReason(session, from, at, kind);
+    // The problem explained the time until now; measure GPS again from now.
+    _lastFixAt = at;
+  }
+
+  void _addReason(
+    TrackingSession session,
+    DateTime from,
+    DateTime to,
+    TrackBreakKind kind,
+  ) {
+    if (to.difference(from) < reasonMinimum) return;
+    AppLog.info(
+      'Tracker: ${kind.wire} for ${to.difference(from).inMinutes} min',
+    );
+    files.queue.addBreak(
+      session.dayId,
+      session.pass,
+      TrackBreak(from: from, to: to, kind: kind),
+    );
   }
 
   /// No session (signed out): only old batches can be left.

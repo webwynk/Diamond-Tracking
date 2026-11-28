@@ -4,6 +4,7 @@ import 'package:diamond_tracking/features/tracking/data/tracker_files.dart';
 import 'package:diamond_tracking/features/tracking/domain/phone_off.dart';
 import 'package:diamond_tracking/features/tracking/domain/track_break.dart';
 import 'package:diamond_tracking/features/tracking/domain/track_fix.dart';
+import 'package:diamond_tracking/features/tracking/domain/tracker_status.dart';
 import 'package:diamond_tracking/features/tracking/domain/tracking_session.dart';
 import 'package:diamond_tracking/features/tracking/engine/tracker_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -286,6 +287,118 @@ void main() {
     // Remembered across a service restart.
     await newEngine().tick(batteryLevel: 8);
     expect(warnings, <int>[20, 10]);
+  });
+
+  group('GPS watchdog and reasons', () {
+    /// Ticks once a minute for [minutes] minutes; returns the minutes at
+    /// which the engine asked for a GPS restart.
+    Future<List<int>> tickFor(int minutes) async {
+      final List<int> restarts = <int>[];
+      for (int i = 1; i <= minutes; i++) {
+        now = now.add(const Duration(minutes: 1));
+        await engine.tick();
+        if (engine.takeGpsRestart()) restarts.add(i);
+      }
+      return restarts;
+    }
+
+    test('silent GPS: restarted every 5 min, the reason is sent', () async {
+      await engine.start();
+      final DateTime lastFix = now;
+      engine.onFix(fixAt(now, 0));
+      expect(await tickFor(20), <int>[5, 10, 15, 20]);
+      engine.onFix(fixAt(now, 0));
+      await engine.tick();
+      expect(up.breaks, <TrackBreak>[
+        TrackBreak(from: lastFix, to: now, kind: TrackBreakKind.gpsSilent),
+      ]);
+      expect(await tickFor(4), isEmpty, reason: 'positions came back');
+    });
+
+    test('a short silence restarts GPS but needs no reason', () async {
+      await engine.start();
+      engine.onFix(fixAt(now, 0));
+      expect(await tickFor(8), <int>[5]);
+      engine.onFix(fixAt(now, 0));
+      await engine.tick();
+      expect(up.breaks, isEmpty);
+    });
+
+    test('no fix at all since the tracker started is silence too', () async {
+      await engine.start();
+      expect(await tickFor(6), <int>[5]);
+    });
+
+    test('a frozen tracker is reported as tracking stopped', () async {
+      await engine.start();
+      engine.onFix(fixAt(now, 0));
+      await tickFor(1);
+      final DateTime frozenAt = now;
+      now = now.add(const Duration(minutes: 25));
+      system.up += const Duration(minutes: 25);
+      await engine.tick();
+      expect(up.breaks.single.kind, TrackBreakKind.trackingStopped);
+      expect(up.breaks.single.from, frozenAt);
+      expect(engine.takeGpsRestart(), isFalse, reason: 'silence starts again');
+      engine.onFix(fixAt(now, 0));
+      await engine.tick();
+      expect(up.breaks, hasLength(1), reason: 'no GPS-silent note on top');
+    });
+
+    test('a clock correction is not a freeze', () async {
+      await engine.start();
+      engine.onFix(fixAt(now, 0));
+      await tickFor(1);
+      // The server time moved the clock 25 minutes; the phone's uptime
+      // moved one minute.
+      now = now.add(const Duration(minutes: 25));
+      system.up += const Duration(minutes: 1);
+      await engine.tick();
+      expect(up.breaks, isEmpty);
+    });
+
+    test('location off: the time it was off is the reason', () async {
+      await engine.start();
+      engine.onFix(fixAt(now, 0));
+      await tickFor(1);
+      final DateTime offAt = now;
+      engine.onProblem(TrackerProblem.locationOff);
+      expect(await tickFor(30), isEmpty, reason: 'no restart while off');
+      engine.onProblem(null);
+      await engine.tick();
+      expect(up.breaks, <TrackBreak>[
+        TrackBreak(from: offAt, to: now, kind: TrackBreakKind.locationOff),
+      ]);
+      expect(await tickFor(4), isEmpty, reason: 'silence measured from now');
+    });
+
+    test('permission taken during silence: counted from the silence', () async {
+      await engine.start();
+      final DateTime lastFix = now;
+      engine.onFix(fixAt(now, 0));
+      await tickFor(6);
+      engine.onProblem(TrackerProblem.permissionOff);
+      await tickFor(20);
+      engine.onProblem(null);
+      await engine.tick();
+      expect(up.breaks.single.kind, TrackBreakKind.permissionOff);
+      expect(up.breaks.single.from, lastFix);
+    });
+
+    test('a reason still open at duty off ends at duty off', () async {
+      await engine.start();
+      engine.onFix(fixAt(now, 0));
+      await tickFor(1);
+      final DateTime offAt = now;
+      engine.onProblem(TrackerProblem.locationOff);
+      now = autoOff.add(const Duration(minutes: 2));
+      // Tick each minute would be the real case; a jump is enough here.
+      expect(await engine.tick(), TrackerMode.stop);
+      expect(
+        up.breaks.last,
+        TrackBreak(from: offAt, to: autoOff, kind: TrackBreakKind.locationOff),
+      );
+    });
   });
 
   test('no session: nothing to do', () async {

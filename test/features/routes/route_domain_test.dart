@@ -68,6 +68,38 @@ void main() {
     ]);
   });
 
+  test('the new reasons show their own words, a gap they cover too', () {
+    final List<RouteNote> notes = explainGaps(
+      <RouteNote>[
+        RouteNote(from: at(0), to: at(30), kind: NoteKind.noLocation),
+      ],
+      <TrackBreak>[
+        TrackBreak(from: at(0), to: at(30), kind: TrackBreakKind.gpsSilent),
+        TrackBreak(from: at(40), to: at(60), kind: TrackBreakKind.locationOff),
+        TrackBreak(
+          from: at(70),
+          to: at(90),
+          kind: TrackBreakKind.permissionOff,
+        ),
+        // Phone off wins over any reason it overlaps.
+        TrackBreak(from: at(75), to: at(85), kind: TrackBreakKind.phoneOff),
+      ],
+    );
+    expect(notes.map((RouteNote n) => n.label), <String>[
+      'GPS stopped by the phone',
+      'Location was turned off',
+      'Phone was off',
+    ]);
+  });
+
+  test('a reason this app does not know reads as tracking stopped', () {
+    expect(TrackBreakKind.fromWire('gps_silent'), TrackBreakKind.gpsSilent);
+    expect(
+      TrackBreakKind.fromWire('some_future_reason'),
+      TrackBreakKind.trackingStopped,
+    );
+  });
+
   test('reads a day_routes row', () {
     final DayRoute r = DayRoute.fromRow(<String, dynamic>{
       'duty_day_id': 9,

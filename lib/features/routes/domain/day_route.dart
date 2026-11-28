@@ -38,6 +38,15 @@ enum NoteKind {
   /// The phone was on, but the phone stopped the tracker.
   trackingStopped,
 
+  /// Location (GPS) was switched off.
+  locationOff,
+
+  /// The app's location permission was off.
+  permissionOff,
+
+  /// The tracker ran, but the phone sent no position.
+  gpsSilent,
+
   /// No location for 15+ minutes, cause unknown (indoors, GPS off).
   noLocation,
 }
@@ -53,6 +62,9 @@ class RouteNote {
   String get label => switch (kind) {
     NoteKind.phoneOff => 'Phone was off',
     NoteKind.trackingStopped => 'Tracking was stopped by the phone',
+    NoteKind.locationOff => 'Location was turned off',
+    NoteKind.permissionOff => 'Location permission was off',
+    NoteKind.gpsSilent => 'GPS stopped by the phone',
     NoteKind.noLocation => 'No location',
   };
 }
@@ -127,7 +139,7 @@ class DayRoute {
 
 /// Every reported break becomes a note (the phone knows why it stopped),
 /// one note per time span: where breaks overlap, "phone off" wins over
-/// "tracking stopped", otherwise the earlier one stays.
+/// any other reason, otherwise the earlier one stays.
 /// Holes in the route that no break explains are "No location".
 List<RouteNote> explainGaps(List<RouteNote> gaps, List<TrackBreak> breaks) {
   final List<TrackBreak> ordered = List<TrackBreak>.of(breaks)
@@ -149,9 +161,13 @@ List<RouteNote> explainGaps(List<RouteNote> gaps, List<TrackBreak> breaks) {
       RouteNote(
         from: b.from,
         to: b.to,
-        kind: b.kind == TrackBreakKind.phoneOff
-            ? NoteKind.phoneOff
-            : NoteKind.trackingStopped,
+        kind: switch (b.kind) {
+          TrackBreakKind.phoneOff => NoteKind.phoneOff,
+          TrackBreakKind.trackingStopped => NoteKind.trackingStopped,
+          TrackBreakKind.locationOff => NoteKind.locationOff,
+          TrackBreakKind.permissionOff => NoteKind.permissionOff,
+          TrackBreakKind.gpsSilent => NoteKind.gpsSilent,
+        },
       ),
   ];
   for (final RouteNote gap in gaps) {

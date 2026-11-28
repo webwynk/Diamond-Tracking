@@ -2278,4 +2278,43 @@ begin
 end;
 $$;
 
+-- Break reasons: the new reasons are saved, and "phone off" replaces them.
+select t.act_as_owner();
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000015', 'e15@test');
+insert into public.profiles (id, user_code, full_name, role, created_at, active_device_id)
+values ('00000000-0000-0000-0000-000000000015', 'DA-015', 'Employee Fifteen', 'employee',
+        now() - interval '30 days', 'dev-15-0001');
+do $$
+declare
+  e15 constant uuid := '00000000-0000-0000-0000-000000000015';
+  v_day public.duty_days;
+  v_pass text;
+  v_on timestamptz := private.auto_off_at(private.ist_today() - 1) - interval '12 hours';
+begin
+  insert into public.duty_days (user_id, day, status, duty_on_at)
+  values (e15, private.ist_today() - 1, 'on_duty', v_on) returning * into v_day;
+  v_pass := private.new_upload_pass(v_day, 'dev-15-0001');
+  perform t.act_as(null);
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_on + interval '1 hour',
+               v_on + interval '1 hour 30 minutes', 'location_off'), true, 'location off saved');
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_on + interval '2 hours',
+               v_on + interval '2 hours 30 minutes', 'permission_off'), true, 'permission off saved');
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_on + interval '3 hours',
+               v_on + interval '3 hours 30 minutes', 'gps_silent'), true, 'gps silent saved');
+  -- Another reason over a saved one is not added.
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_on + interval '3 hours 10 minutes',
+               v_on + interval '3 hours 40 minutes', 'tracking_stopped'), false, 'overlap ignored');
+  -- "Phone off" replaces the GPS-silent reason it overlaps.
+  perform t.eq(public.report_break_with_pass(v_day.id, v_pass, v_on + interval '3 hours 5 minutes',
+               v_on + interval '3 hours 20 minutes', 'phone_off'), true, 'phone off replaces it');
+  perform t.act_as_owner();
+  perform t.eq((select array_agg(kind::text order by started_at) from public.duty_breaks
+                where duty_day_id = v_day.id),
+               array['location_off', 'permission_off', 'phone_off'], 'the reasons kept');
+end;
+$$;
+select t.act_as_owner();
+delete from public.profiles where id = '00000000-0000-0000-0000-000000000015';
+delete from auth.users where id = '00000000-0000-0000-0000-000000000015';
+
 \echo 'ALL TESTS PASSED'

@@ -130,6 +130,7 @@ class TrackerTaskHandler extends TaskHandler {
     _mode = mode;
     switch (mode) {
       case TrackerMode.tracking:
+        if (_engine?.takeGpsRestart() ?? false) await _restartGps();
         await _ensureGps();
       case TrackerMode.finishing:
         await _positions?.cancel();
@@ -168,6 +169,7 @@ class TrackerTaskHandler extends TaskHandler {
       _problemSince = _clock?.now() ?? DateTime.now().toUtc();
     }
     _problem = problem;
+    _engine?.onProblem(problem);
   }
 
   /// The notification's line for [_problem].
@@ -217,6 +219,29 @@ class TrackerTaskHandler extends TaskHandler {
     } on Object catch (e, st) {
       AppLog.failure('Tracker.ensureGps', e, st);
       _setProblem(TrackerProblem.gps);
+    }
+  }
+
+  /// The watchdog found GPS silent: Android or the phone's battery saving
+  /// may have paused the stream without an error. Starts it again and asks
+  /// for one position now.
+  Future<void> _restartGps() async {
+    AppLog.info('Tracker: GPS silent, restarting it');
+    await _positions?.cancel();
+    _positions = null;
+    await _ensureGps();
+    if (_positions == null) return;
+    try {
+      _onPosition(
+        await Geolocator.getCurrentPosition(
+          locationSettings: AndroidSettings(
+            timeLimit: TrackerServiceConfig.rescueTimeout,
+          ),
+        ),
+      );
+    } on Object catch (e) {
+      // No position in time: the stream may still send one later.
+      AppLog.info('Tracker: no rescue position ($e)');
     }
   }
 
