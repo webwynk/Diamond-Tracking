@@ -14,6 +14,9 @@ abstract final class TrackerServiceConfig {
   /// How often to ask for a GPS fix. The point filter decides what to keep.
   static const Duration gpsInterval = Duration(seconds: 30);
 
+  /// How long the watchdog waits for one position after restarting GPS.
+  static const Duration rescueTimeout = Duration(seconds: 30);
+
   /// Re-read the server time this often (the phone's clock may drift or be
   /// changed).
   static const int clockResyncTicks = 30;
