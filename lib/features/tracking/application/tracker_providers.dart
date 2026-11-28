@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/time/clock_providers.dart';
+import '../data/phone_setup.dart';
 import '../domain/tracker_status.dart';
 import 'tracker_control.dart';
 
@@ -18,3 +19,8 @@ final StreamProvider<TrackerStatus> trackerStatusProvider =
     StreamProvider<TrackerStatus>(
       (Ref ref) => ref.watch(trackerControlProvider).statusUpdates,
     );
+
+/// The phone maker's own battery settings. Overridden in tests.
+final Provider<PhoneSetup> phoneSetupProvider = Provider<PhoneSetup>(
+  (Ref ref) => DevicePhoneSetup(),
+);

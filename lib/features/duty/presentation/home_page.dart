@@ -25,8 +25,11 @@ import '../../requests/application/requests_providers.dart';
 import '../../requests/domain/app_request.dart';
 import '../../tracking/application/tracker_control.dart';
 import '../../tracking/application/tracker_providers.dart';
+import '../../tracking/data/phone_setup.dart';
+import '../../tracking/domain/phone_maker.dart';
 import '../../tracking/domain/tracker_status.dart';
 import '../../tracking/presentation/duty_setup_page.dart';
+import '../../tracking/presentation/phone_setup_sheet.dart';
 import '../../tracking/service/battery_alerts.dart';
 import '../../users/application/users_providers.dart';
 import '../../users/domain/profile.dart';
@@ -131,12 +134,17 @@ class _HomePageState extends ConsumerState<HomePage> {
     final List<TrackerRequirement> missing = await _controller
         .missingRequirements();
     if (!mounted) return;
+    bool asked = false;
     if (missing.any((TrackerRequirement r) => r.required)) {
       if (!await showTrackingSetup(context)) return;
+      asked = true;
     } else if (missing.contains(TrackerRequirement.batteryOptimization)) {
       // Not required: asked at most once a week (L52).
-      await _controller.askBatteryIfDue();
+      asked = await _controller.askBatteryIfDue();
     }
+    // The phone maker's steps: also optional and at most once a week, and
+    // never right after another question.
+    if (!asked && mounted) await _showPhoneStepsIfDue();
     if (!mounted) return;
     setState(() => _busy = true);
     String? problem;
@@ -152,6 +160,17 @@ class _HomePageState extends ConsumerState<HomePage> {
     } else {
       _snack('Duty on. Your route is being recorded.');
     }
+  }
+
+  Future<void> _showPhoneStepsIfDue() async {
+    final PhoneSetup phone = ref.read(phoneSetupProvider);
+    final DateTime now = ref.read(serverClockProvider).now();
+    if (!await phone.isDue(now)) return;
+    final PhoneMaker? maker = await phone.maker();
+    if (maker == null || !mounted) return;
+    await phone.markAsked(now);
+    if (!mounted) return;
+    await showPhoneSetupSheet(context, maker: maker, setup: phone);
   }
 
   Future<void> _dutyOff(DutyDay day) async {
